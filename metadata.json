@@ -1,0 +1,6 @@
+{
+  "name": "The Declamate's Society",
+  "description": "A Public Speaking & Leadership Club member portal",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

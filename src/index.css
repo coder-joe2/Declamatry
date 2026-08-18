@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #030712;
+    color: #F3F4F6;
+  }
+  
+  /* Custom sleek dark scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #050B14;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1E2E48;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #C5A880;
+  }
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', 'Cinzel', Georgia, serif;
+}
+
+/* Custom banner polygon ribbon */
+.ribbon-banner {
+  clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0% 50%);
+}
+
+/* Responsive Media Queries for Login View Switch */
+.view-mobile-layout {
+  display: block;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.view-desktop-layout {
+  display: none;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Laptop / Tablet / Desktop breakpoint (768px and above) */
+@media screen and (min-width: 768px) {
+  .view-mobile-layout {
+    display: none !important;
+  }
+  .view-desktop-layout {
+    display: flex !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+  }
+}
+
+/* Pure Mobile breakpoint (below 768px) */
+@media screen and (max-width: 767.98px) {
+  .view-mobile-layout {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100% !important;
+    min-height: 100vh !important;
+  }
+  .view-desktop-layout {
+    display: none !important;
+  }
+}
+
+/* ========================================================================= */
+/* Voting Responsive Media Queries (Pure Mobile View vs Desktop View)        */
+/* ========================================================================= */
+.voting-mobile-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 12px;
+}
+
+.voting-desktop-layout {
+  display: none;
+  width: 100%;
+}
+
+/* Desktop breakpoint (768px and above) */
+@media screen and (min-width: 768px) {
+  .voting-mobile-layout {
+    display: none !important;
+  }
+  .voting-desktop-layout {
+    display: block !important;
+    width: 100% !important;
+  }
+}
+
+/* Mobile breakpoint (below 768px) */
+@media screen and (max-width: 767.98px) {
+  .voting-mobile-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .voting-desktop-layout {
+    display: none !important;
+  }
+}
+
