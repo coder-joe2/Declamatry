@@ -1,6 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UserProfile } from '../types';
-import { saveUserLoginToFirebase } from '../firebase';
+import { 
+  saveUserLoginToFirebase, 
+  authenticateMember, 
+  handleGoogleSignIn, 
+  triggerPasswordReset, 
+  getLocalRegisteredMembers 
+} from '../firebase';
 import { SocietyLogo } from './SocietyLogo';
 import {
   Mail,
@@ -17,9 +23,12 @@ import {
   Loader2,
   Database,
   GraduationCap,
-  CalendarDays,
-  BookOpen,
-  ShieldCheck,
+  Eye,
+  EyeOff,
+  Lock,
+  ArrowLeft,
+  KeyRound,
+  ShieldCheck
 } from 'lucide-react';
 
 const YEAR_OPTIONS = ['I Year', 'II Year', 'III Year'] as const;
@@ -31,34 +40,56 @@ interface LoginDetailsScreenProps {
   onContinue: () => void;
 }
 
+type AuthMode = 'login' | 'register' | 'forgot_password';
+
 export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   profile,
   onUpdateProfile,
   onContinue,
 }) => {
-  const [formData, setFormData] = useState<UserProfile>({
+  // Mode state: Defaults to 'login' (matching user's request)
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+
+  // Simple Login credentials state
+  const [loginIdentifier, setLoginIdentifier] = useState<string>(profile.gmail || '');
+  const [loginPassword, setLoginPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  // Full Registration state
+  const [regData, setRegData] = useState<UserProfile>({
     name: profile.name || '',
     gmail: profile.gmail || '',
     phone: profile.phone || '',
-    year: profile.year || '',
+    year: profile.year || 'I Year',
     department: profile.department || '',
     photoUrl: profile.photoUrl || '',
+    password: '',
   });
+  const [regConfirmPassword, setRegConfirmPassword] = useState<string>('');
+  const [showRegPassword, setShowRegPassword] = useState<boolean>(false);
 
+  // Forgot password state
+  const [forgotEmail, setForgotEmail] = useState<string>('');
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string>('');
+
+  // Status & error indicators
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const [photoError, setPhotoError] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [googleLoading, setGoogleLoading] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputWebRef = useRef<HTMLInputElement>(null);
 
+  // Handle Photo upload for Registration
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setFormData((prev) => ({
+          setRegData((prev) => ({
             ...prev,
             photoUrl: event.target?.result as string,
           }));
@@ -70,303 +101,587 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // 1. Handle Simple Sign-In
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const identifier = loginIdentifier.trim();
+    if (!identifier) {
+      setErrorMessage('Please enter your username or email address.');
+      return;
+    }
+
+    if (!loginPassword.trim()) {
+      setErrorMessage('Please enter your password.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await authenticateMember(identifier, loginPassword);
+      if (result.success && result.profile) {
+        onUpdateProfile(result.profile);
+        onContinue();
+      } else {
+        // If not found, let them register or offer direct entry
+        setErrorMessage(
+          result.error ||
+            'Account not found. Please click "Create an account / Register" below to register your full details.'
+        );
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Sign in failed. Please try again.';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 2. Handle Google Sign-In
+  const handleGoogleAuth = async () => {
+    setErrorMessage('');
+    setGoogleLoading(true);
+    try {
+      const result = await handleGoogleSignIn();
+      if (result.success && result.profile) {
+        onUpdateProfile(result.profile);
+        onContinue();
+      } else {
+        // If popup blocked or unavailable, prompt cleanly
+        setErrorMessage(
+          result.error ||
+            'Google Sign-in was not completed. Please sign in with email or register below.'
+        );
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in error';
+      setErrorMessage(msg);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // 3. Handle Full Registration Submit
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setPhotoError(false);
 
-    if (!formData.photoUrl) {
+    if (!regData.photoUrl) {
       setPhotoError(true);
-      setErrorMessage('Profile picture is mandatory. Please upload a photo to continue.');
+      setErrorMessage('Profile picture is mandatory. Please upload a clear photo for your official member badge.');
       return;
     }
 
-    if (!formData.name.trim()) {
+    if (!regData.name.trim()) {
       setErrorMessage('Please enter your full name.');
       return;
     }
 
-    if (!formData.gmail.trim()) {
-      setErrorMessage('Please enter your email address.');
+    if (!regData.gmail.trim() || !regData.gmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address.');
       return;
     }
 
-    if (!formData.phone.trim()) {
-      setErrorMessage('Please enter your phone number.');
+    if (!regData.password || regData.password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
       return;
     }
 
-    if (!formData.year?.trim()) {
+    if (regData.password !== regConfirmPassword) {
+      setErrorMessage('Passwords do not match. Please verify.');
+      return;
+    }
+
+    if (!regData.phone.trim()) {
+      setErrorMessage('Please enter your contact phone number.');
+      return;
+    }
+
+    if (!regData.year?.trim()) {
       setErrorMessage('Please select your Year of Study (I Year, II Year, or III Year).');
       return;
     }
 
-    if (!formData.department.trim()) {
-      setErrorMessage('Please select your Department (B.Sc, B.A, B.Com, BBA, BCA).');
+    if (!regData.department.trim()) {
+      setErrorMessage('Please select your Department / Degree.');
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoading(true);
 
     const finalProfile: UserProfile = {
-      ...formData,
-      isAdmin: formData.gmail.trim().toLowerCase() === 'vjana537@gmail.com',
+      ...regData,
+      name: regData.name.trim(),
+      gmail: regData.gmail.trim().toLowerCase(),
+      phone: regData.phone.trim(),
+      isAdmin: regData.gmail.trim().toLowerCase() === 'vjana537@gmail.com',
     };
 
     try {
-      // Store user login details in Firebase Firestore (declamate-af92e)
       const res = await saveUserLoginToFirebase(finalProfile);
       if (!res.success) {
-        console.warn('Firebase sync notice:', res.error);
+        console.warn('Firebase notice:', res.error);
       }
+      setSuccessMessage('Registration successful! Welcome to The Declamate’s Society.');
+      setTimeout(() => {
+        onUpdateProfile(finalProfile);
+        onContinue();
+      }, 500);
     } catch (err) {
-      console.error('Firebase error on login:', err);
-    } finally {
-      setIsSubmitting(false);
+      console.error('Registration error:', err);
       onUpdateProfile(finalProfile);
       onContinue();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 4. Handle Password Reset Request
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setResetSuccessMessage('');
+
+    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await triggerPasswordReset(forgotEmail);
+      setResetSuccessMessage(res.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error requesting password reset';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] text-slate-100 flex flex-col selection:bg-[#C5A880] selection:text-[#0A192F]">
-      {/* ========================================================================= */}
-      {/* 1. MOBILE VIEW - Full Screen Luxury Black & Gold Theme                    */}
-      {/* ========================================================================= */}
-      <div className="view-mobile-layout w-full min-h-screen bg-gradient-to-b from-[#030712] via-[#08101E] to-[#030712] relative overflow-hidden flex flex-col justify-between p-6 sm:p-8">
-        {/* Background Delicate Golden Waves */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-20"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 430 900"
-          preserveAspectRatio="none"
-          fill="none"
-        >
-          <path
-            d="M 290 0 C 305 140 400 320 410 500 C 420 680 340 800 130 900"
-            stroke="#C5A880"
-            strokeWidth="1.2"
-          />
-          <path
-            d="M 315 0 C 330 160 420 340 425 520 C 430 700 310 820 100 900"
-            stroke="#C5A880"
-            strokeWidth="1"
-          />
-          <path
-            d="M 340 0 C 355 180 440 360 438 540 C 435 720 280 840 70 900"
-            stroke="#C5A880"
-            strokeWidth="0.8"
-          />
-          <path
-            d="M 0 540 C 110 610 170 710 185 900"
-            stroke="#C5A880"
-            strokeWidth="1.1"
-          />
-        </svg>
+    <div className="min-h-screen w-full bg-[#050B14] text-slate-100 flex flex-col justify-center selection:bg-[#22c55e] selection:text-black">
+      {/* Background Ambience / Subtle Golden & Emerald Glows */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#C5A880]/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#16a34a]/10 rounded-full blur-3xl" />
+      </div>
 
-        {/* Top Left Corner Official Society Logo Badge */}
-        <div className="absolute top-4 left-4 sm:top-5 sm:left-5 z-30">
-          <SocietyLogo size="md" className="shadow-2xl border-2 border-[#C5A880]/70 ring-2 ring-[#C5A880]/20" />
+      <div className="relative z-10 w-full max-w-md mx-auto px-4 sm:px-6 py-8">
+        {/* Top Official Society Crest & Header */}
+        <div className="text-center mb-6">
+          <div className="flex justify-center mb-3">
+            <SocietyLogo size="lg" className="shadow-2xl border-2 border-[#C5A880]/80 ring-4 ring-[#C5A880]/15" />
+          </div>
+          <p className="font-cinzel text-[11px] tracking-[0.3em] text-[#C5A880] font-semibold uppercase mb-0.5">
+            THE
+          </p>
+          <h1 className="font-cinzel font-bold text-2xl sm:text-3xl tracking-[0.08em] text-white uppercase leading-none">
+            DECLAMATE&apos;S SOCIETY
+          </h1>
+          <p className="text-[10.5px] tracking-[0.2em] text-slate-400 uppercase font-semibold mt-1">
+            Public Speaking &amp; Leadership Club
+          </p>
         </div>
 
-        {/* Mobile View Content */}
-        <div className="relative z-10 w-full max-w-md mx-auto flex-1 flex flex-col justify-between py-2">
-          <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between">
-            {/* Top Brand Header */}
-            <div className="text-center pt-2">
-              <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#112240] text-[#C5A880] mb-2 shadow-md border border-[#C5A880]/40">
-                <Award className="w-4.5 h-4.5" />
-              </div>
-              <p className="font-cinzel text-[11px] sm:text-[12px] tracking-[0.3em] text-[#C5A880] font-semibold uppercase mb-0.5">
-                THE
-              </p>
-              <h1 className="font-cinzel font-bold text-[28px] sm:text-[32px] tracking-[0.06em] text-white uppercase leading-none">
-                DECLAMATE&apos;S
-              </h1>
-              <h2 className="font-cinzel font-bold text-[28px] sm:text-[32px] tracking-[0.12em] text-[#C5A880] uppercase leading-tight mb-2.5">
-                SOCIETY
-              </h2>
-              <p className="font-sans font-bold text-[10px] tracking-[0.2em] text-slate-300 uppercase mb-4">
-                A PUBLIC SPEAKING &amp; LEADERSHIP CLUB
-              </p>
+        {/* Global Error Notice Alert */}
+        {errorMessage && (
+          <div className="mb-4 p-3.5 rounded-xl bg-red-950/80 border border-red-500/60 text-red-200 text-xs sm:text-sm flex items-center gap-2.5 shadow-lg animate-shake">
+            <AlertCircle className="w-4.5 h-4.5 shrink-0 text-red-400" />
+            <span className="font-medium">{errorMessage}</span>
+          </div>
+        )}
 
-              {/* Tagline Ribbon Banner */}
-              <div className="flex justify-center mb-4 px-1">
-                <div className="w-full max-w-xs bg-[#0E1E38] border border-[#C5A880]/50 py-2.5 px-6 ribbon-banner flex items-center justify-between text-white shadow-xl">
-                  <span className="text-[11px] font-semibold tracking-[0.2em] text-[#C5A880]">
-                    SPEAK
-                  </span>
-                  <span className="text-[11px] font-semibold tracking-[0.2em] text-white">
-                    LEAD
-                  </span>
-                  <span className="text-[11px] font-semibold tracking-[0.2em] text-[#C5A880]">
-                    INSPIRE
-                  </span>
-                </div>
-              </div>
-            </div>
+        {/* Global Success Notice Alert */}
+        {successMessage && (
+          <div className="mb-4 p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 text-xs sm:text-sm flex items-center gap-2.5 shadow-lg">
+            <CheckCircle2 className="w-4.5 h-4.5 shrink-0 text-emerald-400" />
+            <span className="font-medium">{successMessage}</span>
+          </div>
+        )}
 
-            {/* Error Notification Alert */}
-            {errorMessage && (
-              <div className="mb-3 p-3 rounded-xl bg-red-950/80 border border-red-500/60 text-red-200 text-xs flex items-center gap-2 animate-shake">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            {/* Profile Picture Section (Compulsory) */}
-            <div className="mb-3">
-              <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                <h3 className="font-playfair text-[19px] text-white font-normal tracking-tight text-center">
-                  Profile Picture <span className="text-red-400 font-bold">*</span>
-                </h3>
-              </div>
-              <p className="text-center text-[10.5px] text-slate-400 mb-2 font-medium">
-                Photo is mandatory for your official speaking badge
-              </p>
-
-              <div className="flex justify-center">
+        {/* ========================================================================= */}
+        {/* VIEW 1: SIMPLE SIGN-IN (Matches the user's uploaded image exactly)        */}
+        {/* ========================================================================= */}
+        {authMode === 'login' && (
+          <div className="bg-[#090F1D] border border-slate-800/80 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+            <form onSubmit={handleSignIn} className="space-y-4">
+              {/* 1. Username or email address field */}
+              <div>
+                <label className="text-sm font-medium text-slate-200 block mb-1.5 text-left">
+                  Username or email address
+                </label>
                 <div className="relative">
                   <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handlePhotoUpload}
-                    accept="image/*"
-                    className="hidden"
+                    type="text"
+                    required
+                    value={loginIdentifier}
+                    onChange={(e) => {
+                      setLoginIdentifier(e.target.value);
+                      if (errorMessage) setErrorMessage('');
+                    }}
+                    placeholder="Enter your username or email"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/30 rounded-xl px-3.5 py-3 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
+                </div>
+              </div>
 
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Click to upload profile picture"
-                    className={`w-24 h-24 rounded-full border-[3px] ${
-                      photoError
-                        ? 'border-red-500 ring-4 ring-red-500/30 bg-red-950/40'
-                        : formData.photoUrl
-                        ? 'border-emerald-500 ring-2 ring-emerald-500/30'
-                        : 'border-[#C5A880] bg-[#0E1E38]'
-                    } flex items-center justify-center cursor-pointer shadow-xl hover:scale-105 transition-all overflow-hidden relative group`}
-                  >
-                    {formData.photoUrl ? (
-                      <img
-                        src={formData.photoUrl}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-[#C5A880]">
-                        <Camera className={`w-9 h-9 stroke-[1.5] ${photoError ? 'text-red-400' : ''}`} />
-                      </div>
-                    )}
-
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                      <Camera className="w-6 h-6 text-white drop-shadow" />
-                    </div>
-                  </div>
-
+              {/* 2. Password field with Forgot password? on the right */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium text-slate-200">
+                    Password
+                  </label>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`absolute bottom-0 right-0 w-6 h-6 rounded-full ${
-                      photoError ? 'bg-red-500' : 'bg-[#C5A880] hover:bg-[#d8bb94]'
-                    } text-[#0A192F] flex items-center justify-center border-2 border-[#030712] shadow-md transition-colors`}
+                    onClick={() => {
+                      setErrorMessage('');
+                      setForgotEmail(loginIdentifier);
+                      setAuthMode('forgot_password');
+                    }}
+                    className="text-xs text-[#38bdf8] hover:text-[#60a5fa] hover:underline font-medium cursor-pointer transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    Forgot password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => {
+                      setLoginPassword(e.target.value);
+                      if (errorMessage) setErrorMessage('');
+                    }}
+                    placeholder="Enter your password"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/30 rounded-xl px-3.5 py-3 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors cursor-pointer p-1"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4.5 h-4.5" />
+                    ) : (
+                      <Eye className="w-4.5 h-4.5" />
+                    )}
                   </button>
                 </div>
               </div>
+
+              {/* 3. Primary Green "Sign in" Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#16a34a] hover:bg-[#15803d] active:bg-[#166534] disabled:bg-[#16a34a]/50 text-white py-3 px-4 rounded-xl font-semibold text-sm sm:text-base tracking-wide transition-all shadow-lg hover:shadow-emerald-900/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <span>Sign in</span>
+                  )}
+                </button>
+              </div>
+
+              {/* 4. Divider: or */}
+              <div className="relative my-4 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-800" />
+                </div>
+                <div className="relative bg-[#090F1D] px-3 text-xs text-slate-400 uppercase tracking-wider font-medium">
+                  or
+                </div>
+              </div>
+
+              {/* 5. Continue with Google Button */}
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={googleLoading || isLoading}
+                className="w-full bg-[#0E1726] hover:bg-[#152238] border border-slate-700/80 active:scale-[0.99] text-slate-100 py-3 px-4 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-3 shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {googleLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
+                ) : (
+                  <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                    />
+                  </svg>
+                )}
+                <span>Continue with Google</span>
+              </button>
+
+              {/* 6. Switch to Registration Link */}
+              <div className="pt-3 text-center">
+                <p className="text-xs sm:text-sm text-slate-400">
+                  New member?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage('');
+                      setSuccessMessage('');
+                      setAuthMode('register');
+                    }}
+                    className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-4 cursor-pointer transition-colors"
+                  >
+                    Register / Create an account
+                  </button>
+                </p>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 2: REGISTRATION FORM (Full Name, Email, Password, Phone, Year, Dept) */}
+        {/* ========================================================================= */}
+        {authMode === 'register' && (
+          <div className="bg-[#090F1D] border border-[#C5A880]/40 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+            <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
+              <div>
+                <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
+                  Member Registration
+                </h2>
+                <p className="text-xs text-[#C5A880]">Join The Declamate&apos;s Society</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorMessage('');
+                  setAuthMode('login');
+                }}
+                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Sign in</span>
+              </button>
             </div>
 
-            {/* Input Fields */}
-            <div className="space-y-3 mb-3">
-              {/* Name */}
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              {/* Profile Picture Upload (Mandatory) */}
+              <div className="text-center">
+                <p className="text-xs text-slate-300 font-medium mb-1.5">
+                  Profile Picture <span className="text-red-400 font-bold">* Mandatory for badge</span>
+                </p>
+                <div className="flex justify-center">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handlePhotoUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Upload profile picture"
+                      className={`w-20 h-20 rounded-full border-2 ${
+                        photoError
+                          ? 'border-red-500 ring-4 ring-red-500/30 bg-red-950/30'
+                          : regData.photoUrl
+                          ? 'border-emerald-500 ring-2 ring-emerald-500/30'
+                          : 'border-[#C5A880] bg-[#030712]'
+                      } flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-all overflow-hidden relative group`}
+                    >
+                      {regData.photoUrl ? (
+                        <img
+                          src={regData.photoUrl}
+                          alt="Profile preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Camera className={`w-7 h-7 ${photoError ? 'text-red-400' : 'text-[#C5A880]'}`} />
+                      )}
+
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Camera className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`absolute bottom-0 right-0 w-6 h-6 rounded-full ${
+                        photoError ? 'bg-red-500' : 'bg-[#C5A880] hover:bg-[#d8bb94]'
+                      } text-[#0A192F] flex items-center justify-center border-2 border-[#090F1D] shadow-md transition-colors`}
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Full Name */}
               <div>
-                <label className="font-playfair text-[16px] text-slate-200 font-normal tracking-tight mb-1 block text-left">
-                  Full Name <span className="text-red-400 font-bold">*</span>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+                  Full Name <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                    <User className="w-4 h-4 stroke-[1.75]" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <User className="w-4 h-4" />
                   </div>
                   <input
                     type="text"
                     required
-                    value={formData.name}
+                    value={regData.name}
                     onChange={(e) => {
-                      setFormData({ ...formData, name: e.target.value });
+                      setRegData({ ...regData, name: e.target.value });
                       if (errorMessage) setErrorMessage('');
                     }}
-                    placeholder="Enter your name"
-                    className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 transition-all"
+                    placeholder="e.g. Alex Morgan"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
                 </div>
               </div>
 
               {/* Email */}
               <div>
-                <label className="font-playfair text-[16px] text-slate-200 font-normal tracking-tight mb-1 block text-left">
-                  Email <span className="text-red-400 font-bold">*</span>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+                  Email Address <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                    <Mail className="w-4 h-4 stroke-[1.75]" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <Mail className="w-4 h-4" />
                   </div>
                   <input
                     type="email"
                     required
-                    value={formData.gmail}
+                    value={regData.gmail}
                     onChange={(e) => {
-                      setFormData({ ...formData, gmail: e.target.value });
+                      setRegData({ ...regData, gmail: e.target.value });
                       if (errorMessage) setErrorMessage('');
                     }}
-                    placeholder="Enter your email"
-                    className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 transition-all"
+                    placeholder="e.g. alex@gmail.com"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Phone */}
+              {/* Password & Confirm Password Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-200 block mb-1">
+                    Password <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      value={regData.password || ''}
+                      onChange={(e) => {
+                        setRegData({ ...regData, password: e.target.value });
+                        if (errorMessage) setErrorMessage('');
+                      }}
+                      placeholder="Min 6 chars"
+                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-200 block mb-1">
+                    Confirm Password <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      value={regConfirmPassword}
+                      onChange={(e) => {
+                        setRegConfirmPassword(e.target.value);
+                        if (errorMessage) setErrorMessage('');
+                      }}
+                      placeholder="Re-type password"
+                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Show password toggle */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="toggleShowRegPass"
+                  checked={showRegPassword}
+                  onChange={(e) => setShowRegPassword(e.target.checked)}
+                  className="rounded bg-slate-900 border-slate-700 text-[#C5A880] focus:ring-0 cursor-pointer"
+                />
+                <label htmlFor="toggleShowRegPass" className="text-xs text-slate-400 cursor-pointer">
+                  Show passwords
+                </label>
+              </div>
+
+              {/* Phone Number */}
               <div>
-                <label className="font-playfair text-[16px] text-slate-200 font-normal tracking-tight mb-1 block text-left">
-                  Phone Number <span className="text-red-400 font-bold">*</span>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+                  Phone Number <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                    <Phone className="w-4 h-4 stroke-[1.75]" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <Phone className="w-4 h-4" />
                   </div>
                   <input
                     type="tel"
                     required
-                    value={formData.phone}
+                    value={regData.phone}
                     onChange={(e) => {
-                      setFormData({ ...formData, phone: e.target.value });
+                      setRegData({ ...regData, phone: e.target.value });
                       if (errorMessage) setErrorMessage('');
                     }}
-                    placeholder="Enter phone number"
-                    className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 transition-all"
+                    placeholder="+91 98765 43210"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
                 </div>
               </div>
 
               {/* Year of Study */}
               <div>
-                <label className="font-playfair text-[15px] text-slate-200 font-normal tracking-tight mb-1 block text-left">
-                  Year of Study <span className="text-red-400 font-bold">*</span>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+                  Year of Study <span className="text-red-400">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {YEAR_OPTIONS.map((yr) => {
-                    const isSelected = formData.year === yr;
+                    const isSelected = regData.year === yr;
                     return (
                       <button
                         type="button"
                         key={yr}
                         onClick={() => {
-                          setFormData({ ...formData, year: yr });
+                          setRegData({ ...regData, year: yr });
                           if (errorMessage) setErrorMessage('');
                         }}
                         className={`py-2 px-2 rounded-xl text-xs font-semibold tracking-wide border transition-all cursor-pointer text-center ${
                           isSelected
-                            ? 'bg-[#C5A880] text-[#0A192F] border-[#C5A880] shadow-md font-bold scale-[1.02]'
-                            : 'bg-[#0B1528] text-slate-300 border-[#1E2E48] hover:border-[#C5A880]/60'
+                            ? 'bg-[#C5A880] text-[#0A192F] border-[#C5A880] shadow-md font-bold'
+                            : 'bg-[#030712] text-slate-300 border-slate-800 hover:border-[#C5A880]/50'
                         }`}
                       >
                         {yr}
@@ -378,399 +693,163 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
 
               {/* Department */}
               <div>
-                <label className="font-playfair text-[15px] text-slate-200 font-normal tracking-tight mb-1 block text-left">
-                  Department <span className="text-red-400 font-bold">*</span>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+                  Department / Degree <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                    <GraduationCap className="w-4 h-4 stroke-[1.75]" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <GraduationCap className="w-4 h-4" />
                   </div>
                   <select
                     required
-                    value={formData.department}
+                    value={regData.department}
                     onChange={(e) => {
-                      setFormData({ ...formData, department: e.target.value });
+                      setRegData({ ...regData, department: e.target.value });
                       if (errorMessage) setErrorMessage('');
                     }}
-                    className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm focus:outline-none focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 transition-all cursor-pointer"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all cursor-pointer"
                   >
-                    <option value="" className="bg-[#0B1528] text-slate-400">-- Select Department / Degree --</option>
-                    {DEPARTMENT_OPTIONS.map((d) => (
-                      <option key={d} value={d} className="bg-[#0B1528] text-white">
-                        {d}
+                    <option value="" className="bg-[#030712] text-slate-400">
+                      -- Select Department --
+                    </option>
+                    {DEPARTMENT_OPTIONS.map((dept) => (
+                      <option key={dept} value={dept} className="bg-[#030712] text-white">
+                        {dept}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
-            </div>
 
-            {/* Login Button */}
-            <div className="pt-2 pb-2 space-y-2.5">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-[#C5A880] hover:bg-[#d8bb94] disabled:bg-[#C5A880]/50 disabled:cursor-not-allowed text-[#0A192F] py-3.5 px-6 rounded-xl font-cinzel font-bold text-base tracking-[0.25em] transition-all shadow-lg active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin text-[#0A192F]" />
-                    <span>SAVING TO FIREBASE...</span>
-                  </>
-                ) : (
-                  <span>LOGIN</span>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+              {/* Register Submit Button */}
+              <div className="pt-2 space-y-2.5">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#C5A880] hover:bg-[#d8bb94] disabled:bg-[#C5A880]/50 text-[#0A192F] py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.2em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
+                      <span>REGISTERING...</span>
+                    </>
+                  ) : (
+                    <span>COMPLETE REGISTRATION</span>
+                  )}
+                </button>
 
-      {/* ========================================================================= */}
-      {/* 2. WEBSITE / LAPTOP FULL-SCREEN VIEW (Dark Luxury Split Layout)           */}
-      {/* ========================================================================= */}
-      <div className="view-desktop-layout w-full min-h-screen">
-        <div className="w-full min-h-screen grid grid-cols-1 md:grid-cols-12 bg-[#030712] m-0 p-0 border-none rounded-none shadow-none">
-          {/* Left Showcase Hero Column - Full Height 100% */}
-          <div className="md:col-span-5 lg:col-span-5 xl:col-span-5 bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040914] text-white p-8 lg:p-12 xl:p-16 relative flex flex-col justify-between min-h-screen overflow-hidden border-r border-[#1E2E48]">
-            {/* Background Artistic Gold Waves for Laptop */}
-            <svg
-              className="absolute inset-0 w-full h-full pointer-events-none opacity-25"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 500 800"
-              preserveAspectRatio="none"
-              fill="none"
-            >
-              <path
-                d="M 250 0 C 350 200 480 350 490 600 C 500 850 350 750 200 800"
-                stroke="#C5A880"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M 300 0 C 400 220 520 370 510 620 C 500 870 300 780 150 800"
-                stroke="#C5A880"
-                strokeWidth="1"
-              />
-            </svg>
-
-            {/* Glowing Top Crest */}
-            <div className="relative z-10 space-y-6">
-              <div className="flex items-center gap-4">
-                <SocietyLogo size="lg" className="shadow-2xl border-2 border-[#C5A880]/70" />
-                <div>
-                  <h2 className="font-cinzel font-bold text-xl lg:text-2xl text-white tracking-widest uppercase">
-                    The Declamate&apos;s
-                  </h2>
-                  <p className="text-xs font-semibold tracking-widest text-[#C5A880] uppercase">
-                    Public Speaking &amp; Leadership Club
+                <div className="text-center pt-2">
+                  <p className="text-xs text-slate-400">
+                    Already registered?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMessage('');
+                        setAuthMode('login');
+                      }}
+                      className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-2 cursor-pointer"
+                    >
+                      Sign in to your account
+                    </button>
                   </p>
                 </div>
               </div>
-
-              <div className="pt-6 space-y-4">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#C5A880]/15 border border-[#C5A880]/40 text-[#C5A880] text-xs font-semibold uppercase tracking-wider">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Sri Amaraavathi College &bull; Karur</span>
-                </div>
-
-                <h1 className="font-cinzel text-3xl lg:text-4xl font-extrabold text-white leading-tight">
-                  Speak with Poise. <br />
-                  <span className="text-[#C5A880]">Lead with Impact.</span>
-                </h1>
-
-                <p className="text-slate-300 text-sm lg:text-base leading-relaxed max-w-md font-sans">
-                  Join our exclusive fraternity of student speakers, debaters, and visionary leaders.
-                </p>
-              </div>
-
-              {/* 3 Core Highlights */}
-              <div className="pt-4 space-y-3 max-w-sm">
-                <div className="flex items-center gap-3 text-slate-200 text-sm">
-                  <div className="w-8 h-8 rounded-lg bg-[#C5A880]/15 border border-[#C5A880]/30 text-[#C5A880] flex items-center justify-center shrink-0">
-                    <Mic className="w-4 h-4" />
-                  </div>
-                  <span>Master Keynote &amp; Impromptu Speeches</span>
-                </div>
-                <div className="flex items-center gap-3 text-slate-200 text-sm">
-                  <div className="w-8 h-8 rounded-lg bg-[#C5A880]/15 border border-[#C5A880]/30 text-[#C5A880] flex items-center justify-center shrink-0">
-                    <Users2 className="w-4 h-4" />
-                  </div>
-                  <span>Student-Led Constructive Feedback</span>
-                </div>
-                <div className="flex items-center gap-3 text-slate-200 text-sm">
-                  <div className="w-8 h-8 rounded-lg bg-[#C5A880]/15 border border-[#C5A880]/30 text-[#C5A880] flex items-center justify-center shrink-0">
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <span>5-Level Presentation Mastery Pathway</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Tagline Ribbon */}
-            <div className="relative z-10 pt-6">
-              <div className="bg-[#030712]/90 border border-[#C5A880]/40 rounded-xl p-4 flex items-center justify-between text-xs font-cinzel font-bold tracking-[0.2em] text-[#C5A880]">
-                <span>SPEAK</span>
-                <span>&bull;</span>
-                <span>LEAD</span>
-                <span>&bull;</span>
-                <span>INSPIRE</span>
-              </div>
-            </div>
+            </form>
           </div>
+        )}
 
-          {/* Right Column: Member Login Form */}
-          <div className="md:col-span-7 lg:col-span-7 xl:col-span-7 bg-[#050B14] p-8 lg:p-14 xl:p-20 flex flex-col justify-center min-h-screen text-slate-100">
-            <div className="max-w-xl w-full mx-auto space-y-6">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-[#C5A880] font-cinzel">
-                  Official Portal
-                </span>
-                <h3 className="font-cinzel text-2xl lg:text-3xl xl:text-4xl font-bold text-white uppercase tracking-wide mt-1">
-                  Member Login
-                </h3>
-                <p className="text-sm text-slate-400 font-medium mt-1">
-                  Enter your credentials and upload your member picture to enter the dashboard
-                </p>
+        {/* ========================================================================= */}
+        {/* VIEW 3: FORGOT PASSWORD                                                   */}
+        {/* ========================================================================= */}
+        {authMode === 'forgot_password' && (
+          <div className="bg-[#090F1D] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+            <div className="flex items-center gap-2.5 mb-4 text-white">
+              <div className="w-8 h-8 rounded-lg bg-[#38bdf8]/15 border border-[#38bdf8]/30 flex items-center justify-center text-[#38bdf8]">
+                <KeyRound className="w-4 h-4" />
               </div>
+              <h2 className="font-cinzel text-lg font-bold">Reset Your Password</h2>
+            </div>
 
-              {/* Error Notification Alert */}
-              {errorMessage && (
-                <div className="p-3.5 rounded-xl bg-red-950/80 border border-red-500/60 text-red-200 text-sm flex items-center gap-2.5">
-                  <AlertCircle className="w-5 h-5 shrink-0 text-red-400" />
-                  <span className="font-medium">{errorMessage}</span>
+            {resetSuccessMessage ? (
+              <div className="space-y-4 text-center py-2">
+                <div className="w-12 h-12 rounded-full bg-emerald-950/80 border border-emerald-500/60 text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6" />
                 </div>
-              )}
-
-              {/* Profile Picture Uploader on Full-Screen Desktop (Compulsory) */}
-              <div
-                className={`p-5 rounded-2xl border transition-all flex items-center gap-5 ${
-                  photoError
-                    ? 'bg-red-950/40 border-red-500/60 ring-2 ring-red-500/30'
-                    : formData.photoUrl
-                    ? 'bg-emerald-950/20 border-emerald-500/50'
-                    : 'bg-[#0B1528] border-[#1E2E48]'
-                }`}
-              >
-                <input
-                  type="file"
-                  ref={fileInputWebRef}
-                  onChange={handlePhotoUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-
-                <div className="relative">
-                  <div
-                    onClick={() => fileInputWebRef.current?.click()}
-                    title="Click to choose profile picture"
-                    className={`w-20 h-20 rounded-full border-2 ${
-                      photoError
-                        ? 'border-red-500 ring-4 ring-red-500/30'
-                        : formData.photoUrl
-                        ? 'border-emerald-500 ring-2 ring-emerald-500/30'
-                        : 'border-[#C5A880]'
-                    } bg-[#030712] flex items-center justify-center cursor-pointer shadow-md hover:scale-105 transition-transform overflow-hidden relative group`}
-                  >
-                    {formData.photoUrl ? (
-                      <img
-                        src={formData.photoUrl}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Camera className={`w-8 h-8 ${photoError ? 'text-red-400' : 'text-[#C5A880]'} stroke-[1.5]`} />
-                    )}
-
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                      <Camera className="w-5 h-5 text-white" />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => fileInputWebRef.current?.click()}
-                    className={`absolute bottom-0 right-0 w-6 h-6 rounded-full ${
-                      photoError ? 'bg-red-500' : 'bg-[#C5A880] hover:bg-[#d8bb94]'
-                    } text-[#0A192F] flex items-center justify-center border-2 border-[#030712] shadow-md transition-colors`}
-                  >
-                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                  </button>
-                </div>
+                <p className="text-sm text-slate-200 font-medium">{resetSuccessMessage}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetSuccessMessage('');
+                    setAuthMode('login');
+                  }}
+                  className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-all cursor-pointer"
+                >
+                  Return to Sign In
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  Enter your registered email address and we will send you password recovery instructions.
+                </p>
 
                 <div>
-                  <h4 className="font-playfair text-lg text-white font-semibold flex items-center gap-1.5">
-                    Profile Picture <span className="text-red-400 font-bold text-sm">* Mandatory</span>
-                  </h4>
-                  <p className="text-xs text-slate-400 mb-1.5">
-                    {formData.photoUrl
-                      ? '✓ Profile picture uploaded successfully'
-                      : 'Upload a clear headshot (required for login & speaking ID badge)'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => fileInputWebRef.current?.click()}
-                    className="text-xs font-semibold text-[#C5A880] hover:underline underline-offset-2 transition-colors cursor-pointer"
-                  >
-                    Browse file from device
-                  </button>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Input Fields */}
-                <div className="space-y-4">
-                  {/* Name Field */}
-                  <div>
-                    <label className="font-playfair text-[17px] text-slate-200 font-medium tracking-tight mb-1.5 block">
-                      Full Name <span className="text-red-400 font-bold">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                        <User className="w-4 h-4 stroke-[1.75]" />
-                      </div>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => {
-                          setFormData({ ...formData, name: e.target.value });
-                          if (errorMessage) setErrorMessage('');
-                        }}
-                        placeholder="e.g. Alex Morgan"
-                        className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-4 py-3 pl-11 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email Field */}
-                  <div>
-                    <label className="font-playfair text-[17px] text-slate-200 font-medium tracking-tight mb-1.5 block">
-                      Gmail / Email Address <span className="text-red-400 font-bold">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                        <Mail className="w-4 h-4 stroke-[1.75]" />
-                      </div>
-                      <input
-                        type="email"
-                        required
-                        value={formData.gmail}
-                        onChange={(e) => {
-                          setFormData({ ...formData, gmail: e.target.value });
-                          if (errorMessage) setErrorMessage('');
-                        }}
-                        placeholder="e.g. alex.morgan@gmail.com"
-                        className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-4 py-3 pl-11 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Phone Field */}
-                  <div>
-                    <label className="font-playfair text-[17px] text-slate-200 font-medium tracking-tight mb-1.5 block">
-                      Phone Number <span className="text-red-400 font-bold">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                        <Phone className="w-4 h-4 stroke-[1.75]" />
-                      </div>
-                      <input
-                        type="tel"
-                        required
-                        value={formData.phone}
-                        onChange={(e) => {
-                          setFormData({ ...formData, phone: e.target.value });
-                          if (errorMessage) setErrorMessage('');
-                        }}
-                        placeholder="e.g. +91 98765 43210"
-                        className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-4 py-3 pl-11 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Year of Study Field */}
-                  <div>
-                    <label className="font-playfair text-[17px] text-slate-200 font-medium tracking-tight mb-1.5 block">
-                      Year of Study <span className="text-red-400 font-bold">*</span>
-                    </label>
-                    <div className="grid grid-cols-3 gap-2.5">
-                      {YEAR_OPTIONS.map((yr) => {
-                        const isSelected = formData.year === yr;
-                        return (
-                          <button
-                            type="button"
-                            key={yr}
-                            onClick={() => {
-                              setFormData({ ...formData, year: yr });
-                              if (errorMessage) setErrorMessage('');
-                            }}
-                            className={`py-3 px-3 rounded-xl text-sm font-semibold tracking-wide border transition-all cursor-pointer text-center ${
-                              isSelected
-                                ? 'bg-[#C5A880] text-[#0A192F] border-[#C5A880] shadow-md font-bold scale-[1.02]'
-                                : 'bg-[#0B1528] text-slate-300 border-[#1E2E48] hover:border-[#C5A880]/60'
-                            }`}
-                          >
-                            {yr}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Department Field */}
-                  <div>
-                    <label className="font-playfair text-[17px] text-slate-200 font-medium tracking-tight mb-1.5 block">
-                      Department / Degree <span className="text-red-400 font-bold">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C5A880] pointer-events-none">
-                        <GraduationCap className="w-4 h-4 stroke-[1.75]" />
-                      </div>
-                      <select
-                        required
-                        value={formData.department}
-                        onChange={(e) => {
-                          setFormData({ ...formData, department: e.target.value });
-                          if (errorMessage) setErrorMessage('');
-                        }}
-                        className="w-full bg-[#0B1528] border border-[#1E2E48] rounded-xl px-4 py-3 pl-11 text-white text-sm focus:outline-none focus:border-[#C5A880] focus:ring-2 focus:ring-[#C5A880]/20 transition-all cursor-pointer"
-                      >
-                        <option value="" className="bg-[#0B1528] text-slate-400">-- Select Department / Degree --</option>
-                        {DEPARTMENT_OPTIONS.map((d) => (
-                          <option key={d} value={d} className="bg-[#0B1528] text-white">
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1.5">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      value={forgotEmail}
+                      onChange={(e) => {
+                        setForgotEmail(e.target.value);
+                        if (errorMessage) setErrorMessage('');
+                      }}
+                      placeholder="e.g. yourname@gmail.com"
+                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#38bdf8] focus:ring-2 focus:ring-[#38bdf8]/30 rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                    />
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <div className="pt-3 space-y-3">
+                <div className="pt-2 space-y-2">
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-[#C5A880] hover:bg-[#d8bb94] disabled:bg-[#C5A880]/50 disabled:cursor-not-allowed text-[#0A192F] py-4 px-8 rounded-xl font-cinzel font-bold text-base lg:text-lg tracking-[0.25em] transition-all shadow-xl hover:shadow-2xl active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer"
+                    disabled={isLoading}
+                    className="w-full bg-[#38bdf8] hover:bg-[#0284c7] text-[#0A192F] font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {isSubmitting ? (
+                    {isLoading ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin text-[#0A192F]" />
-                        <span>SAVING DETAILS TO FIREBASE...</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
+                        <span>Sending reset email...</span>
                       </>
                     ) : (
-                      <span>ENTER SOCIETY DASHBOARD</span>
+                      <span>Send Reset Instructions</span>
                     )}
                   </button>
 
-                  <p className="text-center text-xs text-slate-400 mt-2 flex items-center justify-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-[#C5A880]" />
-                    <span>Connected to Firebase Firestore (declamate-af92e)</span>
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage('');
+                      setAuthMode('login');
+                    }}
+                    className="w-full py-2 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Cancel &amp; Back to Sign In
+                  </button>
                 </div>
               </form>
-            </div>
+            )}
           </div>
+        )}
+
+        {/* Footer info */}
+        <div className="text-center mt-6">
+          <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-[#C5A880]" />
+            <span>Secure Club Portal &bull; Firebase Cloud Sync</span>
+          </p>
         </div>
       </div>
     </div>

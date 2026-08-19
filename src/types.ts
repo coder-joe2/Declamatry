@@ -6,6 +6,7 @@ export interface UserProfile {
   department: string;
   photoUrl: string;
   isAdmin?: boolean;
+  password?: string;
 }
 
 export type SidebarTab =

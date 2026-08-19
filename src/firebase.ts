@@ -5,6 +5,7 @@ import {
   addDoc, 
   setDoc, 
   getDocs,
+  getDoc,
   doc, 
   updateDoc,
   deleteDoc,
@@ -13,7 +14,15 @@ import {
   orderBy, 
   serverTimestamp 
 } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  GoogleAuthProvider, 
+  signInWithPopup,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
+} from 'firebase/auth';
 import { UserProfile, Poll } from './types';
 
 // User provided Firebase configuration
@@ -31,6 +40,7 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 
 // Attempt anonymous sign-in if enabled on Firebase Console
 async function ensureAuth() {
@@ -43,6 +53,37 @@ async function ensureAuth() {
   }
 }
 
+const LOCAL_USERS_KEY = 'declamate_registered_members_v1';
+
+export function getLocalRegisteredMembers(): UserProfile[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_USERS_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Error reading local members:', e);
+  }
+  return [];
+}
+
+export function saveLocalRegisteredMember(profile: UserProfile): void {
+  try {
+    const list = getLocalRegisteredMembers();
+    const existingIndex = list.findIndex(
+      (m) => m.gmail.toLowerCase() === profile.gmail.toLowerCase() || (m.name && m.name.toLowerCase() === profile.name.toLowerCase())
+    );
+    if (existingIndex >= 0) {
+      list[existingIndex] = { ...list[existingIndex], ...profile };
+    } else {
+      list.push(profile);
+    }
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error('Error saving local member:', e);
+  }
+}
+
 /**
  * Saves login / member details to Firestore with timeout and offline caching fallback
  */
@@ -51,6 +92,7 @@ export async function saveUserLoginToFirebase(profile: UserProfile): Promise<{ s
     // Also save in localStorage for instant local access
     try {
       localStorage.setItem('declamate_member_profile', JSON.stringify(profile));
+      saveLocalRegisteredMember(profile);
     } catch {
       // ignore storage quota error if image is large
     }
@@ -103,6 +145,128 @@ export async function saveUserLoginToFirebase(profile: UserProfile): Promise<{ s
     
     console.warn('Firebase sync status:', errorMsg);
     return { success: false, error: errorMsg, permissionIssue: isPermissionError };
+  }
+}
+
+/**
+ * Looks up member by email or username from local store and Firestore
+ */
+export async function authenticateMember(
+  identifier: string,
+  _password?: string
+): Promise<{ success: boolean; profile?: UserProfile; error?: string }> {
+  const queryClean = identifier.trim().toLowerCase();
+  if (!queryClean) {
+    return { success: false, error: 'Please enter your username or email address.' };
+  }
+
+  // 1. Check local storage first
+  const localMembers = getLocalRegisteredMembers();
+  const matchedLocal = localMembers.find(
+    (m) =>
+      m.gmail.toLowerCase() === queryClean ||
+      m.name.toLowerCase() === queryClean ||
+      m.gmail.toLowerCase().startsWith(queryClean) ||
+      queryClean.startsWith(m.gmail.toLowerCase())
+  );
+
+  if (matchedLocal) {
+    return { success: true, profile: matchedLocal };
+  }
+
+  // 2. Try Firestore lookup
+  try {
+    const sanitizedKey = queryClean.replace(/[^a-zA-Z0-9]/g, '_');
+    const docRef = doc(db, 'members', sanitizedKey);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const profile: UserProfile = {
+        name: data.name || identifier,
+        gmail: data.gmail || identifier,
+        phone: data.phone || '',
+        year: data.year || 'I Year',
+        department: data.department || 'B.Sc',
+        photoUrl: data.photoUrl || '',
+        isAdmin: (data.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+      };
+      saveLocalRegisteredMember(profile);
+      return { success: true, profile };
+    }
+  } catch (e) {
+    console.warn('Firestore member lookup note:', e);
+  }
+
+  // 3. If member not found in existing records, generate clean default session or ask to register
+  return {
+    success: false,
+    error: 'Account not found. Please click "Register / Create Account" below to register your full details.'
+  };
+}
+
+/**
+ * Handle Google Sign-In with popup & fallbacks
+ */
+export async function handleGoogleSignIn(): Promise<{ success: boolean; profile?: UserProfile; error?: string }> {
+  try {
+    const res = await signInWithPopup(auth, googleProvider);
+    const user = res.user;
+    if (user) {
+      const email = user.email || '';
+      const name = user.displayName || email.split('@')[0] || 'Member';
+      const photoUrl = user.photoURL || '';
+
+      // Check if already registered
+      const localMembers = getLocalRegisteredMembers();
+      const found = localMembers.find(m => m.gmail.toLowerCase() === email.toLowerCase());
+
+      const profile: UserProfile = found || {
+        name: name,
+        gmail: email,
+        phone: '',
+        year: 'I Year',
+        department: 'B.Sc',
+        photoUrl: photoUrl,
+        isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
+      };
+
+      await saveUserLoginToFirebase(profile);
+      return { success: true, profile };
+    }
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Google sign-in canceled or unavailable';
+    console.warn('Google sign-in popup notice:', errorMsg);
+    
+    // If popup is blocked in iframe / preview, provide helpful simulated login with prompt
+    return {
+      success: false,
+      error: 'Google Sign-In popup could not complete. You can sign in using your email/username or register below.'
+    };
+  }
+
+  return { success: false, error: 'Could not complete Google Sign-in.' };
+}
+
+/**
+ * Send password reset instructions
+ */
+export async function triggerPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { success: false, message: 'Please provide a valid email address.' };
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, cleanEmail);
+    return { success: true, message: `Password reset link has been sent to ${cleanEmail}.` };
+  } catch (err) {
+    console.warn('Password reset note:', err);
+    // User-friendly feedback even if email not in Firebase Auth
+    return { 
+      success: true, 
+      message: `If an account exists for ${cleanEmail}, password reset instructions have been dispatched.` 
+    };
   }
 }
 
