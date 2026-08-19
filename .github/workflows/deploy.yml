@@ -1,0 +1,30 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bun/Node
+        uses: oven-sh/setup-bun@v1
+        # Oruvela nee bun use panrathala bun.lock irukku, antha setup podrom.
+        # Illana standard node setup kuda use pannalam.
+
+      - name: Install Dependencies & Build
+        run: |
+          bun install
+          bun run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist 
+          # (Un build output folder 'dist' la iruntha antha name podu, 'build' na 'build' nu maathikko)
+          
