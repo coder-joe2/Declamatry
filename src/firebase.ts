@@ -53,103 +53,117 @@ async function ensureAuth() {
   }
 }
 
-const LOCAL_USERS_KEY = 'declamate_registered_members_v1';
-
-export function getLocalRegisteredMembers(): UserProfile[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_USERS_KEY);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.error('Error reading local members:', e);
-  }
-  return [];
+// Clear any previously saved local users list to comply with server-only storage
+try {
+  localStorage.removeItem('declamate_registered_members_v1');
+} catch {
+  // Ignore
 }
 
-export function saveLocalRegisteredMember(profile: UserProfile): void {
+/**
+ * Register with Firebase Auth using Email and Password
+ */
+export async function registerWithFirebaseAuth(
+  email: string,
+  password: string
+): Promise<{ success: boolean; error?: string; user?: any }> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { success: false, error: 'Please provide a valid email address.' };
+  }
+  if (!password) {
+    return { success: false, error: 'Please provide a password.' };
+  }
+
   try {
-    const list = getLocalRegisteredMembers();
-    const existingIndex = list.findIndex(
-      (m) => m.gmail.toLowerCase() === profile.gmail.toLowerCase() || (m.name && m.name.toLowerCase() === profile.name.toLowerCase())
-    );
-    if (existingIndex >= 0) {
-      list[existingIndex] = { ...list[existingIndex], ...profile };
+    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+    return { success: true, user: userCredential.user };
+  } catch (err: unknown) {
+    const errorObj = err as { code?: string; message?: string };
+    const code = errorObj?.code || '';
+    
+    if (code === 'auth/email-already-in-use') {
+      // Email is already in Firebase Auth, attempt sign-in to verify credentials
+      try {
+        const signinRes = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        return { success: true, user: signinRes.user };
+      } catch (signinErr: unknown) {
+        const signinObj = signinErr as { code?: string; message?: string };
+        if (signinObj?.code === 'auth/wrong-password' || signinObj?.code === 'auth/invalid-credential') {
+          return { success: false, error: 'An account with this email already exists with a different password. Please sign in or use "Forgot password?".' };
+        }
+        // Still allow proceeding to update details if Firestore matches
+        return { success: true };
+      }
+    } else if (code === 'auth/weak-password') {
+      return { success: false, error: 'Password is too weak. Please use at least 6 characters.' };
+    } else if (code === 'auth/invalid-email') {
+      return { success: false, error: 'Invalid email address format.' };
     } else {
-      list.push(profile);
+      console.warn('Firebase Auth registration notice:', code, errorObj?.message);
+      // If Firebase Auth fails due to domain/network, allow fallback to Firestore registration
+      return { success: true };
     }
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(list));
-  } catch (e) {
-    console.error('Error saving local member:', e);
   }
 }
 
 /**
- * Saves login / member details to Firestore with timeout and offline caching fallback
+ * Saves member registration and login profile exclusively to Firebase Firestore
  */
 export async function saveUserLoginToFirebase(profile: UserProfile): Promise<{ success: boolean; id?: string; error?: string; permissionIssue?: boolean }> {
   try {
-    // Also save in localStorage for instant local access
-    try {
-      localStorage.setItem('declamate_member_profile', JSON.stringify(profile));
-      saveLocalRegisteredMember(profile);
-    } catch {
-      // ignore storage quota error if image is large
-    }
-
     await ensureAuth();
 
-    const sanitizedEmail = profile.gmail.trim().toLowerCase();
+    // If email and password present, ensure Firebase Auth user is created/synced
+    if (profile.gmail && profile.password) {
+      try {
+        await createUserWithEmailAndPassword(auth, profile.gmail.trim().toLowerCase(), profile.password);
+      } catch (e: unknown) {
+        // If already exists or error, ignore and proceed with Firestore record
+      }
+    }
+
+    const sanitizedEmail = (profile.gmail || '').trim().toLowerCase();
+    const docId = sanitizedEmail ? sanitizedEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'member_' + Date.now();
+    
     const payload = {
-      name: profile.name.trim(),
-      gmail: profile.gmail.trim(),
-      phone: profile.phone.trim(),
+      name: (profile.name || '').trim(),
+      gmail: (profile.gmail || '').trim(),
+      phone: (profile.phone || '').trim(),
       year: profile.year || '',
       department: profile.department || '',
       photoUrl: profile.photoUrl || '',
+      password: profile.password || '',
+      isAdmin: sanitizedEmail === 'vjana537@gmail.com',
       updatedAt: new Date().toISOString(),
       createdAt: serverTimestamp(),
     };
 
-    // Timeout promise (3.5 seconds) so login never hangs
-    const savePromise = (async () => {
-      if (sanitizedEmail) {
-        const userDocRef = doc(db, 'members', sanitizedEmail.replace(/[^a-zA-Z0-9]/g, '_'));
-        await setDoc(userDocRef, payload, { merge: true });
-        
-        try {
-          await addDoc(collection(db, 'login_activity'), {
-            ...payload,
-            loginTimestamp: new Date().toISOString(),
-          });
-        } catch {
-          // secondary log failure is non-blocking
-        }
+    const userDocRef = doc(db, 'members', docId);
+    await setDoc(userDocRef, payload, { merge: true });
+    
+    try {
+      await addDoc(collection(db, 'login_activity'), {
+        name: payload.name,
+        gmail: payload.gmail,
+        loginTimestamp: new Date().toISOString(),
+      });
+    } catch {
+      // Non-blocking log
+    }
 
-        return { success: true, id: userDocRef.id };
-      } else {
-        const docRef = await addDoc(collection(db, 'members'), payload);
-        return { success: true, id: docRef.id };
-      }
-    })();
-
-    const timeoutPromise = new Promise<{ success: boolean; error: string }>((_, reject) =>
-      setTimeout(() => reject(new Error('Firebase operation timed out')), 3500)
-    );
-
-    const result = await Promise.race([savePromise, timeoutPromise]);
-    return result;
+    return { success: true, id: userDocRef.id };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error saving to Firebase';
     const isPermissionError = errorMsg.toLowerCase().includes('permission') || errorMsg.toLowerCase().includes('insufficient');
     
-    console.warn('Firebase sync status:', errorMsg);
+    console.error('Firebase save error:', errorMsg);
     return { success: false, error: errorMsg, permissionIssue: isPermissionError };
   }
 }
 
 /**
- * Looks up member by email or username from local store and Firestore
+ * Authenticates member directly against Firebase Auth and Firestore
  */
 export async function authenticateMember(
   identifier: string,
@@ -160,28 +174,33 @@ export async function authenticateMember(
     return { success: false, error: 'Please enter your username or email address.' };
   }
 
-  // 1. Check local storage first
-  const localMembers = getLocalRegisteredMembers();
-  const matchedLocal = localMembers.find(
-    (m) =>
-      m.gmail.toLowerCase() === queryClean ||
-      m.name.toLowerCase() === queryClean ||
-      m.gmail.toLowerCase().startsWith(queryClean) ||
-      queryClean.startsWith(m.gmail.toLowerCase())
-  );
-
-  if (matchedLocal) {
-    return { success: true, profile: matchedLocal };
+  // 1. If identifier looks like email and password provided, try Firebase Auth
+  if (queryClean.includes('@') && _password) {
+    try {
+      await signInWithEmailAndPassword(auth, queryClean, _password);
+    } catch (authErr: unknown) {
+      const authObj = authErr as { code?: string; message?: string };
+      if (authObj?.code === 'auth/wrong-password' || authObj?.code === 'auth/invalid-credential') {
+        return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
+      }
+      // If user-not-found in Firebase Auth, we will still check Firestore
+    }
   }
 
-  // 2. Try Firestore lookup
   try {
+    await ensureAuth();
+
+    // 2. Direct document lookup by sanitized email ID
     const sanitizedKey = queryClean.replace(/[^a-zA-Z0-9]/g, '_');
     const docRef = doc(db, 'members', sanitizedKey);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
       const data = docSnap.data();
+      // If user has a password set and password was provided, verify it
+      if (data.password && _password && data.password !== _password) {
+        return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
+      }
       const profile: UserProfile = {
         name: data.name || identifier,
         gmail: data.gmail || identifier,
@@ -191,37 +210,86 @@ export async function authenticateMember(
         photoUrl: data.photoUrl || '',
         isAdmin: (data.gmail || '').toLowerCase() === 'vjana537@gmail.com',
       };
-      saveLocalRegisteredMember(profile);
       return { success: true, profile };
     }
+
+    // 3. Query collection for matching email or name
+    const membersSnap = await getDocs(collection(db, 'members'));
+    for (const d of membersSnap.docs) {
+      const data = d.data();
+      const docEmail = (data.gmail || '').toLowerCase().trim();
+      const docName = (data.name || '').toLowerCase().trim();
+      if (docEmail === queryClean || docName === queryClean) {
+        if (data.password && _password && data.password !== _password) {
+          return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
+        }
+        const profile: UserProfile = {
+          name: data.name || identifier,
+          gmail: data.gmail || identifier,
+          phone: data.phone || '',
+          year: data.year || 'I Year',
+          department: data.department || 'B.Sc',
+          photoUrl: data.photoUrl || '',
+          isAdmin: docEmail === 'vjana537@gmail.com',
+        };
+        return { success: true, profile };
+      }
+    }
   } catch (e) {
-    console.warn('Firestore member lookup note:', e);
+    console.error('Firestore authentication error:', e);
   }
 
-  // 3. If member not found in existing records, generate clean default session or ask to register
   return {
     success: false,
-    error: 'Account not found. Please click "Register / Create Account" below to register your full details.'
+    error: 'Account not found. Please click "Register / Create an account" below to register.',
   };
 }
 
 /**
  * Handle Google Sign-In with popup & fallbacks
  */
-export async function handleGoogleSignIn(): Promise<{ success: boolean; profile?: UserProfile; error?: string }> {
+export async function handleGoogleSignIn(): Promise<{ 
+  success: boolean; 
+  profile?: UserProfile; 
+  cancelledByUser?: boolean;
+  error?: string 
+}> {
   try {
-    const res = await signInWithPopup(auth, googleProvider);
+    // Wrap with a timeout so it never hangs indefinitely
+    const signInPromise = signInWithPopup(auth, googleProvider);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('auth/timeout')), 45000);
+    });
+
+    const res = await Promise.race([signInPromise, timeoutPromise]);
     const user = res.user;
     if (user) {
       const email = user.email || '';
       const name = user.displayName || email.split('@')[0] || 'Member';
       const photoUrl = user.photoURL || '';
 
-      // Check if already registered
-      const localMembers = getLocalRegisteredMembers();
-      const found = localMembers.find(m => m.gmail.toLowerCase() === email.toLowerCase());
+      // Check if already registered in Firestore
+      let existingProfile: UserProfile | undefined;
+      try {
+        const sanitizedKey = (email || '').replace(/[^a-zA-Z0-9]/g, '_');
+        const docSnap = await getDoc(doc(db, 'members', sanitizedKey));
+        if (docSnap.exists()) {
+          const d = docSnap.data();
+          existingProfile = {
+            name: d.name || name,
+            gmail: d.gmail || email,
+            phone: d.phone || '',
+            year: d.year || 'I Year',
+            department: d.department || 'B.Sc',
+            photoUrl: d.photoUrl || photoUrl,
+            isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
+          };
+        }
+      } catch {
+        // proceed
+      }
 
-      const profile: UserProfile = found || {
+      const profile: UserProfile = existingProfile || {
         name: name,
         gmail: email,
         phone: '',
@@ -231,17 +299,48 @@ export async function handleGoogleSignIn(): Promise<{ success: boolean; profile?
         isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
       };
 
-      await saveUserLoginToFirebase(profile);
+      try {
+        await saveUserLoginToFirebase(profile);
+      } catch {
+        // Non-blocking
+      }
+
       return { success: true, profile };
     }
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Google sign-in canceled or unavailable';
-    console.warn('Google sign-in popup notice:', errorMsg);
+    const errorObj = err as { code?: string; message?: string };
+    const code = errorObj?.code || '';
+    const errorMsg = errorObj?.message || '';
+
+    // Check if user simply closed the Google popup or cancelled
+    if (
+      code === 'auth/popup-closed-by-user' ||
+      code === 'auth/cancelled-popup-request' ||
+      code === 'auth/user-cancelled' ||
+      errorMsg.toLowerCase().includes('popup-closed-by-user') ||
+      errorMsg.toLowerCase().includes('closed-by-user') ||
+      errorMsg.toLowerCase().includes('cancelled') ||
+      errorMsg.toLowerCase().includes('canceled')
+    ) {
+      console.log('Google sign-in popup was closed by user.');
+      return {
+        success: false,
+        cancelledByUser: true,
+      };
+    }
+
+    if (code === 'auth/popup-blocked') {
+      return {
+        success: false,
+        error: 'Popup was blocked by your browser. Please allow popups or sign in with your email/username.',
+      };
+    }
+
+    console.warn('Google sign-in notice:', code, errorMsg);
     
-    // If popup is blocked in iframe / preview, provide helpful simulated login with prompt
     return {
       success: false,
-      error: 'Google Sign-In popup could not complete. You can sign in using your email/username or register below.'
+      error: 'Google sign-in could not be completed. Please try again or sign in using your email/username.',
     };
   }
 
@@ -293,43 +392,37 @@ export function saveLocalStoredPolls(polls: Poll[]): void {
 }
 
 /**
- * Creates a new poll in Firestore and synchronizes with local storage
+ * Creates a new poll in Firestore and broadcasts to all users
  */
 export async function createPollInFirebase(newPoll: Omit<Poll, 'id'>): Promise<{ success: boolean; id: string; poll: Poll }> {
-  const localId = 'poll_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const docId = 'poll_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
   const createdPoll: Poll = {
     ...newPoll,
-    id: localId,
+    id: docId,
   };
 
-  // Immediate optimistic local save
+  // 1. Optimistic local cache save first so UI is instant and never fails
   const currentPolls = getLocalStoredPolls();
-  const updatedPolls = [createdPoll, ...currentPolls];
+  const updatedPolls = [createdPoll, ...currentPolls.filter(p => p.id !== docId)];
   saveLocalStoredPolls(updatedPolls);
 
+  // 2. Sync to Firestore in background
   try {
     await ensureAuth();
-    const docRef = await addDoc(collection(db, 'polls'), {
-      ...newPoll,
-      createdAtServer: serverTimestamp(),
-    });
-    
-    // Update local ID if firestore returned docRef.id
-    if (docRef.id) {
-      createdPoll.id = docRef.id;
-      const synced = updatedPolls.map(p => p.id === localId ? createdPoll : p);
-      saveLocalStoredPolls(synced);
-    }
-
-    return { success: true, id: docRef.id || localId, poll: createdPoll };
+    const docRef = doc(db, 'polls', docId);
+    await setDoc(docRef, {
+      ...createdPoll,
+      serverTime: serverTimestamp(),
+    }, { merge: true });
   } catch (err) {
-    console.warn('Firestore poll write saved locally fallback:', err);
-    return { success: true, id: localId, poll: createdPoll };
+    console.warn('Firestore poll write saved locally (permission/offline notice):', err);
   }
+
+  return { success: true, id: docId, poll: createdPoll };
 }
 
 /**
- * Subscribes to live polls from Firestore with real-time updates and local fallback
+ * Subscribes to live polls from Firestore with real-time updates for all users
  */
 export function subscribeToPolls(onUpdate: (polls: Poll[]) => void): () => void {
   // Fire initial local cached data first
@@ -341,9 +434,9 @@ export function subscribeToPolls(onUpdate: (polls: Poll[]) => void): () => void 
   let unsubscribeSnapshot = () => {};
 
   try {
-    const q = query(collection(db, 'polls'), orderBy('createdAt', 'desc'));
+    const colRef = collection(db, 'polls');
     unsubscribeSnapshot = onSnapshot(
-      q,
+      colRef,
       (snapshot) => {
         if (!snapshot.empty) {
           const remotePolls: Poll[] = snapshot.docs.map((docSnap) => {
@@ -362,6 +455,9 @@ export function subscribeToPolls(onUpdate: (polls: Poll[]) => void): () => void 
             };
           });
 
+          // Sort by newest first
+          remotePolls.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
           saveLocalStoredPolls(remotePolls);
           onUpdate(remotePolls);
         } else if (initialLocal.length === 0) {
@@ -369,7 +465,7 @@ export function subscribeToPolls(onUpdate: (polls: Poll[]) => void): () => void 
         }
       },
       (error) => {
-        console.warn('Real-time polls snapshot note (using local cache):', error.message);
+        console.warn('Real-time polls snapshot notice (using cache):', error.message);
         onUpdate(getLocalStoredPolls());
       }
     );
@@ -384,26 +480,24 @@ export function subscribeToPolls(onUpdate: (polls: Poll[]) => void): () => void 
 }
 
 /**
- * Casts a vote on a poll
+ * Casts a vote on a poll and syncs directly to Firestore and local state
  */
 export async function submitVoteInFirebase(
   pollId: string,
   selectedOptionIds: string[],
   userEmail: string
 ): Promise<{ success: boolean; updatedPoll?: Poll }> {
+  // 1. Retrieve the existing poll from local cache or fallback list
   const currentPolls = getLocalStoredPolls();
   const targetIndex = currentPolls.findIndex((p) => p.id === pollId);
+  const poll = targetIndex >= 0 ? currentPolls[targetIndex] : null;
 
-  if (targetIndex === -1) {
+  if (!poll) {
     return { success: false };
   }
 
-  const poll = currentPolls[targetIndex];
-  const userAlreadyVoted = poll.votedUserEmails?.includes(userEmail);
-
-  // Recalculate options
+  // 2. Calculate updated options and vote counts reliably
   const updatedOptions = poll.options.map((opt) => {
-    // If user previously voted, remove their prior vote from option
     const hadVotedForThis = opt.voterEmails?.includes(userEmail) || false;
     let newVoterEmails = opt.voterEmails ? [...opt.voterEmails] : [];
     
@@ -411,7 +505,6 @@ export async function submitVoteInFirebase(
       newVoterEmails = newVoterEmails.filter((e) => e !== userEmail);
     }
 
-    // If selected in current vote, add them
     if (selectedOptionIds.includes(opt.id)) {
       newVoterEmails.push(userEmail);
     }
@@ -424,7 +517,10 @@ export async function submitVoteInFirebase(
   });
 
   const updatedVotedUsers = Array.from(
-    new Set([...(poll.votedUserEmails || []).filter(e => e !== userEmail), ...(selectedOptionIds.length > 0 ? [userEmail] : [])])
+    new Set([
+      ...(poll.votedUserEmails || []).filter(e => e !== userEmail), 
+      ...(selectedOptionIds.length > 0 ? [userEmail] : [])
+    ])
   );
 
   const totalVotesCount = updatedOptions.reduce((acc, opt) => acc + opt.votes, 0);
@@ -436,18 +532,22 @@ export async function submitVoteInFirebase(
     votedUserEmails: updatedVotedUsers,
   };
 
+  // 3. Immediately save optimistic result in local state
   currentPolls[targetIndex] = updatedPoll;
-  saveLocalStoredPolls(currentPolls);
+  saveLocalStoredPolls([...currentPolls]);
 
-  // Update in Firestore
+  // 4. Try updating in Firestore (with merge fallback)
   try {
     await ensureAuth();
     const docRef = doc(db, 'polls', pollId);
-    await updateDoc(docRef, {
-      options: updatedOptions,
-      totalVotes: totalVotesCount,
-      votedUserEmails: updatedVotedUsers,
-    });
+    await setDoc(
+      docRef,
+      {
+        ...updatedPoll,
+        lastVoteAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
   } catch (err) {
     console.warn('Firestore vote sync note (saved locally):', err);
   }
@@ -456,7 +556,7 @@ export async function submitVoteInFirebase(
 }
 
 /**
- * Toggle poll active status or delete
+ * Toggle poll active status
  */
 export async function togglePollStatus(pollId: string, isActive: boolean): Promise<boolean> {
   const currentPolls = getLocalStoredPolls();
@@ -465,10 +565,12 @@ export async function togglePollStatus(pollId: string, isActive: boolean): Promi
 
   try {
     await ensureAuth();
-    await updateDoc(doc(db, 'polls', pollId), { isActive });
+    const docRef = doc(db, 'polls', pollId);
+    await setDoc(docRef, { isActive, lastStatusChange: serverTimestamp() }, { merge: true });
   } catch (err) {
     console.warn('Firestore poll toggle note:', err);
   }
+
   return true;
 }
 
@@ -479,10 +581,12 @@ export async function deletePoll(pollId: string): Promise<boolean> {
 
   try {
     await ensureAuth();
-    await deleteDoc(doc(db, 'polls', pollId));
+    const docRef = doc(db, 'polls', pollId);
+    await deleteDoc(docRef);
   } catch (err) {
     console.warn('Firestore poll delete note:', err);
   }
+
   return true;
 }
 

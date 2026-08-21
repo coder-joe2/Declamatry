@@ -7,6 +7,7 @@ import { MainContent } from './components/MainContent';
 export default function App() {
   // App opens first with Login Details screen
   const [showLoginDetails, setShowLoginDetails] = useState<boolean>(true);
+  const [loginScreenMode, setLoginScreenMode] = useState<'login' | 'register' | 'edit_profile'>('login');
 
   // Default User Profile login details (initially empty for user input)
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -21,13 +22,25 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('Home');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
-  // Render Login Details Screen first
+  const handleOpenEditProfile = () => {
+    setLoginScreenMode('edit_profile');
+    setShowLoginDetails(true);
+  };
+
+  const handleOpenLogin = () => {
+    setLoginScreenMode('login');
+    setShowLoginDetails(true);
+  };
+
+  // Render Login / Edit Profile Details Screen
   if (showLoginDetails) {
     return (
       <LoginDetailsScreen
         profile={userProfile}
+        initialMode={loginScreenMode}
         onUpdateProfile={(updated) => setUserProfile(updated)}
         onContinue={() => setShowLoginDetails(false)}
+        onCancelEdit={() => setShowLoginDetails(false)}
       />
     );
   }
@@ -39,7 +52,8 @@ export default function App() {
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
         userProfile={userProfile}
-        onShowLoginDetails={() => setShowLoginDetails(true)}
+        onShowLoginDetails={handleOpenLogin}
+        onEditProfile={handleOpenEditProfile}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
@@ -48,7 +62,8 @@ export default function App() {
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}
         userProfile={userProfile}
-        onShowLoginDetails={() => setShowLoginDetails(true)}
+        onShowLoginDetails={handleOpenLogin}
+        onEditProfile={handleOpenEditProfile}
         onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
       />
     </div>

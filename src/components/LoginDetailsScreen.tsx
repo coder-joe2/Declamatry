@@ -5,7 +5,8 @@ import {
   authenticateMember, 
   handleGoogleSignIn, 
   triggerPasswordReset, 
-  getLocalRegisteredMembers 
+  registerWithFirebaseAuth,
+  auth
 } from '../firebase';
 import { SocietyLogo } from './SocietyLogo';
 import {
@@ -27,6 +28,7 @@ import {
   EyeOff,
   Lock,
   ArrowLeft,
+  ArrowRight,
   KeyRound,
   ShieldCheck
 } from 'lucide-react';
@@ -36,26 +38,35 @@ const DEPARTMENT_OPTIONS = ['B.Sc', 'B.A', 'B.Com', 'BBA', 'BCA'] as const;
 
 interface LoginDetailsScreenProps {
   profile: UserProfile;
+  initialMode?: 'login' | 'register' | 'edit_profile';
   onUpdateProfile: (updated: UserProfile) => void;
   onContinue: () => void;
+  onCancelEdit?: () => void;
 }
 
-type AuthMode = 'login' | 'register' | 'forgot_password';
+type AuthMode = 'login' | 'signup_credentials' | 'register' | 'forgot_password' | 'edit_profile';
 
 export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   profile,
+  initialMode = 'login',
   onUpdateProfile,
   onContinue,
+  onCancelEdit,
 }) => {
-  // Mode state: Defaults to 'login' (matching user's request)
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  // Mode state: Defaults to initialMode
+  const [authMode, setAuthMode] = useState<AuthMode>(initialMode);
 
   // Simple Login credentials state
   const [loginIdentifier, setLoginIdentifier] = useState<string>(profile.gmail || '');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  // Full Registration state
+  // Step 1: Sign up credentials (Email & Password)
+  const [signupEmail, setSignupEmail] = useState<string>(profile.gmail || '');
+  const [signupPassword, setSignupPassword] = useState<string>('');
+  const [showSignupPassword, setShowSignupPassword] = useState<boolean>(false);
+
+  // Step 2 / Full Registration / Edit state
   const [regData, setRegData] = useState<UserProfile>({
     name: profile.name || '',
     gmail: profile.gmail || '',
@@ -67,6 +78,27 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   });
   const [regConfirmPassword, setRegConfirmPassword] = useState<string>('');
   const [showRegPassword, setShowRegPassword] = useState<boolean>(false);
+
+  // Keep state synced if initialMode or profile changes
+  useEffect(() => {
+    if (initialMode) {
+      setAuthMode(initialMode);
+    }
+  }, [initialMode]);
+
+  useEffect(() => {
+    setRegData({
+      name: profile.name || '',
+      gmail: profile.gmail || '',
+      phone: profile.phone || '',
+      year: profile.year || 'I Year',
+      department: profile.department || '',
+      photoUrl: profile.photoUrl || '',
+      password: '',
+    });
+    setLoginIdentifier(profile.gmail || '');
+    setSignupEmail(profile.gmail || '');
+  }, [profile]);
 
   // Forgot password state
   const [forgotEmail, setForgotEmail] = useState<string>('');
@@ -80,7 +112,23 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   const [googleLoading, setGoogleLoading] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const fileInputWebRef = useRef<HTMLInputElement>(null);
+
+  // Ensure loading spinner is never stuck if user cancels/closes Google popup and window regains focus
+  useEffect(() => {
+    const handleGlobalFocus = () => {
+      if (googleLoading) {
+        const timer = setTimeout(() => {
+          setGoogleLoading(false);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    window.addEventListener('focus', handleGlobalFocus);
+    return () => {
+      window.removeEventListener('focus', handleGlobalFocus);
+    };
+  }, [googleLoading]);
 
   // Handle Photo upload for Registration
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,10 +174,9 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         onUpdateProfile(result.profile);
         onContinue();
       } else {
-        // If not found, let them register or offer direct entry
         setErrorMessage(
           result.error ||
-            'Account not found. Please click "Create an account / Register" below to register your full details.'
+            'Account not found. Please click "Register / Create an account" below to register.'
         );
       }
     } catch (err: unknown) {
@@ -140,35 +187,110 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
     }
   };
 
-  // 2. Handle Google Sign-In
+  // 2. Handle Google Sign-In with robust window focus and cancellation handling
   const handleGoogleAuth = async () => {
     setErrorMessage('');
     setGoogleLoading(true);
+
+    const handleWindowFocus = () => {
+      setTimeout(() => {
+        setGoogleLoading(false);
+      }, 1000);
+    };
+
+    window.addEventListener('focus', handleWindowFocus, { once: true });
+
     try {
       const result = await handleGoogleSignIn();
       if (result.success && result.profile) {
-        onUpdateProfile(result.profile);
-        onContinue();
+        // If member already has full details (department and year), proceed straight into app
+        if (result.profile.department && result.profile.year && result.profile.phone) {
+          onUpdateProfile(result.profile);
+          onContinue();
+        } else {
+          // If new or partial profile via Google, pre-fill Step 2 so member finishes department & phone
+          setRegData((prev) => ({
+            ...prev,
+            ...result.profile,
+            name: result.profile?.name || prev.name,
+            gmail: result.profile?.gmail || prev.gmail,
+            photoUrl: result.profile?.photoUrl || prev.photoUrl,
+            year: result.profile?.year || 'I Year',
+            department: result.profile?.department || '',
+          }));
+          setSignupEmail(result.profile.gmail || '');
+          setSuccessMessage('Google account verified! Please complete your department and student details below.');
+          setAuthMode('register');
+        }
+      } else if (result.cancelledByUser) {
+        setGoogleLoading(false);
       } else {
-        // If popup blocked or unavailable, prompt cleanly
         setErrorMessage(
           result.error ||
-            'Google Sign-in was not completed. Please sign in with email or register below.'
+            'Google Sign-in could not be completed. Please try again or sign in with your email/username.'
         );
+        setGoogleLoading(false);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Google sign-in error';
       setErrorMessage(msg);
+      setGoogleLoading(false);
     } finally {
+      window.removeEventListener('focus', handleWindowFocus);
       setGoogleLoading(false);
     }
   };
 
-  // 3. Handle Full Registration Submit
+  // 3. Step 1: Validate and authenticate Email and Password before moving to Registration Page
+  const handleStep1CredentialsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const email = signupEmail.trim().toLowerCase();
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    if (!signupPassword.trim()) {
+      setErrorMessage('Please enter your password.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const authRes = await registerWithFirebaseAuth(email, signupPassword);
+      if (!authRes.success) {
+        setErrorMessage(authRes.error || 'Authentication error. Please check your credentials.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Set into regData
+      setRegData((prev) => ({
+        ...prev,
+        gmail: email,
+        password: signupPassword,
+      }));
+
+      // Proceed to Step 2: Member Registration
+      setAuthMode('register');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Registration error';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 4. Handle Step 2 Full Registration or Profile Update Submit
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setPhotoError(false);
+
+    const isEditMode = authMode === 'edit_profile';
 
     if (!regData.photoUrl) {
       setPhotoError(true);
@@ -186,14 +308,16 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
       return;
     }
 
-    if (!regData.password || regData.password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long.');
-      return;
-    }
-
-    if (regData.password !== regConfirmPassword) {
-      setErrorMessage('Passwords do not match. Please verify.');
-      return;
+    // Password validation for edit mode if typed
+    if (isEditMode && regData.password) {
+      if (regData.password.length < 6) {
+        setErrorMessage('New password must be at least 6 characters long.');
+        return;
+      }
+      if (regConfirmPassword && regData.password !== regConfirmPassword) {
+        setErrorMessage('New passwords do not match. Please verify.');
+        return;
+      }
     }
 
     if (!regData.phone.trim()) {
@@ -214,10 +338,15 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
     setIsLoading(true);
 
     const finalProfile: UserProfile = {
+      ...profile,
       ...regData,
       name: regData.name.trim(),
       gmail: regData.gmail.trim().toLowerCase(),
       phone: regData.phone.trim(),
+      year: regData.year,
+      department: regData.department,
+      photoUrl: regData.photoUrl,
+      password: regData.password || signupPassword || profile.password || '',
       isAdmin: regData.gmail.trim().toLowerCase() === 'vjana537@gmail.com',
     };
 
@@ -226,13 +355,17 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
       if (!res.success) {
         console.warn('Firebase notice:', res.error);
       }
-      setSuccessMessage('Registration successful! Welcome to The Declamate’s Society.');
+      setSuccessMessage(
+        isEditMode
+          ? 'Profile updated successfully!'
+          : 'Registration successful! Welcome to The Declamate’s Society.'
+      );
       setTimeout(() => {
         onUpdateProfile(finalProfile);
         onContinue();
-      }, 500);
+      }, 400);
     } catch (err) {
-      console.error('Registration error:', err);
+      console.error('Save error:', err);
       onUpdateProfile(finalProfile);
       onContinue();
     } finally {
@@ -240,7 +373,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
     }
   };
 
-  // 4. Handle Password Reset Request
+  // 5. Handle Password Reset Request
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -253,66 +386,76 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
 
     setIsLoading(true);
     try {
-      const res = await triggerPasswordReset(forgotEmail);
-      setResetSuccessMessage(res.message);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error requesting password reset';
-      setErrorMessage(msg);
+      const res = await triggerPasswordReset(forgotEmail.trim().toLowerCase());
+      if (res.success) {
+        setResetSuccessMessage(
+          res.message || 'Password reset link sent! Check your inbox to set a new password.'
+        );
+      } else {
+        setErrorMessage(res.message || 'Failed to send reset email. Please verify the email address.');
+      }
+    } catch {
+      setErrorMessage('Network or server error while requesting password reset.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050B14] text-slate-100 flex flex-col justify-center selection:bg-[#22c55e] selection:text-black">
-      {/* Background Ambience / Subtle Golden & Emerald Glows */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#C5A880]/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#16a34a]/10 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-x-hidden font-sans">
+      {/* Background Decorative Glows */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[340px] sm:w-[550px] h-[340px] sm:h-[550px] bg-[#C5A880]/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-10 right-10 w-72 h-72 bg-[#0A192F]/60 rounded-full blur-[100px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md mx-auto px-4 sm:px-6 py-8">
-        {/* Top Official Society Crest & Header */}
+      <div className="w-full max-w-md relative z-10 my-auto">
+        {/* Society Branding Header */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
-            <SocietyLogo size="lg" className="shadow-2xl border-2 border-[#C5A880]/80 ring-4 ring-[#C5A880]/15" />
+            <div className="p-1 rounded-full bg-gradient-to-b from-[#C5A880] to-[#0A192F] shadow-xl">
+              <SocietyLogo size="lg" />
+            </div>
           </div>
-          <p className="font-cinzel text-[11px] tracking-[0.3em] text-[#C5A880] font-semibold uppercase mb-0.5">
-            THE
-          </p>
-          <h1 className="font-cinzel font-bold text-2xl sm:text-3xl tracking-[0.08em] text-white uppercase leading-none">
-            DECLAMATE&apos;S SOCIETY
+          <h1 className="font-cinzel text-xl sm:text-2xl font-bold tracking-[0.2em] text-[#C5A880] uppercase drop-shadow-md">
+            The Declamate&apos;s Society
           </h1>
-          <p className="text-[10.5px] tracking-[0.2em] text-slate-400 uppercase font-semibold mt-1">
-            Public Speaking &amp; Leadership Club
-          </p>
         </div>
 
-        {/* Global Error Notice Alert */}
+        {/* Global Error Banner */}
         {errorMessage && (
-          <div className="mb-4 p-3.5 rounded-xl bg-red-950/80 border border-red-500/60 text-red-200 text-xs sm:text-sm flex items-center gap-2.5 shadow-lg animate-shake">
-            <AlertCircle className="w-4.5 h-4.5 shrink-0 text-red-400" />
-            <span className="font-medium">{errorMessage}</span>
+          <div className="mb-4 bg-red-950/80 border border-red-500/60 rounded-xl p-3.5 flex items-start gap-2.5 text-red-200 text-xs sm:text-sm backdrop-blur-sm animate-in fade-in shadow-lg">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1">{errorMessage}</div>
           </div>
         )}
 
-        {/* Global Success Notice Alert */}
+        {/* Global Success Banner */}
         {successMessage && (
-          <div className="mb-4 p-3.5 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 text-xs sm:text-sm flex items-center gap-2.5 shadow-lg">
-            <CheckCircle2 className="w-4.5 h-4.5 shrink-0 text-emerald-400" />
-            <span className="font-medium">{successMessage}</span>
+          <div className="mb-4 bg-emerald-950/80 border border-emerald-500/60 rounded-xl p-3.5 flex items-start gap-2.5 text-emerald-200 text-xs sm:text-sm backdrop-blur-sm animate-in fade-in shadow-lg">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="flex-1">{successMessage}</div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 1: SIMPLE SIGN-IN (Matches the user's uploaded image exactly)        */}
+        {/* VIEW 1: SIMPLE SIGN-IN                                                    */}
         {/* ========================================================================= */}
         {authMode === 'login' && (
-          <div className="bg-[#090F1D] border border-slate-800/80 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+          <div className="bg-[#090F1D] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+            <div className="mb-5 text-center">
+              <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
+                Member Sign In
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Sign in to access your portal, events &amp; voting
+              </p>
+            </div>
+
             <form onSubmit={handleSignIn} className="space-y-4">
-              {/* 1. Username or email address field */}
+              {/* 1. Username or Email Address input */}
               <div>
-                <label className="text-sm font-medium text-slate-200 block mb-1.5 text-left">
+                <label className="text-sm font-medium text-slate-200 block mb-1.5">
                   Username or email address
                 </label>
                 <div className="relative">
@@ -435,7 +578,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 <span>Continue with Google</span>
               </button>
 
-              {/* 6. Switch to Registration Link */}
+              {/* 6. Switch to Registration Step 1 Link */}
               <div className="pt-3 text-center">
                 <p className="text-xs sm:text-sm text-slate-400">
                   New member?{' '}
@@ -444,7 +587,8 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                     onClick={() => {
                       setErrorMessage('');
                       setSuccessMessage('');
-                      setAuthMode('register');
+                      setSignupEmail(loginIdentifier);
+                      setAuthMode('signup_credentials');
                     }}
                     className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-4 cursor-pointer transition-colors"
                   >
@@ -457,16 +601,21 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 2: REGISTRATION FORM (Full Name, Email, Password, Phone, Year, Dept) */}
+        {/* VIEW 2: STEP 1 - CREATE LOGIN CREDENTIALS (Email & Password / Google)     */}
         {/* ========================================================================= */}
-        {authMode === 'register' && (
+        {authMode === 'signup_credentials' && (
           <div className="bg-[#090F1D] border border-[#C5A880]/40 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
             <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
               <div>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#C5A880]/15 text-[#C5A880] text-[10px] font-bold uppercase tracking-wider mb-1">
+                  <span>Step 1 of 2</span>
+                </div>
                 <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
-                  Member Registration
+                  Create an Account
                 </h2>
-                <p className="text-xs text-[#C5A880]">Join The Declamate&apos;s Society</p>
+                <p className="text-xs text-slate-400">
+                  Enter your email and set a password or use Google
+                </p>
               </div>
               <button
                 type="button"
@@ -479,6 +628,192 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Sign in</span>
               </button>
+            </div>
+
+            <form onSubmit={handleStep1CredentialsSubmit} className="space-y-4">
+              {/* 1. Email Address */}
+              <div>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1.5">
+                  Email Address <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={signupEmail}
+                    onChange={(e) => {
+                      setSignupEmail(e.target.value);
+                      if (errorMessage) setErrorMessage('');
+                    }}
+                    placeholder="e.g. yourname@gmail.com"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* 2. Password */}
+              <div>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1.5">
+                  Password <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showSignupPassword ? 'text' : 'password'}
+                    required
+                    value={signupPassword}
+                    onChange={(e) => {
+                      setSignupPassword(e.target.value);
+                      if (errorMessage) setErrorMessage('');
+                    }}
+                    placeholder="Enter your password"
+                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignupPassword(!showSignupPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors cursor-pointer p-1"
+                  >
+                    {showSignupPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Continue with Google */}
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                disabled={googleLoading}
+                className="w-full bg-[#0E1726] hover:bg-[#152238] border border-slate-700/80 active:scale-[0.99] text-slate-100 py-3 px-4 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-3 shadow-md cursor-pointer disabled:opacity-50 mt-1"
+              >
+                {googleLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
+                ) : (
+                  <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                    />
+                  </svg>
+                )}
+                <span>Continue with Google</span>
+              </button>
+
+              {/* Divider: or */}
+              <div className="relative my-3 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-800" />
+                </div>
+                <div className="relative bg-[#090F1D] px-3 text-xs text-slate-400 uppercase tracking-wider font-medium">
+                  or
+                </div>
+              </div>
+
+              {/* Next: Step 2 Button */}
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#C5A880] hover:bg-[#d8bb94] active:bg-[#b0946d] text-[#0A192F] py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.15em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
+                      <span>AUTHENTICATING...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>CONTINUE TO MEMBER DETAILS</span>
+                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="text-center pt-2">
+                <p className="text-xs text-slate-400">
+                  Already registered?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage('');
+                      setAuthMode('login');
+                    }}
+                    className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-2 cursor-pointer"
+                  >
+                    Sign in to your account
+                  </button>
+                </p>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 3: STEP 2 - MEMBER REGISTRATION & BADGE / EDIT PROFILE               */}
+        {/* ========================================================================= */}
+        {(authMode === 'register' || authMode === 'edit_profile') && (
+          <div className="bg-[#090F1D] border border-[#C5A880]/40 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+            <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
+              <div>
+                {authMode === 'register' && (
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Step 2 of 2: Member Details</span>
+                  </div>
+                )}
+                <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
+                  {authMode === 'edit_profile' ? 'Edit Member Profile' : 'Member Registration'}
+                </h2>
+                <p className="text-xs text-[#C5A880]">
+                  {authMode === 'edit_profile'
+                    ? 'Update your profile information'
+                    : 'Complete your official member profile & badge'}
+                </p>
+              </div>
+              {authMode === 'edit_profile' ? (
+                <button
+                  type="button"
+                  onClick={onCancelEdit || onContinue}
+                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to App</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMessage('');
+                    setAuthMode('signup_credentials');
+                  }}
+                  className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to Step 1</span>
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
@@ -559,11 +894,18 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 </div>
               </div>
 
-              {/* Email */}
+              {/* Email Address */}
               <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
-                  Email Address <span className="text-red-400">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs sm:text-sm font-medium text-slate-200">
+                    Email Address <span className="text-red-400">*</span>
+                  </label>
+                  {authMode === 'register' && (
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                      Configured from Step 1
+                    </span>
+                  )}
+                </div>
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
                     <Mail className="w-4 h-4" />
@@ -582,62 +924,49 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 </div>
               </div>
 
-              {/* Password & Confirm Password Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-slate-200 block mb-1">
-                    Password <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showRegPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      value={regData.password || ''}
-                      onChange={(e) => {
-                        setRegData({ ...regData, password: e.target.value });
-                        if (errorMessage) setErrorMessage('');
-                      }}
-                      placeholder="Min 6 chars"
-                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
-                    />
+              {/* In Edit mode: optional password update fields */}
+              {authMode === 'edit_profile' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="text-xs font-medium text-slate-200 block mb-1">
+                      New Password (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showRegPassword ? 'text' : 'password'}
+                        minLength={6}
+                        value={regData.password || ''}
+                        onChange={(e) => {
+                          setRegData({ ...regData, password: e.target.value });
+                          if (errorMessage) setErrorMessage('');
+                        }}
+                        placeholder="Keep existing"
+                        className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-slate-200 block mb-1">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showRegPassword ? 'text' : 'password'}
+                        required={Boolean(regData.password)}
+                        minLength={6}
+                        value={regConfirmPassword}
+                        onChange={(e) => {
+                          setRegConfirmPassword(e.target.value);
+                          if (errorMessage) setErrorMessage('');
+                        }}
+                        placeholder="Confirm new"
+                        className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
+                      />
+                    </div>
                   </div>
                 </div>
-
-                <div>
-                  <label className="text-xs font-medium text-slate-200 block mb-1">
-                    Confirm Password <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showRegPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      value={regConfirmPassword}
-                      onChange={(e) => {
-                        setRegConfirmPassword(e.target.value);
-                        if (errorMessage) setErrorMessage('');
-                      }}
-                      placeholder="Re-type password"
-                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Show password toggle */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="toggleShowRegPass"
-                  checked={showRegPassword}
-                  onChange={(e) => setShowRegPassword(e.target.checked)}
-                  className="rounded bg-slate-900 border-slate-700 text-[#C5A880] focus:ring-0 cursor-pointer"
-                />
-                <label htmlFor="toggleShowRegPass" className="text-xs text-slate-400 cursor-pointer">
-                  Show passwords
-                </label>
-              </div>
+              )}
 
               {/* Phone Number */}
               <div>
@@ -721,37 +1050,65 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 </div>
               </div>
 
-              {/* Register Submit Button */}
+              {/* Register / Update Submit Button */}
               <div className="pt-2 space-y-2.5">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-[#C5A880] hover:bg-[#d8bb94] disabled:bg-[#C5A880]/50 text-[#0A192F] py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.2em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
-                      <span>REGISTERING...</span>
-                    </>
-                  ) : (
-                    <span>COMPLETE REGISTRATION</span>
-                  )}
-                </button>
+                {authMode === 'edit_profile' ? (
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-[#16a34a] hover:bg-[#15803d] active:bg-[#166534] disabled:bg-[#16a34a]/50 text-white py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.15em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>UPDATING PROFILE...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 text-white" />
+                        <span>UPDATE PROFILE</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-[#C5A880] hover:bg-[#d8bb94] disabled:bg-[#C5A880]/50 text-[#0A192F] py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.2em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
+                        <span>REGISTERING...</span>
+                      </>
+                    ) : (
+                      <span>COMPLETE REGISTRATION</span>
+                    )}
+                  </button>
+                )}
 
                 <div className="text-center pt-2">
-                  <p className="text-xs text-slate-400">
-                    Already registered?{' '}
+                  {authMode === 'edit_profile' ? (
+                    <button
+                      type="button"
+                      onClick={onCancelEdit || onContinue}
+                      className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
+                    >
+                      Cancel and return to app
+                    </button>
+                  ) : (
                     <button
                       type="button"
                       onClick={() => {
                         setErrorMessage('');
-                        setAuthMode('login');
+                        setAuthMode('signup_credentials');
                       }}
-                      className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-2 cursor-pointer"
+                      className="text-xs text-slate-400 hover:text-white flex items-center justify-center gap-1 mx-auto cursor-pointer"
                     >
-                      Sign in to your account
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Step 1 (Change email/password)</span>
                     </button>
-                  </p>
+                  )}
                 </div>
               </div>
             </form>
@@ -759,7 +1116,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 3: FORGOT PASSWORD                                                   */}
+        {/* VIEW 4: FORGOT PASSWORD                                                   */}
         {/* ========================================================================= */}
         {authMode === 'forgot_password' && (
           <div className="bg-[#090F1D] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">

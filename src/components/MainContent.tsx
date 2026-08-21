@@ -14,6 +14,7 @@ interface MainContentProps {
   onSelectTab: (tab: SidebarTab) => void;
   userProfile: UserProfile;
   onShowLoginDetails: () => void;
+  onEditProfile?: () => void;
   onOpenMobileSidebar: () => void;
 }
 
@@ -22,6 +23,7 @@ export const MainContent: React.FC<MainContentProps> = ({
   onSelectTab,
   userProfile,
   onShowLoginDetails,
+  onEditProfile,
   onOpenMobileSidebar,
 }) => {
   const mobileNavItems: { name: SidebarTab; icon: React.FC<{ className?: string }>; label: string }[] = [
@@ -100,7 +102,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         {activeTab === 'Profile' && (
           <ProfileTab 
             userProfile={userProfile} 
-            onEditProfile={onShowLoginDetails} 
+            onEditProfile={onEditProfile || onShowLoginDetails} 
           />
         )}
       </main>
