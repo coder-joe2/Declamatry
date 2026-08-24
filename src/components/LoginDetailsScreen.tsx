@@ -3,38 +3,99 @@ import { UserProfile } from '../types';
 import { 
   saveUserLoginToFirebase, 
   authenticateMember, 
-  handleGoogleSignIn, 
-  triggerPasswordReset, 
-  registerWithFirebaseAuth,
-  auth
+  triggerPasswordReset 
 } from '../firebase';
 import { SocietyLogo } from './SocietyLogo';
+import { ImageCropModal } from './ImageCropModal';
 import {
   Mail,
   Phone,
   User,
   Plus,
   Camera,
-  Award,
-  Mic,
-  Users2,
   CheckCircle2,
-  Sparkles,
   AlertCircle,
   Loader2,
   Database,
   GraduationCap,
+  BookOpen,
   Eye,
   EyeOff,
   Lock,
   ArrowLeft,
-  ArrowRight,
-  KeyRound,
-  ShieldCheck
+  KeyRound
 } from 'lucide-react';
 
 const YEAR_OPTIONS = ['I Year', 'II Year', 'III Year'] as const;
-const DEPARTMENT_OPTIONS = ['B.Sc', 'B.A', 'B.Com', 'BBA', 'BCA'] as const;
+
+export const STANDARD_DEPARTMENTS = [
+  'B.com',
+  'B.sc',
+  'B.A English Litrature',
+  'BBA',
+  'BCA',
+] as const;
+
+export const DEPARTMENT_OPTIONS = [
+  'B.com',
+  'B.sc',
+  'B.A English Litrature',
+  'BBA',
+  'BCA',
+  'Others',
+] as const;
+
+export const CLASS_OPTIONS_BY_DEPARTMENT: Record<string, string[]> = {
+  'B.sc': [
+    'Mathematics',
+    'Computer Science',
+    'Artificial Intelligence & Machine Learning',
+    'Cyber Security',
+    'Fashion Technology & Costume',
+    'Others',
+  ],
+  'B.com': [
+    'Computer Applications',
+    'Professional Account/CMA Integrated',
+    'Others',
+  ],
+  'B.A English Litrature': [
+    'Tamil Literature',
+    'English Literature',
+    'Others',
+  ],
+  'BBA': [
+    'General Management',
+    'Finance',
+    'Marketing',
+    'Others',
+  ],
+  'BCA': [
+    'Computer Applications',
+    'Data Analytics',
+    'Others',
+  ],
+  'Others': [
+    'Others',
+  ],
+};
+
+const getDeptInitial = (dept?: string) => {
+  if (!dept) return { select: '', custom: '' };
+  if (STANDARD_DEPARTMENTS.includes(dept as any)) {
+    return { select: dept, custom: '' };
+  }
+  return { select: 'Others', custom: dept };
+};
+
+const getClassInitial = (deptSelect: string, classVal?: string) => {
+  if (!classVal) return { select: '', custom: '' };
+  const available = CLASS_OPTIONS_BY_DEPARTMENT[deptSelect] || [];
+  if (available.includes(classVal) && classVal !== 'Others') {
+    return { select: classVal, custom: '' };
+  }
+  return { select: 'Others', custom: classVal };
+};
 
 interface LoginDetailsScreenProps {
   profile: UserProfile;
@@ -44,7 +105,7 @@ interface LoginDetailsScreenProps {
   onCancelEdit?: () => void;
 }
 
-type AuthMode = 'login' | 'signup_credentials' | 'register' | 'forgot_password' | 'edit_profile';
+type AuthMode = 'login' | 'register' | 'forgot_password' | 'edit_profile';
 
 export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   profile,
@@ -56,28 +117,33 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   // Mode state: Defaults to initialMode
   const [authMode, setAuthMode] = useState<AuthMode>(initialMode);
 
-  // Simple Login credentials state
+  // Sign-In credentials state
   const [loginIdentifier, setLoginIdentifier] = useState<string>(profile.gmail || '');
   const [loginPassword, setLoginPassword] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
 
-  // Step 1: Sign up credentials (Email & Password)
-  const [signupEmail, setSignupEmail] = useState<string>(profile.gmail || '');
-  const [signupPassword, setSignupPassword] = useState<string>('');
-  const [showSignupPassword, setShowSignupPassword] = useState<boolean>(false);
-
-  // Step 2 / Full Registration / Edit state
+  // Registration & Edit state
   const [regData, setRegData] = useState<UserProfile>({
     name: profile.name || '',
     gmail: profile.gmail || '',
     phone: profile.phone || '',
     year: profile.year || 'I Year',
     department: profile.department || '',
+    className: profile.className || '',
     photoUrl: profile.photoUrl || '',
-    password: '',
+    password: profile.password || '',
   });
-  const [regConfirmPassword, setRegConfirmPassword] = useState<string>('');
   const [showRegPassword, setShowRegPassword] = useState<boolean>(false);
+  const [regConfirmPassword, setRegConfirmPassword] = useState<string>('');
+
+  // Department and Class state helpers
+  const initialDept = getDeptInitial(profile.department);
+  const [deptSelect, setDeptSelect] = useState<string>(initialDept.select);
+  const [customDept, setCustomDept] = useState<string>(initialDept.custom);
+
+  const initialClass = getClassInitial(initialDept.select, profile.className);
+  const [classSelect, setClassSelect] = useState<string>(initialClass.select);
+  const [customClass, setCustomClass] = useState<string>(initialClass.custom);
 
   // Keep state synced if initialMode or profile changes
   useEffect(() => {
@@ -93,11 +159,19 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
       phone: profile.phone || '',
       year: profile.year || 'I Year',
       department: profile.department || '',
+      className: profile.className || '',
       photoUrl: profile.photoUrl || '',
-      password: '',
+      password: profile.password || '',
     });
+    const dInit = getDeptInitial(profile.department);
+    setDeptSelect(dInit.select);
+    setCustomDept(dInit.custom);
+
+    const cInit = getClassInitial(dInit.select, profile.className);
+    setClassSelect(cInit.select);
+    setCustomClass(cInit.custom);
+
     setLoginIdentifier(profile.gmail || '');
-    setSignupEmail(profile.gmail || '');
   }, [profile]);
 
   // Forgot password state
@@ -109,44 +183,38 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [photoError, setPhotoError] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [googleLoading, setGoogleLoading] = useState<boolean>(false);
+  const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Ensure loading spinner is never stuck if user cancels/closes Google popup and window regains focus
-  useEffect(() => {
-    const handleGlobalFocus = () => {
-      if (googleLoading) {
-        const timer = setTimeout(() => {
-          setGoogleLoading(false);
-        }, 1200);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    window.addEventListener('focus', handleGlobalFocus);
-    return () => {
-      window.removeEventListener('focus', handleGlobalFocus);
-    };
-  }, [googleLoading]);
-
-  // Handle Photo upload for Registration
+  // Handle Photo upload for Registration & Edit (opens circular crop tool)
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setRegData((prev) => ({
-            ...prev,
-            photoUrl: event.target?.result as string,
-          }));
-          setPhotoError(false);
-          setErrorMessage('');
+          setCroppingImageSrc(event.target?.result as string);
         }
       };
       reader.readAsDataURL(file);
+      // Reset input value so same file can be re-selected if needed
+      e.target.value = '';
     }
+  };
+
+  const handleCropComplete = (croppedDataUrl: string) => {
+    setRegData((prev) => ({
+      ...prev,
+      photoUrl: croppedDataUrl,
+    }));
+    setCroppingImageSrc(null);
+    setPhotoError(false);
+    setErrorMessage('');
+  };
+
+  const handleCancelCrop = () => {
+    setCroppingImageSrc(null);
   };
 
   // 1. Handle Simple Sign-In
@@ -187,104 +255,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
     }
   };
 
-  // 2. Handle Google Sign-In with robust window focus and cancellation handling
-  const handleGoogleAuth = async () => {
-    setErrorMessage('');
-    setGoogleLoading(true);
-
-    const handleWindowFocus = () => {
-      setTimeout(() => {
-        setGoogleLoading(false);
-      }, 1000);
-    };
-
-    window.addEventListener('focus', handleWindowFocus, { once: true });
-
-    try {
-      const result = await handleGoogleSignIn();
-      if (result.success && result.profile) {
-        // If member already has full details (department and year), proceed straight into app
-        if (result.profile.department && result.profile.year && result.profile.phone) {
-          onUpdateProfile(result.profile);
-          onContinue();
-        } else {
-          // If new or partial profile via Google, pre-fill Step 2 so member finishes department & phone
-          setRegData((prev) => ({
-            ...prev,
-            ...result.profile,
-            name: result.profile?.name || prev.name,
-            gmail: result.profile?.gmail || prev.gmail,
-            photoUrl: result.profile?.photoUrl || prev.photoUrl,
-            year: result.profile?.year || 'I Year',
-            department: result.profile?.department || '',
-          }));
-          setSignupEmail(result.profile.gmail || '');
-          setSuccessMessage('Google account verified! Please complete your department and student details below.');
-          setAuthMode('register');
-        }
-      } else if (result.cancelledByUser) {
-        setGoogleLoading(false);
-      } else {
-        setErrorMessage(
-          result.error ||
-            'Google Sign-in could not be completed. Please try again or sign in with your email/username.'
-        );
-        setGoogleLoading(false);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Google sign-in error';
-      setErrorMessage(msg);
-      setGoogleLoading(false);
-    } finally {
-      window.removeEventListener('focus', handleWindowFocus);
-      setGoogleLoading(false);
-    }
-  };
-
-  // 3. Step 1: Validate and authenticate Email and Password before moving to Registration Page
-  const handleStep1CredentialsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    const email = signupEmail.trim().toLowerCase();
-    if (!email || !email.includes('@') || !email.includes('.')) {
-      setErrorMessage('Please enter a valid email address.');
-      return;
-    }
-
-    if (!signupPassword.trim()) {
-      setErrorMessage('Please enter your password.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const authRes = await registerWithFirebaseAuth(email, signupPassword);
-      if (!authRes.success) {
-        setErrorMessage(authRes.error || 'Authentication error. Please check your credentials.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Set into regData
-      setRegData((prev) => ({
-        ...prev,
-        gmail: email,
-        password: signupPassword,
-      }));
-
-      // Proceed to Step 2: Member Registration
-      setAuthMode('register');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration error';
-      setErrorMessage(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 4. Handle Step 2 Full Registration or Profile Update Submit
+  // 2. Handle Direct Registration & Profile Update Submit
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -308,12 +279,14 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
       return;
     }
 
+    // Password validation
+    if (!isEditMode && !regData.password?.trim()) {
+      setErrorMessage('Please create a password for your account.');
+      return;
+    }
+
     // Password validation for edit mode if typed
     if (isEditMode && regData.password) {
-      if (regData.password.length < 6) {
-        setErrorMessage('New password must be at least 6 characters long.');
-        return;
-      }
       if (regConfirmPassword && regData.password !== regConfirmPassword) {
         setErrorMessage('New passwords do not match. Please verify.');
         return;
@@ -330,9 +303,41 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
       return;
     }
 
-    if (!regData.department.trim()) {
+    // Validate Department
+    if (!deptSelect) {
       setErrorMessage('Please select your Department / Degree.');
       return;
+    }
+
+    let finalDepartment = deptSelect.trim();
+    if (deptSelect === 'Others') {
+      if (!customDept.trim()) {
+        setErrorMessage('Please enter your Department / Degree in CAPITAL LETTERS.');
+        return;
+      }
+      finalDepartment = customDept.trim().toUpperCase();
+    }
+
+    // Validate Class
+    const availableClasses = CLASS_OPTIONS_BY_DEPARTMENT[deptSelect] || (deptSelect === 'Others' ? ['Others'] : []);
+    let finalClassName = '';
+
+    if (availableClasses.length > 0) {
+      if (!classSelect) {
+        setErrorMessage('Please select your Class / Specialization.');
+        return;
+      }
+      if (classSelect === 'Others') {
+        if (!customClass.trim()) {
+          setErrorMessage('Please enter your Class / Specialization in CAPITAL LETTERS.');
+          return;
+        }
+        finalClassName = customClass.trim().toUpperCase();
+      } else {
+        finalClassName = classSelect.trim();
+      }
+    } else if (classSelect === 'Others' || customClass.trim()) {
+      finalClassName = customClass.trim().toUpperCase();
     }
 
     setIsLoading(true);
@@ -344,9 +349,10 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
       gmail: regData.gmail.trim().toLowerCase(),
       phone: regData.phone.trim(),
       year: regData.year,
-      department: regData.department,
+      department: finalDepartment,
+      className: finalClassName,
       photoUrl: regData.photoUrl,
-      password: regData.password || signupPassword || profile.password || '',
+      password: regData.password?.trim() || profile.password || '',
       isAdmin: regData.gmail.trim().toLowerCase() === 'vjana537@gmail.com',
     };
 
@@ -373,29 +379,32 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
     }
   };
 
-  // 5. Handle Password Reset Request
+  // 3. Handle Password Reset Request
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setResetSuccessMessage('');
 
-    if (!forgotEmail.trim() || !forgotEmail.includes('@')) {
-      setErrorMessage('Please enter a valid email address.');
+    const targetEmail = forgotEmail.trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setErrorMessage('Please enter a valid email address to receive password reset link.');
       return;
     }
 
     setIsLoading(true);
+
     try {
-      const res = await triggerPasswordReset(forgotEmail.trim().toLowerCase());
+      const res = await triggerPasswordReset(targetEmail);
       if (res.success) {
         setResetSuccessMessage(
-          res.message || 'Password reset link sent! Check your inbox to set a new password.'
+          res.message || 'Password reset instructions have been sent to your email. Please check your inbox or spam folder.'
         );
       } else {
-        setErrorMessage(res.message || 'Failed to send reset email. Please verify the email address.');
+        setErrorMessage(res.message || 'Failed to send reset link. Please verify your email.');
       }
-    } catch {
-      setErrorMessage('Network or server error while requesting password reset.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error requesting password reset';
+      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }
@@ -493,7 +502,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 </div>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showLoginPassword ? 'text' : 'password'}
                     required
                     value={loginPassword}
                     onChange={(e) => {
@@ -505,11 +514,11 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors cursor-pointer p-1"
-                    title={showPassword ? 'Hide password' : 'Show password'}
+                    title={showLoginPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? (
+                    {showLoginPassword ? (
                       <EyeOff className="w-4.5 h-4.5" />
                     ) : (
                       <Eye className="w-4.5 h-4.5" />
@@ -536,50 +545,8 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 </button>
               </div>
 
-              {/* 4. Divider: or */}
-              <div className="relative my-4 flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800" />
-                </div>
-                <div className="relative bg-[#090F1D] px-3 text-xs text-slate-400 uppercase tracking-wider font-medium">
-                  or
-                </div>
-              </div>
-
-              {/* 5. Continue with Google Button */}
-              <button
-                type="button"
-                onClick={handleGoogleAuth}
-                disabled={googleLoading || isLoading}
-                className="w-full bg-[#0E1726] hover:bg-[#152238] border border-slate-700/80 active:scale-[0.99] text-slate-100 py-3 px-4 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-3 shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {googleLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
-                ) : (
-                  <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </svg>
-                )}
-                <span>Continue with Google</span>
-              </button>
-
-              {/* 6. Switch to Registration Step 1 Link */}
-              <div className="pt-3 text-center">
+              {/* 4. Switch to Direct Registration Link */}
+              <div className="pt-3 text-center border-t border-slate-800/80 mt-4">
                 <p className="text-xs sm:text-sm text-slate-400">
                   New member?{' '}
                   <button
@@ -587,10 +554,13 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                     onClick={() => {
                       setErrorMessage('');
                       setSuccessMessage('');
-                      setSignupEmail(loginIdentifier);
-                      setAuthMode('signup_credentials');
+                      setRegData((prev) => ({
+                        ...prev,
+                        gmail: loginIdentifier || prev.gmail,
+                      }));
+                      setAuthMode('register');
                     }}
-                    className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-4 cursor-pointer transition-colors"
+                    className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-4 cursor-pointer transition-colors ml-1"
                   >
                     Register / Create an account
                   </button>
@@ -601,188 +571,12 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 2: STEP 1 - CREATE LOGIN CREDENTIALS (Email & Password / Google)     */}
-        {/* ========================================================================= */}
-        {authMode === 'signup_credentials' && (
-          <div className="bg-[#090F1D] border border-[#C5A880]/40 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
-            <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#C5A880]/15 text-[#C5A880] text-[10px] font-bold uppercase tracking-wider mb-1">
-                  <span>Step 1 of 2</span>
-                </div>
-                <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
-                  Create an Account
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Enter your email and set a password or use Google
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setErrorMessage('');
-                  setAuthMode('login');
-                }}
-                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Sign in</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleStep1CredentialsSubmit} className="space-y-4">
-              {/* 1. Email Address */}
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1.5">
-                  Email Address <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    value={signupEmail}
-                    onChange={(e) => {
-                      setSignupEmail(e.target.value);
-                      if (errorMessage) setErrorMessage('');
-                    }}
-                    placeholder="e.g. yourname@gmail.com"
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* 2. Password */}
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1.5">
-                  Password <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
-                    type={showSignupPassword ? 'text' : 'password'}
-                    required
-                    value={signupPassword}
-                    onChange={(e) => {
-                      setSignupPassword(e.target.value);
-                      if (errorMessage) setErrorMessage('');
-                    }}
-                    placeholder="Enter your password"
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSignupPassword(!showSignupPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors cursor-pointer p-1"
-                  >
-                    {showSignupPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Continue with Google */}
-              <button
-                type="button"
-                onClick={handleGoogleAuth}
-                disabled={googleLoading}
-                className="w-full bg-[#0E1726] hover:bg-[#152238] border border-slate-700/80 active:scale-[0.99] text-slate-100 py-3 px-4 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-3 shadow-md cursor-pointer disabled:opacity-50 mt-1"
-              >
-                {googleLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
-                ) : (
-                  <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </svg>
-                )}
-                <span>Continue with Google</span>
-              </button>
-
-              {/* Divider: or */}
-              <div className="relative my-3 flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800" />
-                </div>
-                <div className="relative bg-[#090F1D] px-3 text-xs text-slate-400 uppercase tracking-wider font-medium">
-                  or
-                </div>
-              </div>
-
-              {/* Next: Step 2 Button */}
-              <div>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-[#C5A880] hover:bg-[#d8bb94] active:bg-[#b0946d] text-[#0A192F] py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.15em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
-                      <span>AUTHENTICATING...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>CONTINUE TO MEMBER DETAILS</span>
-                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="text-center pt-2">
-                <p className="text-xs text-slate-400">
-                  Already registered?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMessage('');
-                      setAuthMode('login');
-                    }}
-                    className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-2 cursor-pointer"
-                  >
-                    Sign in to your account
-                  </button>
-                </p>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* VIEW 3: STEP 2 - MEMBER REGISTRATION & BADGE / EDIT PROFILE               */}
+        {/* VIEW 2: UNIFIED MEMBER REGISTRATION & PROFILE EDIT                        */}
         {/* ========================================================================= */}
         {(authMode === 'register' || authMode === 'edit_profile') && (
           <div className="bg-[#090F1D] border border-[#C5A880]/40 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
             <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
               <div>
-                {authMode === 'register' && (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Step 2 of 2: Member Details</span>
-                  </div>
-                )}
                 <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
                   {authMode === 'edit_profile' ? 'Edit Member Profile' : 'Member Registration'}
                 </h2>
@@ -806,12 +600,12 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   type="button"
                   onClick={() => {
                     setErrorMessage('');
-                    setAuthMode('signup_credentials');
+                    setAuthMode('login');
                   }}
                   className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to Step 1</span>
+                  <span>Back to Sign In</span>
                 </button>
               )}
             </div>
@@ -896,16 +690,9 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
 
               {/* Email Address */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs sm:text-sm font-medium text-slate-200">
-                    Email Address <span className="text-red-400">*</span>
-                  </label>
-                  {authMode === 'register' && (
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
-                      Configured from Step 1
-                    </span>
-                  )}
-                </div>
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+                  Email Address <span className="text-red-400">*</span>
+                </label>
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
                     <Mail className="w-4 h-4" />
@@ -924,8 +711,43 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 </div>
               </div>
 
-              {/* In Edit mode: optional password update fields */}
-              {authMode === 'edit_profile' && (
+              {/* Password (Immediately below Email Address) */}
+              {authMode === 'register' ? (
+                <div>
+                  <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+                    Password <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      value={regData.password || ''}
+                      onChange={(e) => {
+                        setRegData({ ...regData, password: e.target.value });
+                        if (errorMessage) setErrorMessage('');
+                      }}
+                      placeholder="Create a password for your account"
+                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors cursor-pointer p-1"
+                      title={showRegPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showRegPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* In Edit mode: optional password update fields */
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="text-xs font-medium text-slate-200 block mb-1">
@@ -934,7 +756,6 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                     <div className="relative">
                       <input
                         type={showRegPassword ? 'text' : 'password'}
-                        minLength={6}
                         value={regData.password || ''}
                         onChange={(e) => {
                           setRegData({ ...regData, password: e.target.value });
@@ -954,7 +775,6 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       <input
                         type={showRegPassword ? 'text' : 'password'}
                         required={Boolean(regData.password)}
-                        minLength={6}
                         value={regConfirmPassword}
                         onChange={(e) => {
                           setRegConfirmPassword(e.target.value);
@@ -1021,8 +841,8 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
               </div>
 
               {/* Department */}
-              <div>
-                <label className="text-xs sm:text-sm font-medium text-slate-200 block mb-1">
+              <div className="space-y-2">
+                <label className="text-xs sm:text-sm font-medium text-slate-200 block">
                   Department / Degree <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
@@ -1031,9 +851,28 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   </div>
                   <select
                     required
-                    value={regData.department}
+                    value={deptSelect}
                     onChange={(e) => {
-                      setRegData({ ...regData, department: e.target.value });
+                      const newDept = e.target.value;
+                      setDeptSelect(newDept);
+                      if (newDept === 'Others') {
+                        setRegData((prev) => ({
+                          ...prev,
+                          department: customDept.trim().toUpperCase(),
+                        }));
+                        setClassSelect('Others');
+                      } else {
+                        setRegData((prev) => ({
+                          ...prev,
+                          department: newDept,
+                        }));
+                        const available = CLASS_OPTIONS_BY_DEPARTMENT[newDept] || [];
+                        if (!available.includes(classSelect)) {
+                          setClassSelect('');
+                          setCustomClass('');
+                          setRegData((prev) => ({ ...prev, className: '' }));
+                        }
+                      }
                       if (errorMessage) setErrorMessage('');
                     }}
                     className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all cursor-pointer"
@@ -1048,7 +887,101 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                     ))}
                   </select>
                 </div>
+
+                {/* Custom Department Input when 'Others' is selected */}
+                {deptSelect === 'Others' && (
+                  <div className="p-3.5 rounded-xl bg-[#090F1D] border border-[#C5A880]/40 space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2 text-xs text-[#C5A880] font-medium">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>Note: Please enter your Department / Degree in CAPITAL LETTERS.</span>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={customDept}
+                        onChange={(e) => {
+                          const upper = e.target.value.toUpperCase();
+                          setCustomDept(upper);
+                          setRegData((prev) => ({ ...prev, department: upper }));
+                          if (errorMessage) setErrorMessage('');
+                        }}
+                        placeholder="ENTER DEPARTMENT NAME (IN CAPITAL LETTERS)"
+                        className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-500 font-mono tracking-wide"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Class / Specialization (Conditional or when Department is selected) */}
+              {(CLASS_OPTIONS_BY_DEPARTMENT[deptSelect]?.length || deptSelect === 'Others') ? (
+                <div className="animate-in fade-in duration-200 space-y-2">
+                  <label className="text-xs sm:text-sm font-medium text-slate-200 block">
+                    Class / Branch <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <select
+                      required
+                      value={classSelect}
+                      onChange={(e) => {
+                        const newClass = e.target.value;
+                        setClassSelect(newClass);
+                        if (newClass === 'Others') {
+                          setRegData((prev) => ({ ...prev, className: customClass.trim().toUpperCase() }));
+                        } else {
+                          setRegData((prev) => ({ ...prev, className: newClass }));
+                        }
+                        if (errorMessage) setErrorMessage('');
+                      }}
+                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all cursor-pointer"
+                    >
+                      <option value="" className="bg-[#030712] text-slate-400">
+                        -- Select Class --
+                      </option>
+                      {(CLASS_OPTIONS_BY_DEPARTMENT[deptSelect] || ['Others']).map((cls) => (
+                        <option key={cls} value={cls} className="bg-[#030712] text-white">
+                          {cls}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Custom Class Input when 'Others' is selected */}
+                  {classSelect === 'Others' && (
+                    <div className="p-3.5 rounded-xl bg-[#090F1D] border border-[#C5A880]/40 space-y-2 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 text-xs text-[#C5A880] font-medium">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span>Note: Please enter your Class / Specialization in CAPITAL LETTERS.</span>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={customClass}
+                          onChange={(e) => {
+                            const upper = e.target.value.toUpperCase();
+                            setCustomClass(upper);
+                            setRegData((prev) => ({ ...prev, className: upper }));
+                            if (errorMessage) setErrorMessage('');
+                          }}
+                          placeholder="ENTER CLASS / SPECIALIZATION (IN CAPITAL LETTERS)"
+                          className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-500 font-mono tracking-wide"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {/* Register / Update Submit Button */}
               <div className="pt-2 space-y-2.5">
@@ -1097,17 +1030,19 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       Cancel and return to app
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setErrorMessage('');
-                        setAuthMode('signup_credentials');
-                      }}
-                      className="text-xs text-slate-400 hover:text-white flex items-center justify-center gap-1 mx-auto cursor-pointer"
-                    >
-                      <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Back to Step 1 (Change email/password)</span>
-                    </button>
+                    <p className="text-xs text-slate-400">
+                      Already registered?{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErrorMessage('');
+                          setAuthMode('login');
+                        }}
+                        className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-2 cursor-pointer ml-1"
+                      >
+                        Sign in to your account
+                      </button>
+                    </p>
                   )}
                 </div>
               </div>
@@ -1116,7 +1051,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 4: FORGOT PASSWORD                                                   */}
+        {/* VIEW 3: FORGOT PASSWORD                                                   */}
         {/* ========================================================================= */}
         {authMode === 'forgot_password' && (
           <div className="bg-[#090F1D] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
@@ -1209,6 +1144,15 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Circular Image Cropping Modal (Google/WhatsApp style) */}
+      {croppingImageSrc && (
+        <ImageCropModal
+          imageSrc={croppingImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCancelCrop}
+        />
+      )}
     </div>
   );
 };

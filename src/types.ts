@@ -4,9 +4,16 @@ export interface UserProfile {
   phone: string;
   year?: string;
   department: string;
+  className?: string;
   photoUrl: string;
   isAdmin?: boolean;
   password?: string;
+}
+
+export interface RegisteredMember extends UserProfile {
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type SidebarTab =
@@ -16,7 +23,8 @@ export type SidebarTab =
   | 'Leaderboard'
   | 'Levels'
   | 'Voting'
-  | 'Profile';
+  | 'Profile'
+  | 'Members List';
 
 export interface PollOption {
   id: string;

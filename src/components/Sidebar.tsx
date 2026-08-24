@@ -13,6 +13,8 @@ import {
   ChevronRight,
   LogOut,
   Sparkles,
+  ShieldCheck,
+  ClipboardList,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,6 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
 }) => {
+  const isAdmin = userProfile.isAdmin || userProfile.gmail?.toLowerCase() === 'vjana537@gmail.com';
+
   const sidebarItems: { name: SidebarTab; icon: React.FC<{ className?: string }> }[] = [
     { name: 'Home', icon: Home },
     { name: 'About Club', icon: Users },
@@ -120,6 +124,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
+
+          {/* Dedicated Admin Portal Section */}
+          {isAdmin && (
+            <div className="pt-3 mt-3 border-t border-[#1E2E48]/80 space-y-1.5">
+              <div className="px-3 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C5A880] font-cinzel flex items-center gap-1.5">
+                  <ShieldCheck className="w-3 h-3 text-[#C5A880]" />
+                  Admin Only
+                </p>
+                <span className="px-1.5 py-0.2 text-[8px] bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40 rounded font-bold uppercase font-mono">
+                  Master
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  onSelectTab('Members List');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+                  activeTab === 'Members List'
+                    ? 'bg-[#C5A880] text-[#0A192F] font-bold shadow-lg shadow-[#C5A880]/20'
+                    : 'text-[#C5A880] hover:text-white hover:bg-[#0E1E38] border border-[#C5A880]/30'
+                }`}
+              >
+                <Users className={`w-4 h-4 ${activeTab === 'Members List' ? 'text-[#0A192F]' : 'text-[#C5A880]'}`} />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold">Members List</span>
+                {activeTab === 'Members List' && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* User Card at bottom */}
@@ -141,7 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {userProfile.name || 'Member'}
               </p>
               <p className="text-[11px] text-[#C5A880] truncate font-medium">
-                {userProfile.year ? `${userProfile.year} • ` : ''}{userProfile.department || userProfile.gmail || 'Member'}
+                {userProfile.year ? `${userProfile.year} • ` : ''}{userProfile.department || userProfile.gmail || 'Member'}{userProfile.className ? ` (${userProfile.className})` : ''}
               </p>
             </div>
           </div>

@@ -23,7 +23,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { UserProfile, Poll } from './types';
+import { UserProfile, Poll, RegisteredMember } from './types';
 
 // User provided Firebase configuration
 const firebaseConfig = {
@@ -132,6 +132,7 @@ export async function saveUserLoginToFirebase(profile: UserProfile): Promise<{ s
       phone: (profile.phone || '').trim(),
       year: profile.year || '',
       department: profile.department || '',
+      className: profile.className || '',
       photoUrl: profile.photoUrl || '',
       password: profile.password || '',
       isAdmin: sanitizedEmail === 'vjana537@gmail.com',
@@ -207,6 +208,7 @@ export async function authenticateMember(
         phone: data.phone || '',
         year: data.year || 'I Year',
         department: data.department || 'B.Sc',
+        className: data.className || '',
         photoUrl: data.photoUrl || '',
         isAdmin: (data.gmail || '').toLowerCase() === 'vjana537@gmail.com',
       };
@@ -229,6 +231,7 @@ export async function authenticateMember(
           phone: data.phone || '',
           year: data.year || 'I Year',
           department: data.department || 'B.Sc',
+          className: data.className || '',
           photoUrl: data.photoUrl || '',
           isAdmin: docEmail === 'vjana537@gmail.com',
         };
@@ -281,6 +284,7 @@ export async function handleGoogleSignIn(): Promise<{
             phone: d.phone || '',
             year: d.year || 'I Year',
             department: d.department || 'B.Sc',
+            className: d.className || '',
             photoUrl: d.photoUrl || photoUrl,
             isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
           };
@@ -295,6 +299,7 @@ export async function handleGoogleSignIn(): Promise<{
         phone: '',
         year: 'I Year',
         department: 'B.Sc',
+        className: '',
         photoUrl: photoUrl,
         isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
       };
@@ -588,6 +593,145 @@ export async function deletePoll(pollId: string): Promise<boolean> {
   }
 
   return true;
+}
+
+/**
+ * Fetch all registered members from Firestore (Admin only)
+ */
+export async function fetchAllRegisteredMembers(): Promise<RegisteredMember[]> {
+  try {
+    await ensureAuth();
+    const snap = await getDocs(collection(db, 'members'));
+    const list: RegisteredMember[] = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      let createdStr = '';
+      if (d.createdAt) {
+        if (typeof d.createdAt === 'string') {
+          createdStr = d.createdAt;
+        } else if (d.createdAt?.toDate) {
+          createdStr = d.createdAt.toDate().toISOString();
+        }
+      }
+      let updatedStr = '';
+      if (d.updatedAt) {
+        if (typeof d.updatedAt === 'string') {
+          updatedStr = d.updatedAt;
+        } else if (d.updatedAt?.toDate) {
+          updatedStr = d.updatedAt.toDate().toISOString();
+        }
+      }
+
+      list.push({
+        id: docSnap.id,
+        name: d.name || 'Anonymous Member',
+        gmail: d.gmail || '',
+        phone: d.phone || '',
+        year: d.year || 'I Year',
+        department: d.department || '',
+        className: d.className || '',
+        photoUrl: d.photoUrl || '',
+        isAdmin: d.isAdmin === true || (d.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+        password: d.password || '',
+        createdAt: createdStr || d.loginTimestamp || '',
+        updatedAt: updatedStr,
+      });
+    });
+
+    // Sort by createdAt descending or name
+    list.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return list;
+  } catch (err) {
+    console.error('Error fetching all members from Firestore:', err);
+    return [];
+  }
+}
+
+/**
+ * Real-time subscription to all registered members for Admin table
+ */
+export function subscribeToRegisteredMembers(
+  callback: (members: RegisteredMember[]) => void
+): () => void {
+  try {
+    const unsubscribe = onSnapshot(
+      collection(db, 'members'),
+      (snapshot) => {
+        const list: RegisteredMember[] = [];
+        snapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          let createdStr = '';
+          if (d.createdAt) {
+            if (typeof d.createdAt === 'string') {
+              createdStr = d.createdAt;
+            } else if (d.createdAt?.toDate) {
+              createdStr = d.createdAt.toDate().toISOString();
+            }
+          }
+          let updatedStr = '';
+          if (d.updatedAt) {
+            if (typeof d.updatedAt === 'string') {
+              updatedStr = d.updatedAt;
+            } else if (d.updatedAt?.toDate) {
+              updatedStr = d.updatedAt.toDate().toISOString();
+            }
+          }
+
+          list.push({
+            id: docSnap.id,
+            name: d.name || 'Anonymous Member',
+            gmail: d.gmail || '',
+            phone: d.phone || '',
+            year: d.year || 'I Year',
+            department: d.department || '',
+            className: d.className || '',
+            photoUrl: d.photoUrl || '',
+            isAdmin: d.isAdmin === true || (d.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+            password: d.password || '',
+            createdAt: createdStr || d.loginTimestamp || '',
+            updatedAt: updatedStr,
+          });
+        });
+
+        // Sort latest first
+        list.sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA;
+        });
+
+        callback(list);
+      },
+      (err) => {
+        console.warn('Real-time members snapshot listener note:', err);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.error('Error in subscribeToRegisteredMembers:', err);
+    return () => {};
+  }
+}
+
+/**
+ * Admin action to delete a registered member document from Firestore
+ */
+export async function deleteMemberByAdmin(memberDocId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'members', memberDocId);
+    await deleteDoc(docRef);
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to remove member document';
+    console.error('deleteMemberByAdmin error:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
 }
 
 export default app;

@@ -8,6 +8,7 @@ import { LeaderboardTab } from './tabs/LeaderboardTab';
 import { LevelsTab } from './tabs/LevelsTab';
 import { VotingTab } from './tabs/VotingTab';
 import { ProfileTab } from './tabs/ProfileTab';
+import { MembersListTab } from './tabs/MembersListTab';
 
 interface MainContentProps {
   activeTab: SidebarTab;
@@ -101,6 +102,13 @@ export const MainContent: React.FC<MainContentProps> = ({
 
         {activeTab === 'Profile' && (
           <ProfileTab 
+            userProfile={userProfile} 
+            onEditProfile={onEditProfile || onShowLoginDetails} 
+          />
+        )}
+
+        {activeTab === 'Members List' && (
+          <MembersListTab 
             userProfile={userProfile} 
             onEditProfile={onEditProfile || onShowLoginDetails} 
           />
