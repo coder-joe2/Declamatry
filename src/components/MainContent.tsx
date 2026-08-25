@@ -36,42 +36,42 @@ export const MainContent: React.FC<MainContentProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-[#030712] text-slate-100 font-sans selection:bg-[#C5A880] selection:text-[#0A192F]">
+    <div className="flex-1 flex flex-col min-h-screen min-w-0 w-full max-w-full overflow-x-hidden bg-[#030712] text-slate-100 font-sans selection:bg-[#C5A880] selection:text-[#0A192F]">
       {/* Top Navbar - Mobile optimized */}
-      <header className="h-16 sm:h-20 px-3 sm:px-8 lg:px-10 bg-[#050B14]/95 border-b border-[#1E2E48] flex items-center justify-between sticky top-0 z-30 backdrop-blur-md shadow-lg">
-        <div className="flex items-center gap-2.5 sm:gap-3.5">
+      <header className="h-14 sm:h-20 px-3 sm:px-8 lg:px-10 bg-[#050B14]/95 border-b border-[#1E2E48] flex items-center justify-between sticky top-0 z-30 backdrop-blur-md shadow-lg shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <button
             onClick={onOpenMobileSidebar}
-            className="lg:hidden p-2 text-slate-300 hover:text-white bg-[#0E1E38] hover:bg-[#152B4D] active:scale-95 rounded-xl transition-colors cursor-pointer border border-[#1E2E48] min-w-[40px] min-h-[40px] flex items-center justify-center"
+            className="lg:hidden p-2 text-slate-300 hover:text-white bg-[#0E1E38] hover:bg-[#152B4D] active:scale-95 rounded-xl transition-colors cursor-pointer border border-[#1E2E48] min-w-[38px] min-h-[38px] flex items-center justify-center shrink-0"
             aria-label="Open sidebar"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="font-cinzel text-base sm:text-2xl font-bold text-white tracking-wider uppercase leading-tight">
+          <div className="min-w-0">
+            <h1 className="font-cinzel text-sm sm:text-2xl font-bold text-white tracking-wider uppercase leading-tight truncate">
               {activeTab}
             </h1>
-            <p className="text-[9px] sm:text-[11px] text-[#C5A880] uppercase tracking-widest font-semibold font-cinzel truncate max-w-[210px] sm:max-w-none">
+            <p className="text-[9px] sm:text-[11px] text-[#C5A880] uppercase tracking-widest font-semibold font-cinzel truncate max-w-[180px] sm:max-w-none">
               Sri Amaraavathi College, Karur
             </p>
           </div>
         </div>
 
         {/* Right Action Header Info */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div 
             onClick={() => onSelectTab('Profile')}
-            className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-full bg-[#0B1528] hover:bg-[#112240] border border-[#1E2E48] hover:border-[#C5A880]/50 cursor-pointer transition-all shadow-sm active:scale-95"
+            className="flex items-center gap-2 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#0B1528] hover:bg-[#112240] border border-[#1E2E48] hover:border-[#C5A880]/50 cursor-pointer transition-all shadow-sm active:scale-95"
           >
             {userProfile.photoUrl ? (
               <img
                 src={userProfile.photoUrl}
                 alt={userProfile.name}
-                className="w-6 h-6 rounded-full object-cover border border-[#C5A880]"
+                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover border border-[#C5A880]"
               />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-[#0A192F] text-[#C5A880] flex items-center justify-center text-xs border border-[#C5A880]/40 font-bold">
-                {userProfile.name ? userProfile.name[0].toUpperCase() : <User className="w-3.5 h-3.5" />}
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#0A192F] text-[#C5A880] flex items-center justify-center text-[10px] sm:text-xs border border-[#C5A880]/40 font-bold">
+                {userProfile.name ? userProfile.name[0].toUpperCase() : <User className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
               </div>
             )}
             <span className="text-xs font-semibold text-slate-200 hidden sm:inline max-w-[120px] truncate">
@@ -82,7 +82,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       </header>
 
       {/* Main Tab Content - Mobile responsive margins & padding */}
-      <main className="flex-1 px-3 py-4 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto pb-24 lg:pb-10">
+      <main className="flex-1 px-2.5 py-3 sm:px-6 sm:py-6 lg:p-10 max-w-7xl w-full min-w-0 mx-auto pb-24 lg:pb-10 overflow-x-hidden">
         {activeTab === 'Home' && (
           <HomeTab 
             userProfile={userProfile} 

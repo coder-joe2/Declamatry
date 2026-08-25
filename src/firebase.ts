@@ -23,7 +23,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { UserProfile, Poll, RegisteredMember } from './types';
+import { UserProfile, Poll, RegisteredMember, MeetingVotingSession } from './types';
 
 // User provided Firebase configuration
 const firebaseConfig = {
@@ -590,6 +590,242 @@ export async function deletePoll(pollId: string): Promise<boolean> {
     await deleteDoc(docRef);
   } catch (err) {
     console.warn('Firestore poll delete note:', err);
+  }
+
+  return true;
+}
+
+/* ========================================================================= */
+/* MEETING VOTING SESSIONS (Best Role Players, Keynotes, Evaluators, etc.)     */
+/* ========================================================================= */
+
+const LOCAL_MEETINGS_KEY = 'declamate_meeting_sessions_v1';
+
+export function getLocalMeetingSessions(): MeetingVotingSession[] {
+  try {
+    const data = localStorage.getItem(LOCAL_MEETINGS_KEY);
+    if (data) {
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Error loading local meeting sessions:', e);
+  }
+  return [];
+}
+
+export function saveLocalMeetingSessions(sessions: MeetingVotingSession[]): void {
+  try {
+    localStorage.setItem(LOCAL_MEETINGS_KEY, JSON.stringify(sessions));
+  } catch (e) {
+    console.error('Error saving local meeting sessions:', e);
+  }
+}
+
+/**
+ * Creates a new Meeting Voting Session (The 4 Roles Quick Setup)
+ */
+export async function createMeetingSessionInFirebase(
+  newSession: Omit<MeetingVotingSession, 'id'>
+): Promise<{ success: boolean; id: string; session: MeetingVotingSession }> {
+  const docId = 'meeting_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  const createdSession: MeetingVotingSession = {
+    ...newSession,
+    id: docId,
+  };
+
+  // 1. Optimistic local cache save
+  const currentSessions = getLocalMeetingSessions();
+  const updated = [createdSession, ...currentSessions.filter(s => s.id !== docId)];
+  saveLocalMeetingSessions(updated);
+
+  // 2. Sync to Firestore
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'meeting_sessions', docId);
+    await setDoc(docRef, {
+      ...createdSession,
+      serverTime: serverTimestamp(),
+    }, { merge: true });
+  } catch (err) {
+    console.warn('Firestore meeting session write note (saved locally):', err);
+  }
+
+  return { success: true, id: docId, session: createdSession };
+}
+
+/**
+ * Subscribes to live Meeting Voting Sessions from Firestore
+ */
+export function subscribeToMeetingSessions(onUpdate: (sessions: MeetingVotingSession[]) => void): () => void {
+  const initialLocal = getLocalMeetingSessions();
+  if (initialLocal.length > 0) {
+    onUpdate(initialLocal);
+  }
+
+  let unsubscribeSnapshot = () => {};
+
+  try {
+    const colRef = collection(db, 'meeting_sessions');
+    unsubscribeSnapshot = onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const remoteSessions: MeetingVotingSession[] = snapshot.docs.map((docSnap) => {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              title: data.title || 'Club Meeting Voting',
+              meetingNumber: data.meetingNumber || '',
+              meetingDate: data.meetingDate || new Date().toISOString(),
+              categories: data.categories || [],
+              isActive: data.isActive ?? true,
+              createdAt: data.createdAt || new Date().toISOString(),
+              createdBy: data.createdBy || { name: 'Admin', gmail: '' },
+              totalVoters: data.totalVoters || 0,
+              votedUserEmails: data.votedUserEmails || [],
+            };
+          });
+
+          // Sort newest first
+          remoteSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+          saveLocalMeetingSessions(remoteSessions);
+          onUpdate(remoteSessions);
+        } else if (initialLocal.length === 0) {
+          onUpdate([]);
+        }
+      },
+      (error) => {
+        console.warn('Real-time meeting sessions snapshot note (using cache):', error.message);
+        onUpdate(getLocalMeetingSessions());
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to attach meeting sessions listener:', err);
+    onUpdate(getLocalMeetingSessions());
+  }
+
+  return () => {
+    unsubscribeSnapshot();
+  };
+}
+
+/**
+ * Submits votes for a Meeting Session across the 4 roles
+ * votesMap: { [categoryId]: candidateId }
+ */
+export async function submitMeetingVoteInFirebase(
+  sessionId: string,
+  votesMap: Record<string, string>,
+  userEmail: string
+): Promise<{ success: boolean; updatedSession?: MeetingVotingSession }> {
+  const currentSessions = getLocalMeetingSessions();
+  const targetIndex = currentSessions.findIndex((s) => s.id === sessionId);
+  const session = targetIndex >= 0 ? currentSessions[targetIndex] : null;
+
+  if (!session) {
+    return { success: false };
+  }
+
+  // Calculate updated categories
+  const updatedCategories = session.categories.map((cat) => {
+    const chosenCandidateId = votesMap[cat.id];
+
+    const updatedCandidates = cat.candidates.map((cand) => {
+      let voterList = cand.voterEmails ? [...cand.voterEmails] : [];
+      const hadVoted = voterList.includes(userEmail);
+
+      if (hadVoted) {
+        voterList = voterList.filter((e) => e !== userEmail);
+      }
+
+      if (chosenCandidateId && cand.id === chosenCandidateId) {
+        voterList.push(userEmail);
+      }
+
+      return {
+        ...cand,
+        votes: voterList.length,
+        voterEmails: voterList,
+      };
+    });
+
+    return {
+      ...cat,
+      candidates: updatedCandidates,
+    };
+  });
+
+  const updatedVotedUsers = Array.from(
+    new Set([
+      ...(session.votedUserEmails || []).filter((e) => e !== userEmail),
+      userEmail,
+    ])
+  );
+
+  const updatedSession: MeetingVotingSession = {
+    ...session,
+    categories: updatedCategories,
+    totalVoters: updatedVotedUsers.length,
+    votedUserEmails: updatedVotedUsers,
+  };
+
+  // Optimistic local update
+  currentSessions[targetIndex] = updatedSession;
+  saveLocalMeetingSessions([...currentSessions]);
+
+  // Firestore update
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'meeting_sessions', sessionId);
+    await setDoc(
+      docRef,
+      {
+        ...updatedSession,
+        lastVoteAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Firestore meeting vote sync note (saved locally):', err);
+  }
+
+  return { success: true, updatedSession };
+}
+
+/**
+ * Toggle meeting session active / closed status
+ */
+export async function toggleMeetingSessionStatus(sessionId: string, isActive: boolean): Promise<boolean> {
+  const currentSessions = getLocalMeetingSessions();
+  const updated = currentSessions.map((s) => (s.id === sessionId ? { ...s, isActive } : s));
+  saveLocalMeetingSessions(updated);
+
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'meeting_sessions', sessionId);
+    await setDoc(docRef, { isActive, lastStatusChange: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn('Firestore meeting session toggle note:', err);
+  }
+
+  return true;
+}
+
+/**
+ * Delete a meeting session
+ */
+export async function deleteMeetingSession(sessionId: string): Promise<boolean> {
+  const currentSessions = getLocalMeetingSessions();
+  const updated = currentSessions.filter((s) => s.id !== sessionId);
+  saveLocalMeetingSessions(updated);
+
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'meeting_sessions', sessionId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('Firestore meeting session delete note:', err);
   }
 
   return true;

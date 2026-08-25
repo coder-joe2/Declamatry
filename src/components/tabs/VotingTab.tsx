@@ -4,33 +4,36 @@ import {
   Plus, 
   Sparkles, 
   CheckCircle2, 
-  Circle, 
-  Clock, 
   Users, 
-  Crown, 
-  Share2, 
   Trash2, 
-  Power, 
   Check, 
-  ChevronDown, 
-  ChevronUp,
-  Lock,
-  Unlock,
-  AlertCircle,
-  EyeOff,
-  Trophy,
-  X,
-  AlertTriangle,
-  ShieldCheck
+  Lock, 
+  Unlock, 
+  Trophy, 
+  Share2, 
+  ShieldCheck,
+  Circle,
+  Crown,
+  Layers,
+  Mic,
+  Zap,
+  FileText
 } from 'lucide-react';
-import { UserProfile, Poll } from '../../types';
+import { UserProfile, Poll, MeetingVotingSession } from '../../types';
 import { CreatePollModal } from '../CreatePollModal';
+import { CreateMeetingSessionModal } from '../CreateMeetingSessionModal';
+import { MeetingSessionCard } from '../MeetingSessionCard';
 import { 
   subscribeToPolls, 
   createPollInFirebase, 
   submitVoteInFirebase, 
   togglePollStatus, 
-  deletePoll 
+  deletePoll,
+  subscribeToMeetingSessions,
+  createMeetingSessionInFirebase,
+  submitMeetingVoteInFirebase,
+  toggleMeetingSessionStatus,
+  deleteMeetingSession
 } from '../../firebase';
 
 interface VotingTabProps {
@@ -53,23 +56,41 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
     userEmail === 'vjana537@gmail.com'
   );
 
+  // States for Meeting Sessions & Polls
+  const [meetingSessions, setMeetingSessions] = useState<MeetingVotingSession[]>([]);
   const [polls, setPolls] = useState<Poll[]>([]);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+
+  // Modals
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState<boolean>(false);
+  const [isCustomPollModalOpen, setIsCustomPollModalOpen] = useState<boolean>(false);
+  
+  // Deletions
+  const [sessionToDelete, setSessionToDelete] = useState<MeetingVotingSession | null>(null);
   const [pollToDelete, setPollToDelete] = useState<Poll | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'active' | 'my' | 'ended'>('all');
+
+  // Filter
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'meetings' | 'active' | 'ended' | 'custom'>('all');
+  
+  // Single poll voting interaction state
   const [selectedOptionsMap, setSelectedOptionsMap] = useState<Record<string, string[]>>({});
   const [expandedVotersPollId, setExpandedVotersPollId] = useState<string | null>(null);
-  const [copiedPollId, setCopiedPollId] = useState<string | null>(null);
   const [votingInProgressId, setVotingInProgressId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Subscribe to real-time polls updates from Firebase & local storage
+  // Subscribe to real-time meeting sessions & polls
   useEffect(() => {
-    const unsubscribe = subscribeToPolls((updatedPolls) => {
+    const unsubMeetings = subscribeToMeetingSessions((updatedSessions) => {
+      setMeetingSessions(updatedSessions);
+    });
+
+    const unsubPolls = subscribeToPolls((updatedPolls) => {
       setPolls(updatedPolls);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubMeetings();
+      unsubPolls();
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -79,16 +100,90 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
     }, 3000);
   };
 
-  const handleCreatePoll = async (pollData: Omit<Poll, 'id'>) => {
+  /* ========================================================================= */
+  /* MEETING VOTING SESSION HANDLERS                                           */
+  /* ========================================================================= */
+
+  const handleCreateMeetingSession = async (sessionData: Omit<MeetingVotingSession, 'id'>) => {
+    if (!isAdmin) {
+      showToast('Admin privilege required to launch voting sessions.');
+      return;
+    }
+    const result = await createMeetingSessionInFirebase(sessionData);
+    if (result.success && result.session) {
+      setMeetingSessions((prev) => [result.session, ...prev.filter((s) => s.id !== result.session.id)]);
+      showToast('🚀 4-Role Meeting Voting Session Launched!');
+    }
+  };
+
+  const handleVoteMeetingSession = async (sessionId: string, votesMap: Record<string, string>) => {
+    const email = userEmail || 'member@declamates.club';
+    const result = await submitMeetingVoteInFirebase(sessionId, votesMap, email);
+    if (result.updatedSession) {
+      setMeetingSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? result.updatedSession! : s))
+      );
+      showToast('Secret ballot recorded across all selected roles!');
+    }
+  };
+
+  const handleToggleMeetingSessionStatus = async (sessionId: string, currentStatus: boolean) => {
+    if (!isAdmin) {
+      showToast('Only Admins can open or close sessions.');
+      return;
+    }
+    const nextStatus = !currentStatus;
+    setMeetingSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, isActive: nextStatus } : s))
+    );
+    await toggleMeetingSessionStatus(sessionId, nextStatus);
+    showToast(nextStatus ? 'Meeting voting reopened!' : '🏆 Voting closed & winners declared!');
+  };
+
+  const handleConfirmDeleteSession = async () => {
+    if (!sessionToDelete || !isAdmin) return;
+    const targetId = sessionToDelete.id;
+    setMeetingSessions((prev) => prev.filter((s) => s.id !== targetId));
+    setSessionToDelete(null);
+    await deleteMeetingSession(targetId);
+    showToast('Meeting voting session deleted.');
+  };
+
+  const handleShareMeetingSession = async (session: MeetingVotingSession) => {
+    const text = `🗳️ Declamate's Society Meeting Voting: "${session.title}"\nCast your ballot for Key Note Speakers, Evaluators & Role Players!`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: session.title,
+          text,
+          url: window.location.href,
+        });
+        return;
+      } catch {
+        // Fallback
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}\n${window.location.href}`);
+      showToast('Meeting voting link copied!');
+    } catch {
+      showToast('Link copied!');
+    }
+  };
+
+  /* ========================================================================= */
+  /* CUSTOM SINGLE POLL HANDLERS                                               */
+  /* ========================================================================= */
+
+  const handleCreateCustomPoll = async (pollData: Omit<Poll, 'id'>) => {
     if (!isAdmin) {
       showToast('Admin privilege required to create polls.');
       return;
     }
     const result = await createPollInFirebase(pollData);
     if (result.success && result.poll) {
-      // Optimistic update in UI
       setPolls((prev) => [result.poll, ...prev.filter((p) => p.id !== result.poll.id)]);
-      showToast('Voting poll published!');
+      showToast('Custom poll published!');
     }
   };
 
@@ -132,7 +227,6 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
       const result = await submitVoteInFirebase(poll.id, selected, email);
       
       if (result.updatedPoll) {
-        // Optimistic state update
         setPolls((prev) =>
           prev.map((p) => (p.id === poll.id ? result.updatedPoll! : p))
         );
@@ -171,107 +265,136 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
     }
   };
 
-  const handleToggleStatus = async (pollId: string, currentStatus: boolean) => {
+  const handleTogglePollStatus = async (pollId: string, currentStatus: boolean) => {
     if (!isAdmin) {
       showToast('Only Admins can open or close voting sessions.');
       return;
     }
     const nextStatus = !currentStatus;
-    
-    // 1. Instant optimistic update in React state so UI updates immediately
     setPolls((prevPolls) =>
       prevPolls.map((p) => (p.id === pollId ? { ...p, isActive: nextStatus } : p))
     );
-
-    // 2. Persist change in localStorage and Firebase Firestore
     await togglePollStatus(pollId, nextStatus);
-
     showToast(nextStatus ? 'Voting session reopened!' : 'Voting closed & results revealed!');
   };
 
-  const handleRequestDelete = (poll: Poll) => {
-    if (!isAdmin) {
-      showToast('Only Admins can delete voting sessions.');
-      return;
-    }
-    setPollToDelete(poll);
-  };
-
-  const handleConfirmDelete = async () => {
+  const handleConfirmDeletePoll = async () => {
     if (!pollToDelete || !isAdmin) return;
     const targetId = pollToDelete.id;
-
-    // 1. Instant optimistic delete in React state
     setPolls((prev) => prev.filter((p) => p.id !== targetId));
     setPollToDelete(null);
-
-    // 2. Persist deletion
     await deletePoll(targetId);
     showToast('Poll deleted successfully.');
   };
 
-  const handleShare = async (poll: Poll) => {
-    const shareData = {
-      title: `Declamate's Poll: ${poll.question}`,
-      text: `🗳️ Vote in Declamate's Society: "${poll.question}"`,
-      url: window.location.href,
-    };
-
+  const handleSharePoll = async (poll: Poll) => {
+    const text = `🗳️ Declamate's Society Voting: "${poll.question}"`;
     if (navigator.share) {
       try {
-        await navigator.share(shareData);
+        await navigator.share({
+          title: poll.question,
+          text,
+          url: window.location.href,
+        });
         return;
       } catch {
         // Fallback
       }
     }
-
     try {
-      await navigator.clipboard.writeText(`🗳️ Declamate's Society Voting: "${poll.question}"\nVote now at: ${window.location.href}`);
-      setCopiedPollId(poll.id);
+      await navigator.clipboard.writeText(`${text}\n${window.location.href}`);
       showToast('Poll link copied!');
-      setTimeout(() => setCopiedPollId(null), 2500);
     } catch {
       showToast('Link copied!');
     }
   };
 
-  // Filter polls
-  const filteredPolls = polls.filter((poll) => {
-    if (selectedFilter === 'active') return poll.isActive;
-    if (selectedFilter === 'ended') return !poll.isActive;
-    if (selectedFilter === 'my') {
-      return (
-        poll.createdBy?.gmail?.toLowerCase() === userEmail ||
-        poll.createdBy?.name?.toLowerCase() === currentUser.name?.toLowerCase()
-      );
-    }
+  /* ========================================================================= */
+  /* FILTERING LOGIC                                                           */
+  /* ========================================================================= */
+
+  const activeMeetings = meetingSessions.filter((s) => s.isActive);
+  const closedMeetings = meetingSessions.filter((s) => !s.isActive);
+  const activePolls = polls.filter((p) => p.isActive);
+  const closedPolls = polls.filter((p) => !p.isActive);
+
+  const totalActive = activeMeetings.length + activePolls.length;
+
+  const showMeetingSessions = selectedFilter === 'all' || selectedFilter === 'meetings' || (selectedFilter === 'active' && activeMeetings.length > 0) || (selectedFilter === 'ended' && closedMeetings.length > 0);
+  const showCustomPolls = selectedFilter === 'all' || selectedFilter === 'custom' || (selectedFilter === 'active' && activePolls.length > 0) || (selectedFilter === 'ended' && closedPolls.length > 0);
+
+  const filteredMeetings = meetingSessions.filter((s) => {
+    if (selectedFilter === 'active') return s.isActive;
+    if (selectedFilter === 'ended') return !s.isActive;
+    if (selectedFilter === 'meetings') return true;
+    if (selectedFilter === 'custom') return false;
     return true;
   });
 
-  const activeCount = polls.filter((p) => p.isActive).length;
+  const filteredCustomPolls = polls.filter((p) => {
+    if (selectedFilter === 'active') return p.isActive;
+    if (selectedFilter === 'ended') return !p.isActive;
+    if (selectedFilter === 'custom') return true;
+    if (selectedFilter === 'meetings') return false;
+    return true;
+  });
+
+  const hasAnyItems = filteredMeetings.length > 0 || filteredCustomPolls.length > 0;
 
   return (
-    <div className="w-full text-slate-100 selection:bg-[#C5A880] selection:text-[#0A192F]">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden text-slate-100 selection:bg-[#C5A880] selection:text-[#0A192F] space-y-4 sm:space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 sm:top-24 left-1/2 -translate-x-1/2 z-50 bg-[#00A884] text-[#111B21] px-4 py-2 rounded-full font-bold shadow-2xl flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap border border-[#25D366] animate-bounce">
+        <div className="fixed top-14 sm:top-24 left-1/2 -translate-x-1/2 z-50 bg-[#00A884] text-[#111B21] px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold shadow-2xl flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap border border-[#25D366] animate-bounce max-w-[90vw] truncate">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{toastMessage}</span>
+          <span className="truncate">{toastMessage}</span>
         </div>
       )}
 
-      {/* In-App Delete Confirmation Modal (Admin only) */}
-      {pollToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0B141A] border border-[#2A3942] rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+      {/* In-App Delete Confirmation Modal for Meeting Session */}
+      {sessionToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#0B141A] border border-[#2A3942] rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-white">Delete Voting Session?</h3>
-              <p className="text-xs text-slate-400">
-                "{pollToDelete.question}" will be permanently removed. This action cannot be undone.
+              <h3 className="text-base font-bold text-white">Delete Meeting Voting Session?</h3>
+              <p className="text-xs text-slate-400 break-words">
+                "{sessionToDelete.title}" and all its candidate votes will be permanently deleted.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setSessionToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl bg-[#111B21] border border-[#222E35] text-slate-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteSession}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg shadow-rose-600/30 active:scale-95 transition-all"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Delete Confirmation Modal for Custom Poll */}
+      {pollToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#0B141A] border border-[#2A3942] rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-white">Delete Voting Poll?</h3>
+              <p className="text-xs text-slate-400 break-words">
+                "{pollToDelete.question}" will be permanently removed.
               </p>
             </div>
             <div className="flex items-center gap-2.5 pt-2">
@@ -284,7 +407,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDelete}
+                onClick={handleConfirmDeletePoll}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase tracking-wider cursor-pointer shadow-lg shadow-rose-600/30 active:scale-95 transition-all"
               >
                 Yes, Delete
@@ -295,81 +418,92 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 1. MOBILE VIEW (WhatsApp / Mobile App Style - Enabled via @media)         */}
+      {/* HEADER BANNER & ADMIN CREATION ACTIONS                                    */}
       {/* ========================================================================= */}
-      <div className="voting-mobile-layout w-full">
-        {/* Mobile Header Banner */}
-        <div className="w-full bg-[#0B141A] border-b border-[#1F2C34] p-3.5 space-y-3 rounded-xl shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#111B21] border border-[#00A884]/40 text-[#00A884] flex items-center justify-center">
-                <Vote className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h2 className="text-sm font-bold text-white uppercase tracking-wider font-cinzel">
-                    Polling Center
-                  </h2>
-                  {isAdmin && (
-                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold border border-amber-500/30">
-                      <ShieldCheck className="w-2.5 h-2.5" />
-                      Admin
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Secret ballot voting for members
-                </p>
-              </div>
+      <div className="w-full min-w-0 max-w-full bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-7 border border-[#C5A880]/40 shadow-2xl space-y-3 sm:space-y-4 overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 min-w-0">
+          <div className="space-y-2 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[10px] sm:text-xs font-semibold uppercase tracking-wider border border-[#C5A880]/40 font-cinzel">
+                <Vote className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                <span className="truncate">Declamate’s Polling Center</span>
+              </span>
+
+              {isAdmin && (
+                <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-bold border border-amber-500/40 shrink-0">
+                  <ShieldCheck className="w-3 h-3 shrink-0" />
+                  <span>Admin</span>
+                </span>
+              )}
+
+              {totalActive > 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[#00A884]/20 text-[#00A884] text-[10px] sm:text-xs font-bold border border-[#00A884]/40 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00A884] animate-ping" />
+                  <span>{totalActive} Live {totalActive === 1 ? 'Session' : 'Sessions'}</span>
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-[#111B21] text-slate-400 text-[10px] sm:text-xs border border-[#1E2E48] shrink-0">
+                  0 Active
+                </span>
+              )}
             </div>
 
-            {activeCount > 0 ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#00A884]/20 text-[#00A884] text-[11px] font-bold border border-[#00A884]/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00A884] animate-ping" />
-                {activeCount} Active
-              </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-full bg-[#1E2E48] text-slate-400 text-[10px]">
-                0 Active
-              </span>
-            )}
+            <h2 className="text-base sm:text-2xl md:text-3xl font-bold font-cinzel text-white tracking-wide break-words leading-snug">
+              Official Meeting Voting &amp; Secret Ballots
+            </h2>
+            <p className="text-slate-300 text-[11px] sm:text-sm leading-relaxed max-w-2xl break-words">
+              Vote for <span className="text-[#00A884] font-semibold">1. Best Role Players</span>, <span className="text-[#C5A880] font-semibold">2. Best Key Note Speakers</span>, <span className="text-sky-400 font-semibold">3. Best Evaluators</span>, and <span className="text-yellow-400 font-semibold">4. Best Quick Think Speaker</span>. Results remain confidential until declared by the admin.
+            </p>
           </div>
 
-          {/* Prominent WhatsApp Green + ADD VOTING Button (ONLY SHOWN FOR ADMIN) */}
+          {/* ADMIN PRIMARY ACTION BUTTONS - Mobile Full Width Stack */}
           {isAdmin && (
-            <button
-              type="button"
-              id="mobile-add-voting-btn"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="w-full py-3 px-4 rounded-xl bg-[#00A884] active:bg-[#009272] text-[#111B21] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#00A884]/20 transition-transform active:scale-[0.98] cursor-pointer min-h-[44px]"
-            >
-              <div className="w-5 h-5 rounded-full bg-[#111B21] text-[#00A884] flex items-center justify-center font-bold">
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              </div>
-              <span>+ Add Voting</span>
-            </button>
+            <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0 w-full sm:w-auto min-w-0">
+              {/* PRIMARY 1-CLICK QUICK SESSION BUTTON */}
+              <button
+                type="button"
+                id="start-meeting-voting-btn"
+                onClick={() => setIsMeetingModalOpen(true)}
+                className="w-full sm:w-auto py-2.5 sm:py-3 px-3.5 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#00A884] to-[#009272] hover:brightness-110 text-[#111B21] font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#00A884]/25 active:scale-95 transition-all cursor-pointer min-h-[42px]"
+              >
+                <Sparkles className="w-4 h-4 text-[#111B21] shrink-0" />
+                <span className="font-cinzel text-center leading-tight">+ Start Meeting Voting (4 Roles)</span>
+              </button>
+
+              {/* SECONDARY CUSTOM POLL BUTTON */}
+              <button
+                type="button"
+                id="add-custom-poll-btn"
+                onClick={() => setIsCustomPollModalOpen(true)}
+                className="w-full sm:w-auto py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl bg-[#111B21] hover:bg-[#182630] text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 border border-[#2A3942] active:scale-95 transition-all cursor-pointer min-h-[38px]"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span>+ Custom Single Poll</span>
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Horizontal Filter Tabs for Mobile */}
-        <div className="w-full flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 scrollbar-none no-scrollbar">
+        {/* Filter Navigation Pills - Smooth horizontal swipe on mobile */}
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pt-2 border-t border-[#182229] scrollbar-none no-scrollbar -mx-1 px-1">
           {[
-            { id: 'all', label: 'All', count: polls.length },
-            { id: 'active', label: 'Active', count: activeCount },
-            { id: 'my', label: 'My Polls', count: polls.filter(p => p.createdBy?.gmail?.toLowerCase() === userEmail).length },
-            { id: 'ended', label: 'Closed', count: polls.filter(p => !p.isActive).length },
+            { id: 'all', label: 'All Sessions', count: meetingSessions.length + polls.length },
+            { id: 'meetings', label: 'Meeting Voting (4 Roles)', count: meetingSessions.length },
+            { id: 'active', label: 'Live Active', count: totalActive },
+            { id: 'ended', label: 'Closed & Winners', count: closedMeetings.length + closedPolls.length },
+            { id: 'custom', label: 'Custom Polls', count: polls.length },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setSelectedFilter(tab.id as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 selectedFilter === tab.id
-                  ? 'bg-[#00A884] text-[#111B21] font-bold shadow-sm'
-                  : 'bg-[#0B141A] text-slate-300 border border-[#1F2C34]'
+                  ? 'bg-[#00A884] text-[#111B21] font-bold shadow-md shadow-[#00A884]/20'
+                  : 'bg-[#0B141A] text-slate-300 hover:bg-[#111B21] border border-[#1F2C34]'
               }`}
             >
               <span>{tab.label}</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+              <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] ${
                 selectedFilter === tab.id ? 'bg-[#111B21] text-[#00A884]' : 'bg-[#182229] text-slate-400'
               }`}>
                 {tab.count}
@@ -377,693 +511,332 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
             </button>
           ))}
         </div>
-
-        {/* Mobile Poll Feed Cards */}
-        {filteredPolls.length === 0 ? (
-          <div className="w-full bg-[#0B141A] rounded-xl border border-[#1F2C34] p-8 text-center space-y-3 shadow-md my-2">
-            <div className="w-12 h-12 rounded-full bg-[#111B21] border border-[#00A884]/40 text-[#00A884] flex items-center justify-center mx-auto">
-              <Vote className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-cinzel text-sm font-bold text-white uppercase tracking-wider">
-                {selectedFilter === 'all' ? 'No Active Polls' : `No ${selectedFilter} polls`}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                {isAdmin
-                  ? 'Tap the button below to start a new club voting session.'
-                  : 'Active voting sessions opened by admins will appear here.'}
-              </p>
-            </div>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00A884] text-[#111B21] font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform cursor-pointer"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Create Poll</span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="w-full space-y-3">
-            {filteredPolls.map((poll) => {
-              const hasUserVoted = poll.votedUserEmails?.includes(userEmail);
-              
-              const maxVotes = Math.max(...poll.options.map((o) => o.votes), 0);
-              const totalPollVotes = poll.totalVotes || 0;
-              const currentSelected = selectedOptionsMap[poll.id] || [];
-              const isVotersExpanded = expandedVotersPollId === poll.id;
-              
-              // Results (percentages, counts, crowns, bars) are ONLY shown when the poll is closed!
-              const showResults = !poll.isActive;
-
-              return (
-                <div
-                  key={poll.id}
-                  className="w-full bg-[#0B141A] rounded-xl border border-[#1F2C34] p-3.5 space-y-3 shadow-md"
-                >
-                  {/* Top Poll Info */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        {poll.isActive ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00A884]/20 text-[#00A884] text-[10px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00A884] animate-pulse" />
-                            Live Voting (Open)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[10px] font-bold border border-[#C5A880]/40">
-                            <Trophy className="w-3 h-3 text-[#C5A880]" />
-                            Voting Closed • Results Declared
-                          </span>
-                        )}
-                      </div>
-
-                      <span className="text-[10px] text-slate-500">
-                        {new Date(poll.createdAt).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-
-                    <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
-                      {poll.question}
-                    </h3>
-
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                      <span className="truncate max-w-[200px]">
-                        Host: {poll.createdBy?.name || 'Club Member'}
-                      </span>
-                      {poll.isActive && (
-                        <span className="text-amber-400/90 flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5" />
-                          <span>Secret Ballot</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Options List */}
-                  <div className="space-y-2">
-                    {poll.options.map((option) => {
-                      const optionVotes = option.votes || 0;
-                      const percentage = totalPollVotes > 0 ? Math.round((optionVotes / totalPollVotes) * 100) : 0;
-                      const isSelected = currentSelected.includes(option.id);
-                      const userVotedThis = option.voterEmails?.includes(userEmail);
-                      const isLeader = maxVotes > 0 && optionVotes === maxVotes;
-
-                      return (
-                        <div
-                          key={option.id}
-                          onClick={() => {
-                            if (poll.isActive && (!hasUserVoted || currentSelected.length > 0)) {
-                              handleOptionSelect(poll, option.id);
-                            }
-                          }}
-                          className={`relative p-3 rounded-lg border transition-all select-none min-h-[46px] flex items-center ${
-                            poll.isActive && (!hasUserVoted || currentSelected.length > 0)
-                              ? 'cursor-pointer active:scale-[0.99]'
-                              : 'cursor-default'
-                          } ${
-                            showResults
-                              ? isLeader && totalPollVotes > 0
-                                ? 'bg-[#00A884]/15 border-[#00A884] text-white'
-                                : 'bg-[#111B21] border-[#222E35] text-slate-200'
-                              : isSelected || (hasUserVoted && userVotedThis)
-                              ? 'bg-[#00A884]/15 border-[#00A884] text-white shadow-sm'
-                              : 'bg-[#111B21] border-[#222E35] text-slate-200'
-                          }`}
-                        >
-                          {/* Progress bar fill - ONLY SHOWN WHEN POLL IS CLOSED */}
-                          {showResults && (
-                            <div
-                              className={`absolute left-0 top-0 bottom-0 rounded-lg transition-all duration-500 ${
-                                userVotedThis
-                                  ? 'bg-[#00A884]/25 border-r-2 border-[#00A884]'
-                                  : isLeader && totalPollVotes > 0
-                                  ? 'bg-[#C5A880]/20'
-                                  : 'bg-slate-700/20'
-                              }`}
-                              style={{ width: `${percentage}%` }}
-                            />
-                          )}
-
-                          <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
-                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                              {/* Checkbox / Radio state */}
-                              {poll.isActive ? (
-                                hasUserVoted && currentSelected.length === 0 ? (
-                                  userVotedThis ? (
-                                    <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold shadow-sm">
-                                      <Check className="w-3 h-3 stroke-[3]" />
-                                    </span>
-                                  ) : (
-                                    <span className="shrink-0 w-4 h-4 rounded-full border border-slate-600" />
-                                  )
-                                ) : (
-                                  <div className="shrink-0 text-[#00A884]">
-                                    {isSelected ? (
-                                      <CheckCircle2 className="w-4.5 h-4.5 fill-[#00A884] text-[#111B21]" />
-                                    ) : (
-                                      <Circle className="w-4.5 h-4.5 text-slate-500" />
-                                    )}
-                                  </div>
-                                )
-                              ) : (
-                                userVotedThis && (
-                                  <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
-                                    <Check className="w-3 h-3 stroke-[3]" />
-                                  </span>
-                                )
-                              )}
-
-                              <span className="text-xs font-medium leading-snug break-words">
-                                {option.text}
-                              </span>
-                            </div>
-
-                            {/* Results Display (Percentages, Crown, Counts) - ONLY SHOWN WHEN CLOSED */}
-                            {showResults ? (
-                              <div className="flex items-center gap-1 shrink-0 text-right">
-                                {isLeader && totalPollVotes > 0 && (
-                                  <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
-                                )}
-                                <span className="text-xs font-bold text-slate-200">
-                                  {percentage}%
-                                </span>
-                                <span className="text-[10px] text-slate-500">
-                                  ({optionVotes})
-                                </span>
-                              </div>
-                            ) : (
-                              /* While Active: show a subtle badge for user choice */
-                              hasUserVoted && userVotedThis && (
-                                <span className="text-[10px] text-[#00A884] font-medium shrink-0 bg-[#00A884]/15 px-2 py-0.5 rounded">
-                                  Your Choice
-                                </span>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Active Confidential Notice while voting is in progress */}
-                  {poll.isActive && hasUserVoted && currentSelected.length === 0 && (
-                    <div className="p-2.5 bg-[#050B10] rounded-lg border border-[#1F2C34] flex items-center gap-2 text-[11px] text-slate-400">
-                      <Lock className="w-3.5 h-3.5 text-[#00A884] shrink-0" />
-                      <span>
-                        Your vote has been cast. Results will be declared once the host closes the voting.
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Poll Actions & Vote Button */}
-                  <div className="pt-1.5 border-t border-[#182229] space-y-2">
-                    <div className="flex items-center justify-between">
-                      {/* Vote Count Info */}
-                      {showResults ? (
-                        <button
-                          type="button"
-                          onClick={() => setExpandedVotersPollId(isVotersExpanded ? null : poll.id)}
-                          className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1 py-1 cursor-pointer"
-                        >
-                          <Users className="w-3.5 h-3.5 text-[#00A884]" />
-                          <span>{totalPollVotes} votes total</span>
-                          {totalPollVotes > 0 && (
-                            <span className="text-[#00A884] font-medium ml-1">
-                              {isVotersExpanded ? '▲ Hide Breakdown' : '▼ View Breakdown'}
-                            </span>
-                          )}
-                        </button>
-                      ) : (
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1 py-1">
-                          <Users className="w-3.5 h-3.5 text-[#00A884]" />
-                          <span>{totalPollVotes} {totalPollVotes === 1 ? 'member voted' : 'members voted'}</span>
-                        </div>
-                      )}
-
-                      {/* Action buttons (Share for everyone; Close/Reopen & Delete ONLY FOR ADMIN) */}
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleShare(poll)}
-                          className="p-2 text-slate-400 hover:text-white rounded-lg bg-[#111B21] border border-[#222E35] active:scale-95 transition-transform cursor-pointer"
-                          title="Share"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Admin-Only Control Buttons */}
-                        {isAdmin && (
-                          <>
-                            {/* Prominent Close / Reopen Toggle Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleToggleStatus(poll.id, poll.isActive)}
-                              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 border transition-all active:scale-95 cursor-pointer ${
-                                poll.isActive
-                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
-                                  : 'bg-[#00A884]/20 text-[#00A884] border-[#00A884]/50 hover:bg-[#00A884]/30'
-                              }`}
-                              title={poll.isActive ? 'Close voting to reveal results' : 'Reopen voting'}
-                            >
-                              {poll.isActive ? (
-                                <>
-                                  <Lock className="w-3.5 h-3.5" />
-                                  <span>Close &amp; Declare</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Unlock className="w-3.5 h-3.5" />
-                                  <span>Reopen</span>
-                                </>
-                              )}
-                            </button>
-
-                            {/* Delete Button with In-App Confirmation */}
-                            <button
-                              type="button"
-                              onClick={() => handleRequestDelete(poll)}
-                              className="p-2 text-slate-400 hover:text-rose-400 active:text-rose-300 rounded-lg bg-[#111B21] border border-[#222E35] active:scale-95 transition-transform cursor-pointer"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Primary Button */}
-                    {poll.isActive && (
-                      <div>
-                        {hasUserVoted && currentSelected.length === 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => handleRetractVote(poll)}
-                            disabled={votingInProgressId === poll.id}
-                            className="w-full py-2.5 rounded-lg bg-[#111B21] border border-[#222E35] text-slate-300 hover:text-white text-xs font-semibold cursor-pointer active:bg-[#202C33]"
-                          >
-                            Change My Vote
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleCastVote(poll)}
-                            disabled={currentSelected.length === 0 || votingInProgressId === poll.id}
-                            className="w-full py-2.5 rounded-lg bg-[#00A884] active:bg-[#009272] text-[#111B21] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
-                          >
-                            {votingInProgressId === poll.id ? (
-                              <span>Submitting...</span>
-                            ) : (
-                              <>
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                <span>{hasUserVoted ? 'Update Vote' : 'Submit Ballot'}</span>
-                              </>
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Voter distribution details (ONLY WHEN POLL IS CLOSED) */}
-                    {showResults && isVotersExpanded && totalPollVotes > 0 && (
-                      <div className="p-2.5 bg-[#050B10] rounded-lg border border-[#1F2C34] text-[11px] space-y-1">
-                        <p className="font-semibold text-slate-300">Final Vote Breakdown:</p>
-                        {poll.options.map((opt) => (
-                          <div key={opt.id} className="flex items-center justify-between text-slate-400 py-0.5">
-                            <span className="truncate pr-2">{opt.text}</span>
-                            <span className="font-bold text-[#00A884]">
-                              {opt.votes} {opt.votes === 1 ? 'vote' : 'votes'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. LAPTOP / DESKTOP VIEW (Luxury Gold & Navy Dashboard Layout)             */}
+      {/* MAIN CONTENT FEED: 4-ROLE MEETING SESSIONS & CUSTOM POLLS                 */}
       {/* ========================================================================= */}
-      <div className="voting-desktop-layout w-full space-y-6 max-w-5xl mx-auto">
-        {/* Desktop Header Banner */}
-        <div className="rounded-3xl bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] text-white p-8 border border-[#C5A880]/40 shadow-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-xs font-semibold uppercase tracking-wider border border-[#C5A880]/40 font-cinzel">
-                  <Vote className="w-3.5 h-3.5" />
-                  <span>Official Society Polling</span>
-                </span>
-                {isAdmin && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/40">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Admin Mode
-                  </span>
-                )}
-                {activeCount > 0 && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00A884]/20 text-[#00A884] text-xs font-bold border border-[#00A884]/30">
-                    <span className="w-2 h-2 rounded-full bg-[#00A884] animate-ping" />
-                    {activeCount} Live Sessions
-                  </span>
-                )}
+      {!hasAnyItems ? (
+        <div className="w-full bg-[#0B141A] rounded-3xl border border-[#1F2C34] p-10 sm:p-14 text-center space-y-4 shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-[#111B21] border border-[#00A884]/40 text-[#00A884] flex items-center justify-center mx-auto shadow-lg">
+            <Vote className="w-8 h-8" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className="font-cinzel text-lg sm:text-xl font-bold text-white tracking-wider">
+              {selectedFilter === 'all' ? 'No Active Voting Sessions' : `No ${selectedFilter} sessions found`}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-400">
+              {isAdmin
+                ? 'Tap "+ Start Meeting Voting (4 Roles)" to launch the 4 club categories in one click.'
+                : 'Active club voting sessions created by admins will appear here.'}
+            </p>
+          </div>
+
+          {isAdmin && (
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMeetingModalOpen(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#00A884] text-[#111B21] font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform cursor-pointer shadow-lg"
+              >
+                <Sparkles className="w-4 h-4 text-[#111B21]" />
+                <span>+ Launch 4-Role Meeting Voting</span>
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* 1. MEETING SESSIONS (The 4 Official Roles) */}
+          {showMeetingSessions && filteredMeetings.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#00A884]" />
+                <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider font-cinzel">
+                  Club Meeting Voting Sessions (4 Roles)
+                </h3>
               </div>
 
-              <h2 className="text-3xl font-bold font-cinzel text-white tracking-wide">
-                Secret Ballot Member Voting
-              </h2>
-              <p className="text-slate-300 text-sm leading-relaxed max-w-xl">
-                Cast secret ballots for keynote speeches and evaluations. Results are revealed once the host closes the session.
-              </p>
+              <div className="space-y-6">
+                {filteredMeetings.map((session) => (
+                  <MeetingSessionCard
+                    key={session.id}
+                    session={session}
+                    currentUser={currentUser}
+                    isAdmin={isAdmin}
+                    onVote={handleVoteMeetingSession}
+                    onToggleStatus={handleToggleMeetingSessionStatus}
+                    onRequestDelete={setSessionToDelete}
+                    onShare={handleShareMeetingSession}
+                  />
+                ))}
+              </div>
             </div>
+          )}
 
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl bg-[#00A884] hover:bg-[#009272] text-[#111B21] font-bold text-sm shadow-xl shadow-[#00A884]/30 hover:scale-105 transition-all cursor-pointer"
-              >
-                <div className="w-6 h-6 rounded-full bg-[#111B21] text-[#00A884] flex items-center justify-center font-bold">
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                </div>
-                <span className="tracking-wider uppercase font-cinzel text-sm">
-                  + Add Voting
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
+          {/* 2. CUSTOM SINGLE POLLS */}
+          {showCustomPolls && filteredCustomPolls.length > 0 && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-2 px-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#C5A880]" />
+                <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider font-cinzel">
+                  Individual &amp; Custom Polls
+                </h3>
+              </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-2.5">
-          {[
-            { id: 'all', label: 'All Polls', count: polls.length },
-            { id: 'active', label: 'Active Sessions', count: activeCount },
-            { id: 'my', label: 'My Polls', count: polls.filter(p => p.createdBy?.gmail?.toLowerCase() === userEmail).length },
-            { id: 'ended', label: 'Closed Sessions', count: polls.filter(p => !p.isActive).length },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedFilter(tab.id as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                selectedFilter === tab.id
-                  ? 'bg-[#C5A880] text-[#0A192F] font-bold shadow-md shadow-[#C5A880]/20'
-                  : 'bg-[#0B1528] text-slate-300 hover:bg-[#112240] border border-[#1E2E48]'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] ${
-                selectedFilter === tab.id ? 'bg-[#0A192F] text-[#C5A880]' : 'bg-[#1E2E48] text-slate-400'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                {filteredCustomPolls.map((poll) => {
+                  const hasUserVoted = poll.votedUserEmails?.includes(userEmail);
+                  const maxVotes = Math.max(...poll.options.map((o) => o.votes), 0);
+                  const totalPollVotes = poll.totalVotes || 0;
+                  const currentSelected = selectedOptionsMap[poll.id] || [];
+                  const showResults = !poll.isActive;
+                  const isVotersExpanded = expandedVotersPollId === poll.id;
 
-        {/* Desktop Grid Feed */}
-        {filteredPolls.length === 0 ? (
-          <div className="bg-[#050B14] rounded-3xl border border-[#1E2E48] p-12 text-center space-y-4 shadow-xl">
-            <div className="w-16 h-16 rounded-2xl bg-[#0B1528] border border-[#C5A880]/40 text-[#C5A880] flex items-center justify-center mx-auto shadow-lg">
-              <Vote className="w-8 h-8 stroke-[1.5]" />
-            </div>
-            <div className="max-w-md mx-auto space-y-1">
-              <h3 className="font-cinzel text-xl font-bold text-white tracking-wider">
-                {selectedFilter === 'all' ? 'No Active Polls' : `No ${selectedFilter} polls found`}
-              </h3>
-              <p className="text-sm text-slate-400 font-sans">
-                {isAdmin
-                  ? 'Create a new voting poll to collect member votes.'
-                  : 'Active voting sessions will appear here.'}
-              </p>
-            </div>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#00A884] hover:bg-[#009272] text-[#111B21] font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Create First Poll</span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {filteredPolls.map((poll) => {
-              const hasUserVoted = poll.votedUserEmails?.includes(userEmail);
-              
-              const maxVotes = Math.max(...poll.options.map((o) => o.votes), 0);
-              const totalPollVotes = poll.totalVotes || 0;
-              const currentSelected = selectedOptionsMap[poll.id] || [];
-              const showResults = !poll.isActive;
+                  return (
+                    <div
+                      key={poll.id}
+                      className="bg-[#0B141A] rounded-2xl border border-[#1F2C34] hover:border-[#00A884]/40 p-4 sm:p-5 shadow-xl space-y-4 flex flex-col justify-between"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          {poll.isActive ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00A884]/20 text-[#00A884] text-[11px] font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#00A884] animate-pulse" />
+                              Live Poll
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[11px] font-bold border border-[#C5A880]/40">
+                              <Trophy className="w-3 h-3 text-[#C5A880]" />
+                              Poll Closed • Results Declared
+                            </span>
+                          )}
 
-              return (
-                <div
-                  key={poll.id}
-                  className="bg-[#0B141A] rounded-2xl border border-[#1F2C34] hover:border-[#00A884]/50 p-6 shadow-xl space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      {poll.isActive ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00A884]/20 text-[#00A884] text-xs font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#00A884] animate-pulse" />
-                          Live Voting (Open)
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-xs font-bold border border-[#C5A880]/40">
-                          <Trophy className="w-3.5 h-3.5 text-[#C5A880]" />
-                          Voting Closed • Results Declared
-                        </span>
-                      )}
+                          <span className="text-[10px] text-slate-500">
+                            {new Date(poll.createdAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
 
-                      <span className="text-xs text-slate-500">
-                        {new Date(poll.createdAt).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
+                        <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
+                          {poll.question}
+                        </h3>
 
-                    <h3 className="text-lg font-bold text-white font-sans leading-snug">
-                      {poll.question}
-                    </h3>
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-[#182229]">
+                          <span>Host: {poll.createdBy?.name || 'Member'}</span>
+                          {poll.isActive && (
+                            <span className="text-amber-400/90 flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              <span>Secret Ballot</span>
+                            </span>
+                          )}
+                        </div>
 
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-[#182229]">
-                      <span>Host: {poll.createdBy?.name || 'Member'}</span>
-                      {poll.isActive && (
-                        <span className="text-amber-400/90 flex items-center gap-1">
-                          <Lock className="w-3 h-3" />
-                          <span>Secret Ballot</span>
-                        </span>
-                      )}
-                    </div>
+                        {/* Options */}
+                        <div className="space-y-2 pt-1">
+                          {poll.options.map((option) => {
+                            const optionVotes = option.votes || 0;
+                            const percentage = totalPollVotes > 0 ? Math.round((optionVotes / totalPollVotes) * 100) : 0;
+                            const isSelected = currentSelected.includes(option.id);
+                            const userVotedThis = option.voterEmails?.includes(userEmail);
+                            const isLeader = maxVotes > 0 && optionVotes === maxVotes;
 
-                    {/* Options */}
-                    <div className="space-y-2 pt-2">
-                      {poll.options.map((option) => {
-                        const optionVotes = option.votes || 0;
-                        const percentage = totalPollVotes > 0 ? Math.round((optionVotes / totalPollVotes) * 100) : 0;
-                        const isSelected = currentSelected.includes(option.id);
-                        const userVotedThis = option.voterEmails?.includes(userEmail);
-                        const isLeader = maxVotes > 0 && optionVotes === maxVotes;
-
-                        return (
-                          <div
-                            key={option.id}
-                            onClick={() => {
-                              if (poll.isActive && (!hasUserVoted || currentSelected.length > 0)) {
-                                handleOptionSelect(poll, option.id);
-                              }
-                            }}
-                            className={`relative p-3.5 rounded-xl border transition-all select-none flex items-center ${
-                              poll.isActive && (!hasUserVoted || currentSelected.length > 0)
-                                ? 'cursor-pointer hover:border-[#00A884]'
-                                : 'cursor-default'
-                            } ${
-                              showResults
-                                ? isLeader && totalPollVotes > 0
-                                  ? 'bg-[#00A884]/15 border-[#00A884] text-white'
-                                  : 'bg-[#111B21] border-[#222E35] text-slate-200'
-                                : isSelected || (hasUserVoted && userVotedThis)
-                                ? 'bg-[#00A884]/15 border-[#00A884] text-white'
-                                : 'bg-[#111B21] border-[#222E35] text-slate-200'
-                            }`}
-                          >
-                            {showResults && (
+                            return (
                               <div
-                                className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 ${
-                                  userVotedThis ? 'bg-[#00A884]/25 border-r-2 border-[#00A884]' : isLeader ? 'bg-[#C5A880]/20' : 'bg-slate-700/20'
+                                key={option.id}
+                                onClick={() => {
+                                  if (poll.isActive && (!hasUserVoted || currentSelected.length > 0)) {
+                                    handleOptionSelect(poll, option.id);
+                                  }
+                                }}
+                                className={`relative p-3 rounded-xl border transition-all select-none flex items-center ${
+                                  poll.isActive && (!hasUserVoted || currentSelected.length > 0)
+                                    ? 'cursor-pointer hover:border-[#00A884]'
+                                    : 'cursor-default'
+                                } ${
+                                  showResults
+                                    ? isLeader && totalPollVotes > 0
+                                      ? 'bg-[#00A884]/15 border-[#00A884] text-white'
+                                      : 'bg-[#111B21] border-[#222E35] text-slate-200'
+                                    : isSelected || (hasUserVoted && userVotedThis)
+                                    ? 'bg-[#00A884]/15 border-[#00A884] text-white'
+                                    : 'bg-[#111B21] border-[#222E35] text-slate-200'
                                 }`}
-                                style={{ width: `${percentage}%` }}
-                              />
-                            )}
-
-                            <div className="relative z-10 flex items-center justify-between gap-3 w-full">
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                {poll.isActive ? (
-                                  hasUserVoted && currentSelected.length === 0 ? (
-                                    userVotedThis ? (
-                                      <span className="shrink-0 w-5 h-5 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-xs font-bold">
-                                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                      </span>
-                                    ) : (
-                                      <span className="shrink-0 w-5 h-5 rounded-full border border-slate-600" />
-                                    )
-                                  ) : (
-                                    <div className="shrink-0 text-[#00A884]">
-                                      {isSelected ? (
-                                        <CheckCircle2 className="w-5 h-5 fill-[#00A884] text-[#111B21]" />
-                                      ) : (
-                                        <Circle className="w-5 h-5 text-slate-500" />
-                                      )}
-                                    </div>
-                                  )
-                                ) : (
-                                  userVotedThis && (
-                                    <span className="shrink-0 w-5 h-5 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-xs font-bold">
-                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                    </span>
-                                  )
+                              >
+                                {showResults && (
+                                  <div
+                                    className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 ${
+                                      userVotedThis ? 'bg-[#00A884]/25 border-r-2 border-[#00A884]' : isLeader ? 'bg-[#C5A880]/20' : 'bg-slate-700/20'
+                                    }`}
+                                    style={{ width: `${percentage}%` }}
+                                  />
                                 )}
-                                <span className="text-sm font-medium">{option.text}</span>
-                              </div>
 
-                              {showResults ? (
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  {isLeader && totalPollVotes > 0 && (
-                                    <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
+                                <div className="relative z-10 flex items-center justify-between gap-3 w-full">
+                                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                    {poll.isActive ? (
+                                      hasUserVoted && currentSelected.length === 0 ? (
+                                        userVotedThis ? (
+                                          <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
+                                            <Check className="w-3 h-3 stroke-[3]" />
+                                          </span>
+                                        ) : (
+                                          <span className="shrink-0 w-4 h-4 rounded-full border border-slate-600" />
+                                        )
+                                      ) : (
+                                        <div className="shrink-0 text-[#00A884]">
+                                          {isSelected ? (
+                                            <CheckCircle2 className="w-4.5 h-4.5 fill-[#00A884] text-[#111B21]" />
+                                          ) : (
+                                            <Circle className="w-4.5 h-4.5 text-slate-500" />
+                                          )}
+                                        </div>
+                                      )
+                                    ) : (
+                                      userVotedThis && (
+                                        <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
+                                          <Check className="w-3 h-3 stroke-[3]" />
+                                        </span>
+                                      )
+                                    )}
+                                    <span className="text-xs font-medium">{option.text}</span>
+                                  </div>
+
+                                  {showResults ? (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {isLeader && totalPollVotes > 0 && (
+                                        <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
+                                      )}
+                                      <span className="text-xs font-bold text-slate-200">{percentage}%</span>
+                                      <span className="text-[10px] text-slate-500">({optionVotes})</span>
+                                    </div>
+                                  ) : (
+                                    hasUserVoted && userVotedThis && (
+                                      <span className="text-[10px] text-[#00A884] font-medium shrink-0 bg-[#00A884]/15 px-2 py-0.5 rounded">
+                                        Voted
+                                      </span>
+                                    )
                                   )}
-                                  <span className="text-xs font-bold text-slate-200">{percentage}%</span>
-                                  <span className="text-[11px] text-slate-500">({optionVotes})</span>
                                 </div>
-                              ) : (
-                                hasUserVoted && userVotedThis && (
-                                  <span className="text-xs text-[#00A884] font-medium shrink-0 bg-[#00A884]/15 px-2.5 py-1 rounded-md">
-                                    Voted
-                                  </span>
-                                )
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Card Action Footer */}
-                  <div className="pt-3 border-t border-[#182229] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-[#00A884]" />
-                        <span>{totalPollVotes} Total Votes</span>
-                      </span>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleShare(poll)}
-                          className="p-2 text-slate-400 hover:text-white rounded-lg border border-[#222E35] transition-colors cursor-pointer"
-                          title="Share"
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </button>
-
-                        {/* Admin Only: Reopen/Close and Delete Controls */}
-                        {isAdmin && (
-                          <>
-                            {/* Reopen / Close Toggle */}
-                            <button
-                              type="button"
-                              onClick={() => handleToggleStatus(poll.id, poll.isActive)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                                poll.isActive
-                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-                                  : 'bg-[#00A884]/20 text-[#00A884] border-[#00A884]/40 hover:bg-[#00A884]/30'
-                              }`}
-                              title={poll.isActive ? 'Close voting to reveal results' : 'Reopen voting'}
-                            >
-                              {poll.isActive ? (
-                                <>
-                                  <Lock className="w-3.5 h-3.5" />
-                                  <span>Close &amp; Declare Results</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Unlock className="w-3.5 h-3.5" />
-                                  <span>Reopen Voting</span>
-                                </>
-                              )}
-                            </button>
-
-                            {/* Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleRequestDelete(poll)}
-                              className="p-2 text-slate-400 hover:text-rose-400 rounded-lg border border-[#222E35] transition-colors cursor-pointer"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
 
-                    {poll.isActive && (
-                      <div>
-                        {hasUserVoted && currentSelected.length === 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => handleRetractVote(poll)}
-                            disabled={votingInProgressId === poll.id}
-                            className="w-full py-2.5 rounded-xl bg-[#111B21] hover:bg-[#202C33] border border-[#222E35] text-slate-300 text-xs font-semibold cursor-pointer"
-                          >
-                            Change My Vote
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleCastVote(poll)}
-                            disabled={currentSelected.length === 0 || votingInProgressId === poll.id}
-                            className="w-full py-3 rounded-xl bg-[#00A884] hover:bg-[#009272] text-[#111B21] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-40"
-                          >
-                            {votingInProgressId === poll.id ? (
-                              <span>Submitting...</span>
-                            ) : (
+                      {/* Footer Actions */}
+                      <div className="pt-3 border-t border-[#182229] space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-[#00A884]" />
+                            <span>{totalPollVotes} Votes</span>
+                          </span>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleSharePoll(poll)}
+                              className="p-2 text-slate-400 hover:text-white rounded-lg border border-[#222E35] transition-colors cursor-pointer"
+                              title="Share"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {isAdmin && (
                               <>
-                                <Check className="w-4 h-4 stroke-[3]" />
-                                <span>{hasUserVoted ? 'Update Vote' : 'Submit Ballot'}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePollStatus(poll.id, poll.isActive)}
+                                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                                    poll.isActive
+                                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                      : 'bg-[#00A884]/20 text-[#00A884] border-[#00A884]/40'
+                                  }`}
+                                >
+                                  {poll.isActive ? (
+                                    <>
+                                      <Lock className="w-3 h-3" />
+                                      <span>Close</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Unlock className="w-3 h-3" />
+                                      <span>Reopen</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setPollToDelete(poll)}
+                                  className="p-2 text-slate-400 hover:text-rose-400 rounded-lg border border-[#222E35] cursor-pointer"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </>
                             )}
-                          </button>
+                          </div>
+                        </div>
+
+                        {poll.isActive && (
+                          <div>
+                            {hasUserVoted && currentSelected.length === 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => handleRetractVote(poll)}
+                                disabled={votingInProgressId === poll.id}
+                                className="w-full py-2 rounded-xl bg-[#111B21] border border-[#222E35] text-slate-300 text-xs font-semibold cursor-pointer"
+                              >
+                                Change My Vote
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleCastVote(poll)}
+                                disabled={currentSelected.length === 0 || votingInProgressId === poll.id}
+                                className="w-full py-2.5 rounded-xl bg-[#00A884] hover:bg-[#009272] text-[#111B21] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer disabled:opacity-40"
+                              >
+                                {votingInProgressId === poll.id ? (
+                                  <span>Submitting...</span>
+                                ) : (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    <span>{hasUserVoted ? 'Update Vote' : 'Submit Ballot'}</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* WhatsApp-Style Create Poll Modal / Screen (Accessible ONLY for Admin) */}
+      {/* 4-Role Meeting Voting Creation Modal */}
+      {isAdmin && (
+        <CreateMeetingSessionModal
+          isOpen={isMeetingModalOpen}
+          onClose={() => setIsMeetingModalOpen(false)}
+          onSubmitSession={handleCreateMeetingSession}
+          userProfile={currentUser}
+        />
+      )}
+
+      {/* Custom Single Poll Modal */}
       {isAdmin && (
         <CreatePollModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onSubmitPoll={handleCreatePoll}
+          isOpen={isCustomPollModalOpen}
+          onClose={() => setIsCustomPollModalOpen(false)}
+          onSubmitPoll={handleCreateCustomPoll}
           userProfile={currentUser}
         />
       )}

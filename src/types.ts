@@ -50,3 +50,37 @@ export interface Poll {
   totalVotes: number;
   votedUserEmails: string[];
 }
+
+export interface MeetingCandidate {
+  id: string;
+  name: string;
+  roleOrTopic?: string;
+  photoUrl?: string;
+  votes: number;
+  voterEmails: string[];
+}
+
+export interface MeetingVotingCategory {
+  id: string;
+  title: string;
+  subtitle?: string;
+  iconName?: string;
+  candidates: MeetingCandidate[];
+}
+
+export interface MeetingVotingSession {
+  id: string;
+  title: string;
+  meetingNumber?: string;
+  meetingDate: string;
+  categories: MeetingVotingCategory[];
+  isActive: boolean;
+  createdAt: string;
+  createdBy: {
+    name: string;
+    gmail: string;
+    photoUrl?: string;
+  };
+  totalVoters: number;
+  votedUserEmails: string[];
+}
