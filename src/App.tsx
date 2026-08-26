@@ -4,23 +4,78 @@ import { LoginDetailsScreen } from './components/LoginDetailsScreen';
 import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
 
-export default function App() {
-  // App opens first with Login Details screen
-  const [showLoginDetails, setShowLoginDetails] = useState<boolean>(true);
-  const [loginScreenMode, setLoginScreenMode] = useState<'login' | 'register' | 'edit_profile'>('login');
+const STORAGE_KEY = 'declamates_active_user';
 
-  // Default User Profile login details (initially empty for user input)
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: '',
-    gmail: '',
-    phone: '',
-    year: '',
-    department: '',
-    photoUrl: '',
+export default function App() {
+  // Load saved user profile from localStorage if exists
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.name || parsed.gmail)) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to parse saved user session:', err);
+    }
+    return {
+      name: '',
+      gmail: '',
+      phone: '',
+      year: '',
+      department: '',
+      photoUrl: '',
+    };
   });
 
+  // App opens first with Login Details screen ONLY if no user is already logged in
+  const [showLoginDetails, setShowLoginDetails] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.name || parsed.gmail)) {
+          return false; // Direct to Home page since user is already logged in!
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to check stored user session:', err);
+    }
+    return true;
+  });
+
+  const [loginScreenMode, setLoginScreenMode] = useState<'login' | 'register' | 'edit_profile'>('login');
   const [activeTab, setActiveTab] = useState<SidebarTab>('Home');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
+  const handleUpdateProfile = (updated: UserProfile) => {
+    setUserProfile(updated);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to save user session to localStorage:', e);
+    }
+  };
+
+  const handleSignOut = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn('Failed to clear user session from localStorage:', e);
+    }
+    setUserProfile({
+      name: '',
+      gmail: '',
+      phone: '',
+      year: '',
+      department: '',
+      photoUrl: '',
+    });
+    setLoginScreenMode('login');
+    setShowLoginDetails(true);
+  };
 
   const handleOpenEditProfile = () => {
     setLoginScreenMode('edit_profile');
@@ -38,14 +93,14 @@ export default function App() {
       <LoginDetailsScreen
         profile={userProfile}
         initialMode={loginScreenMode}
-        onUpdateProfile={(updated) => setUserProfile(updated)}
+        onUpdateProfile={handleUpdateProfile}
         onContinue={() => setShowLoginDetails(false)}
         onCancelEdit={() => setShowLoginDetails(false)}
       />
     );
   }
 
-  // Render Main Layout with Sidebar and Empty Pages
+  // Render Main Layout with Sidebar and Content Pages
   return (
     <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-slate-950 text-slate-100 font-sans">
       <Sidebar
@@ -54,6 +109,7 @@ export default function App() {
         userProfile={userProfile}
         onShowLoginDetails={handleOpenLogin}
         onEditProfile={handleOpenEditProfile}
+        onSignOut={handleSignOut}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />

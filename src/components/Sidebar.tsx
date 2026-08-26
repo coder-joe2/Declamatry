@@ -23,6 +23,7 @@ interface SidebarProps {
   userProfile: UserProfile;
   onShowLoginDetails: () => void;
   onEditProfile?: () => void;
+  onSignOut?: () => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -33,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   userProfile,
   onShowLoginDetails,
   onEditProfile,
+  onSignOut,
   isOpenMobile,
   onCloseMobile,
 }) => {
@@ -195,7 +197,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <button
               onClick={() => {
-                onShowLoginDetails();
+                if (onSignOut) onSignOut();
+                else onShowLoginDetails();
                 onCloseMobile();
               }}
               className="bg-[#030712] hover:bg-red-950/40 text-slate-400 hover:text-red-400 py-2 px-2 rounded-xl text-[11px] font-medium transition-colors flex items-center justify-center gap-1 border border-[#1E2E48] cursor-pointer"
