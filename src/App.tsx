@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SidebarTab, UserProfile } from './types';
 import { LoginDetailsScreen } from './components/LoginDetailsScreen';
 import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
+import { subscribeToRegisteredMembers } from './firebase';
 
 const STORAGE_KEY = 'declamates_active_user';
 
@@ -29,6 +30,75 @@ export default function App() {
       photoUrl: '',
     };
   });
+
+  // Real-time synchronization: Keep active user's roles, details, and speaker honor updated from Firestore
+  useEffect(() => {
+    if (!userProfile.gmail && !userProfile.phone && !userProfile.id) {
+      return;
+    }
+
+    const unsub = subscribeToRegisteredMembers((membersList) => {
+      const currentEmail = userProfile.gmail?.trim().toLowerCase();
+      const currentPhone = userProfile.phone?.trim();
+      const currentId = userProfile.id;
+
+      const matched = membersList.find((m) => {
+        if (currentId && m.id === currentId) return true;
+        if (currentEmail && m.gmail && m.gmail.trim().toLowerCase() === currentEmail) return true;
+        if (currentPhone && m.phone && m.phone.trim() === currentPhone) return true;
+        return false;
+      });
+
+      if (matched) {
+        setUserProfile((prev) => {
+          const updatedSpeakerRoles = Array.isArray(matched.speakerRoles) ? matched.speakerRoles : [];
+          const updatedSpeakerRole = matched.speakerRole || updatedSpeakerRoles.join(', ') || '';
+
+          const prevRolesArr = Array.isArray(prev.speakerRoles) ? prev.speakerRoles : [];
+          const rolesChanged =
+            prevRolesArr.length !== updatedSpeakerRoles.length ||
+            prevRolesArr.some((r, i) => r !== updatedSpeakerRoles[i]) ||
+            (prev.speakerRole || '') !== updatedSpeakerRole;
+
+          const metaChanged =
+            (prev.executiveRole || '') !== (matched.executiveRole || '') ||
+            (prev.name || '') !== (matched.name || '') ||
+            (prev.photoUrl || '') !== (matched.photoUrl || '') ||
+            (prev.id || '') !== (matched.id || '');
+
+          if (rolesChanged || metaChanged) {
+            const nextProfile: UserProfile = {
+              ...prev,
+              id: matched.id,
+              name: matched.name || prev.name,
+              gmail: matched.gmail || prev.gmail,
+              phone: matched.phone || prev.phone,
+              year: matched.year || prev.year,
+              department: matched.department || prev.department,
+              className: matched.className || prev.className,
+              photoUrl: matched.photoUrl || prev.photoUrl,
+              executiveRole: matched.executiveRole || '',
+              speakerRole: updatedSpeakerRole,
+              speakerRoles: updatedSpeakerRoles,
+              isAdmin: matched.isAdmin === true || (matched.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+            };
+
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(nextProfile));
+            } catch (e) {
+              console.warn('Failed to sync updated userProfile to localStorage:', e);
+            }
+            return nextProfile;
+          }
+          return prev;
+        });
+      }
+    });
+
+    return () => {
+      unsub();
+    };
+  }, [userProfile.gmail, userProfile.phone, userProfile.id]);
 
   // App opens first with Login Details screen ONLY if no user is already logged in
   const [showLoginDetails, setShowLoginDetails] = useState<boolean>(() => {
@@ -120,6 +190,7 @@ export default function App() {
         userProfile={userProfile}
         onShowLoginDetails={handleOpenLogin}
         onEditProfile={handleOpenEditProfile}
+        onUpdateProfile={handleUpdateProfile}
         onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
       />
     </div>

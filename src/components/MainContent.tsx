@@ -1,6 +1,6 @@
-import React from 'react';
-import { SidebarTab, UserProfile } from '../types';
-import { Menu, Sparkles, User, LogOut, Home, Vote, Trophy, Layers, Lightbulb, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { SidebarTab, UserProfile, AppMessage } from '../types';
+import { Menu, Sparkles, User, LogOut, Home, Vote, Trophy, Layers, Lightbulb, Users, Crown, MessageSquare } from 'lucide-react';
 import { HomeTab } from './tabs/HomeTab';
 import { AboutClubTab } from './tabs/AboutClubTab';
 import { LearningTipsTab } from './tabs/LearningTipsTab';
@@ -9,6 +9,10 @@ import { LevelsTab } from './tabs/LevelsTab';
 import { VotingTab } from './tabs/VotingTab';
 import { ProfileTab } from './tabs/ProfileTab';
 import { MembersListTab } from './tabs/MembersListTab';
+import { ExecutiveRolesTab } from './tabs/ExecutiveRolesTab';
+import { SpeakerRolesTab } from './tabs/SpeakerRolesTab';
+import { MessagesModal } from './MessagesModal';
+import { subscribeToUserMessages } from '../firebase';
 
 interface MainContentProps {
   activeTab: SidebarTab;
@@ -16,6 +20,7 @@ interface MainContentProps {
   userProfile: UserProfile;
   onShowLoginDetails: () => void;
   onEditProfile?: () => void;
+  onUpdateProfile?: (updated: UserProfile) => void;
   onOpenMobileSidebar: () => void;
 }
 
@@ -25,11 +30,32 @@ export const MainContent: React.FC<MainContentProps> = ({
   userProfile,
   onShowLoginDetails,
   onEditProfile,
+  onUpdateProfile,
   onOpenMobileSidebar,
 }) => {
+  const isAdmin = userProfile.isAdmin || userProfile.gmail?.toLowerCase() === 'vjana537@gmail.com';
+  const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+  const [messages, setMessages] = useState<AppMessage[]>([]);
+
+  // Real-time subscription to incoming personal and broadcast messages
+  useEffect(() => {
+    const email = userProfile.gmail || '';
+    const unsubscribe = subscribeToUserMessages(email, (updated) => {
+      setMessages(updated);
+    });
+    return () => unsubscribe();
+  }, [userProfile.gmail]);
+
+  const userEmail = (userProfile.gmail || '').trim().toLowerCase();
+  const unreadCount = messages.filter(
+    (m) => !m.readBy?.map((e) => e.toLowerCase()).includes(userEmail)
+  ).length;
+
   const mobileNavItems: { name: SidebarTab; icon: React.FC<{ className?: string }>; label: string }[] = [
     { name: 'Home', icon: Home, label: 'Home' },
-    { name: 'Voting', icon: Vote, label: 'Voting' },
+    ...(isAdmin
+      ? [{ name: 'Voting' as SidebarTab, icon: Vote, label: 'Voting' }]
+      : [{ name: 'Leadership Roles' as SidebarTab, icon: Crown, label: 'Roles' }]),
     { name: 'Leaderboard', icon: Trophy, label: 'Leaders' },
     { name: 'Levels', icon: Layers, label: 'Levels' },
     { name: 'Profile', icon: User, label: 'Profile' },
@@ -49,7 +75,11 @@ export const MainContent: React.FC<MainContentProps> = ({
           </button>
           <div className="min-w-0">
             <h1 className="font-cinzel text-sm sm:text-2xl font-bold text-white tracking-wider uppercase leading-tight truncate">
-              {activeTab}
+              {activeTab === 'Admin Executive Committee Roles' || activeTab === 'Leadership Roles'
+                ? 'Leadership Roles'
+                : activeTab === 'Admin Speaker Roles'
+                ? 'Speaker Roles'
+                : activeTab}
             </h1>
             <p className="text-[9px] sm:text-[11px] text-[#C5A880] uppercase tracking-widest font-semibold font-cinzel truncate max-w-[180px] sm:max-w-none">
               Sri Amaraavathi College, Karur
@@ -59,6 +89,23 @@ export const MainContent: React.FC<MainContentProps> = ({
 
         {/* Right Action Header Info */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Message / Notification Icon Button - Directly to the left of profile */}
+          <button
+            type="button"
+            onClick={() => setIsMessagesOpen(true)}
+            title="Messages & Notifications"
+            aria-label="View Messages"
+            className="relative p-2 sm:p-2.5 rounded-full bg-[#0B1528] hover:bg-[#112240] border border-[#1E2E48] hover:border-[#00A884]/60 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center min-w-[36px] min-h-[36px]"
+          >
+            <MessageSquare className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-[#00A884]" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-[#0A192F] font-black text-[10px] rounded-full flex items-center justify-center shadow-lg shadow-amber-500/40 border border-[#050B14]">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Profile Card / Avatar Button */}
           <div 
             onClick={() => onSelectTab('Profile')}
             className="flex items-center gap-2 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[#0B1528] hover:bg-[#112240] border border-[#1E2E48] hover:border-[#C5A880]/50 cursor-pointer transition-all shadow-sm active:scale-95"
@@ -113,6 +160,19 @@ export const MainContent: React.FC<MainContentProps> = ({
             onEditProfile={onEditProfile || onShowLoginDetails} 
           />
         )}
+
+        {(activeTab === 'Admin Executive Committee Roles' || activeTab === 'Leadership Roles') && (
+          <ExecutiveRolesTab 
+            userProfile={userProfile} 
+          />
+        )}
+
+        {activeTab === 'Admin Speaker Roles' && (
+          <SpeakerRolesTab 
+            userProfile={userProfile} 
+            onUpdateProfile={onUpdateProfile}
+          />
+        )}
       </main>
 
       {/* Mobile Bottom Navigation Bar (WhatsApp / Native Mobile App Style) */}
@@ -144,6 +204,14 @@ export const MainContent: React.FC<MainContentProps> = ({
           );
         })}
       </nav>
+
+      {/* Messages & Notifications Modal */}
+      <MessagesModal
+        isOpen={isMessagesOpen}
+        onClose={() => setIsMessagesOpen(false)}
+        messages={messages}
+        userProfile={userProfile}
+      />
     </div>
   );
 };

@@ -12,6 +12,15 @@ service cloud.firestore {
     match /polls/{document=**} {
       allow read, write: if true;
     }
+    match /meeting_sessions/{document=**} {
+      allow read, write: if true;
+    }
+    match /messages/{document=**} {
+      allow read, write: if true;
+    }
+    match /notifications/{document=**} {
+      allow read, write: if true;
+    }
     
     // Default fallback
     match /{document=**} {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SocietyLogo } from '../SocietyLogo';
 import { 
   Users, 
@@ -9,9 +9,48 @@ import {
   CheckCircle2, 
   Award, 
   Layers, 
+  Crown,
+  BookOpen,
+  UserPlus,
+  FileText,
+  DollarSign,
+  Settings,
+  ShieldCheck,
+  Phone,
+  Briefcase,
 } from 'lucide-react';
+import { RegisteredMember } from '../../types';
+import { subscribeToRegisteredMembers } from '../../firebase';
 
 export const AboutClubTab: React.FC = () => {
+  const [members, setMembers] = useState<RegisteredMember[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeToRegisteredMembers((data) => {
+      setMembers(data);
+    });
+    return () => unsub();
+  }, []);
+
+  const roleHoldersMap = useMemo(() => {
+    const map: Record<string, RegisteredMember | null> = {
+      President: null,
+      'Director of Learning': null,
+      'Director of Membership': null,
+      Secretary: null,
+      'Financial Officer': null,
+      'Operations Officer': null,
+    };
+
+    members.forEach((m) => {
+      if (m.executiveRole && map[m.executiveRole] !== undefined) {
+        map[m.executiveRole] = m;
+      }
+    });
+
+    return map;
+  }, [members]);
+
   const meetingTimeline = [
     {
       time: '10 min',
@@ -47,6 +86,45 @@ export const AboutClubTab: React.FC = () => {
       desc: 'Recognition for best speakers, club updates, and upcoming session calendar.',
       icon: Award,
       badgeColor: 'bg-purple-950/70 text-purple-300 border-purple-500/40',
+    },
+  ];
+
+  const executiveRolesDetails = [
+    {
+      role: 'President',
+      icon: Crown,
+      badgeColor: 'text-amber-400 bg-amber-950/40 border-amber-500/50',
+      work: 'Leads club sessions, presides over meetings, and represents the society.',
+    },
+    {
+      role: 'Director of Learning',
+      icon: BookOpen,
+      badgeColor: 'text-sky-400 bg-sky-950/40 border-sky-500/50',
+      work: 'Plans speech agendas, training pathways, and evaluation sessions.',
+    },
+    {
+      role: 'Director of Membership',
+      icon: UserPlus,
+      badgeColor: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/50',
+      work: 'Welcomes new members, manages onboarding, and tracks attendance.',
+    },
+    {
+      role: 'Secretary',
+      icon: FileText,
+      badgeColor: 'text-purple-400 bg-purple-950/40 border-purple-500/50',
+      work: 'Maintains meeting records, circulars, and official minutes.',
+    },
+    {
+      role: 'Financial Officer',
+      icon: DollarSign,
+      badgeColor: 'text-teal-400 bg-teal-950/40 border-teal-500/50',
+      work: 'Oversees club funds, budget planning, and event expenditures.',
+    },
+    {
+      role: 'Operations Officer',
+      icon: Settings,
+      badgeColor: 'text-orange-400 bg-orange-950/40 border-orange-500/50',
+      work: 'Manages meeting hall logistics, stage setup, and technical equipment.',
     },
   ];
 
@@ -93,7 +171,105 @@ export const AboutClubTab: React.FC = () => {
         </p>
       </div>
 
-      {/* 2. How it Works */}
+      {/* 2. Executive Committee - 6 Core Leadership Roles */}
+      <div className="bg-[#050B14] rounded-2xl border border-[#1E2E48] p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#1E2E48]">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880]">
+              <Crown className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold font-cinzel text-white">Leadership Roles (6 Core Positions)</h3>
+              <p className="text-xs text-slate-400">Club Office Bearers elected to administer and lead society activities</p>
+            </div>
+          </div>
+          <span className="self-start sm:self-auto text-xs font-bold font-cinzel text-[#C5A880] bg-[#C5A880]/15 px-3.5 py-1.5 rounded-full border border-[#C5A880]/40">
+            6 CORE POSTINGS
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {executiveRolesDetails.map((item, idx) => {
+            const Icon = item.icon;
+            const holder = roleHoldersMap[item.role];
+
+            return (
+              <div
+                key={item.role}
+                className="p-4 sm:p-5 rounded-2xl bg-[#09152A] border border-[#1E2E48] hover:border-[#C5A880]/60 transition-all flex flex-col justify-between gap-3 shadow-md"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${item.badgeColor}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <h4 className="font-bold text-white text-sm sm:text-base font-cinzel truncate">
+                      {item.role}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-bold font-cinzel text-slate-400 uppercase tracking-wider shrink-0 px-2 py-0.5 rounded bg-black/40 border border-[#1E2E48]">
+                    Role {idx + 1}
+                  </span>
+                </div>
+
+                {/* Role Work in Simple Clear English Words */}
+                <div className="bg-[#030712]/70 rounded-xl p-2.5 border border-[#1E2E48]/80 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#C5A880] font-cinzel">
+                    <Briefcase className="w-3 h-3 text-[#C5A880]" />
+                    <span>Work & Responsibility</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {item.work}
+                  </p>
+                </div>
+
+                <div className="pt-2.5 border-t border-[#1E2E48]">
+                  {holder ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        {holder.photoUrl ? (
+                          <img
+                            src={holder.photoUrl}
+                            alt={holder.name}
+                            className="w-7 h-7 rounded-full object-cover border border-[#C5A880]/60 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-[#030712] border border-[#C5A880]/60 text-[#C5A880] flex items-center justify-center font-bold text-xs shrink-0">
+                            {holder.name ? holder.name[0].toUpperCase() : 'M'}
+                          </div>
+                        )}
+                        <span className="font-semibold text-white text-sm truncate">
+                          {holder.name}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-amber-300 pl-0.5">
+                        <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        {holder.phone ? (
+                          <a
+                            href={`tel:${holder.phone}`}
+                            className="hover:underline font-mono tracking-wide"
+                          >
+                            {holder.phone}
+                          </a>
+                        ) : (
+                          <span className="text-slate-400 italic">No mobile number</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-1">
+                      <span className="text-xs text-slate-500 italic">Not Appointed</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. How it Works */}
       <div className="bg-[#050B14] rounded-2xl border border-[#1E2E48] p-6 sm:p-8 shadow-xl space-y-5">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880]">
@@ -127,7 +303,7 @@ export const AboutClubTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Meeting Structure */}
+      {/* 4. Meeting Structure */}
       <div className="bg-[#050B14] rounded-2xl border border-[#1E2E48] p-6 sm:p-8 shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#1E2E48]">
           <div className="flex items-center gap-3">

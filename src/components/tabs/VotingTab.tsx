@@ -33,7 +33,8 @@ import {
   createMeetingSessionInFirebase,
   submitMeetingVoteInFirebase,
   toggleMeetingSessionStatus,
-  deleteMeetingSession
+  deleteMeetingSession,
+  sendAppMessage
 } from '../../firebase';
 
 interface VotingTabProps {
@@ -113,6 +114,21 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
     if (result.success && result.session) {
       setMeetingSessions((prev) => [result.session, ...prev.filter((s) => s.id !== result.session.id)]);
       showToast('🚀 4-Role Meeting Voting Session Launched!');
+
+      // PUBLIC BROADCAST: Send message to everyone (including admin) when a new poll starts
+      sendAppMessage({
+        type: 'new_poll',
+        title: 'New Poll Started',
+        message: 'New poll started so kindly voting',
+        targetEmail: 'public',
+        isBroadcast: true,
+        createdAt: new Date().toISOString(),
+        createdBy: {
+          name: userProfile?.name || 'Admin',
+          gmail: userProfile?.gmail || '',
+        },
+        readBy: [],
+      }).catch((err) => console.warn('Broadcast poll message error:', err));
     }
   };
 
@@ -184,6 +200,21 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
     if (result.success && result.poll) {
       setPolls((prev) => [result.poll, ...prev.filter((p) => p.id !== result.poll.id)]);
       showToast('Custom poll published!');
+
+      // PUBLIC BROADCAST: Send message to everyone (including admin)
+      sendAppMessage({
+        type: 'new_poll',
+        title: 'New Poll Started',
+        message: 'New poll started so kindly voting',
+        targetEmail: 'public',
+        isBroadcast: true,
+        createdAt: new Date().toISOString(),
+        createdBy: {
+          name: userProfile?.name || 'Admin',
+          gmail: userProfile?.gmail || '',
+        },
+        readBy: [],
+      }).catch((err) => console.warn('Broadcast custom poll message error:', err));
     }
   };
 
@@ -467,7 +498,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                 className="w-full sm:w-auto py-2.5 sm:py-3 px-3.5 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#00A884] to-[#009272] hover:brightness-110 text-[#111B21] font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#00A884]/25 active:scale-95 transition-all cursor-pointer min-h-[42px]"
               >
                 <Sparkles className="w-4 h-4 text-[#111B21] shrink-0" />
-                <span className="font-cinzel text-center leading-tight">+ Start Meeting Voting (4 Roles)</span>
+                <span className="font-cinzel text-center leading-tight">+ Start Poll(4 Roles)</span>
               </button>
 
               {/* SECONDARY CUSTOM POLL BUTTON */}
@@ -478,7 +509,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                 className="w-full sm:w-auto py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl bg-[#111B21] hover:bg-[#182630] text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 border border-[#2A3942] active:scale-95 transition-all cursor-pointer min-h-[38px]"
               >
                 <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span>+ Custom Single Poll</span>
+                <span>Custom Poll</span>
               </button>
             </div>
           )}
@@ -540,7 +571,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#00A884] text-[#111B21] font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform cursor-pointer shadow-lg"
               >
                 <Sparkles className="w-4 h-4 text-[#111B21]" />
-                <span>+ Launch 4-Role Meeting Voting</span>
+                <span>+ Start Poll(4 players)</span>
               </button>
             </div>
           )}
@@ -701,6 +732,13 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                         </span>
                                       )
                                     )}
+                                    {option.photoUrl ? (
+                                      <img
+                                        src={option.photoUrl}
+                                        alt={option.text}
+                                        className="w-7 h-7 rounded-full object-cover border border-[#00A884] shrink-0"
+                                      />
+                                    ) : null}
                                     <span className="text-xs font-medium">{option.text}</span>
                                   </div>
 

@@ -15,6 +15,8 @@ import {
   Sparkles,
   ShieldCheck,
   ClipboardList,
+  Crown,
+  Mic,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -40,15 +42,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const isAdmin = userProfile.isAdmin || userProfile.gmail?.toLowerCase() === 'vjana537@gmail.com';
 
-  const sidebarItems: { name: SidebarTab; icon: React.FC<{ className?: string }> }[] = [
+  const userSidebarItems: { name: SidebarTab; label?: string; icon: React.FC<{ className?: string }> }[] = [
+    { name: 'Home', icon: Home },
+    { name: 'About Club', icon: Users },
+    { name: 'Leadership Roles', label: 'Leadership Roles', icon: Crown },
+    { name: 'Learning Tips', icon: Lightbulb },
+    { name: 'Leaderboard', icon: Trophy },
+    { name: 'Levels', icon: Layers },
+    { name: 'Profile', icon: User },
+  ];
+
+  const adminSidebarItems: { name: SidebarTab; label?: string; icon: React.FC<{ className?: string }> }[] = [
     { name: 'Home', icon: Home },
     { name: 'About Club', icon: Users },
     { name: 'Learning Tips', icon: Lightbulb },
     { name: 'Leaderboard', icon: Trophy },
     { name: 'Levels', icon: Layers },
-    { name: 'Voting', icon: Vote },
     { name: 'Profile', icon: User },
   ];
+
+  const sidebarItems = isAdmin ? adminSidebarItems : userSidebarItems;
 
   return (
     <>
@@ -121,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-[#0A192F]' : 'text-[#C5A880]'}`} />
-                <span className="flex-1 text-left tracking-wide font-cinzel">{item.name}</span>
+                <span className="flex-1 text-left tracking-wide font-cinzel">{item.label || item.name}</span>
                 {isActive && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
               </button>
             );
@@ -141,6 +154,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <button
                 onClick={() => {
+                  onSelectTab('Leadership Roles');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+                  activeTab === 'Leadership Roles' || activeTab === 'Admin Executive Committee Roles'
+                    ? 'bg-amber-500 text-[#0A192F] font-bold shadow-lg shadow-amber-500/20'
+                    : 'text-amber-300 hover:text-white hover:bg-[#0E1E38] border border-amber-500/30'
+                }`}
+              >
+                <Crown className={`w-4 h-4 ${activeTab === 'Leadership Roles' || activeTab === 'Admin Executive Committee Roles' ? 'text-[#0A192F]' : 'text-amber-400'}`} />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm">
+                  Leadership Roles
+                </span>
+                {(activeTab === 'Leadership Roles' || activeTab === 'Admin Executive Committee Roles') && (
+                  <ChevronRight className="w-4 h-4 text-[#0A192F]" />
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  onSelectTab('Admin Speaker Roles');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+                  activeTab === 'Admin Speaker Roles'
+                    ? 'bg-amber-500 text-[#0A192F] font-bold shadow-lg shadow-amber-500/20'
+                    : 'text-amber-300 hover:text-white hover:bg-[#0E1E38] border border-amber-500/30'
+                }`}
+              >
+                <Mic className={`w-4 h-4 ${activeTab === 'Admin Speaker Roles' ? 'text-[#0A192F]' : 'text-amber-400'}`} />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm">
+                  Speaker Roles
+                </span>
+                {activeTab === 'Admin Speaker Roles' && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
+              </button>
+              <button
+                onClick={() => {
                   onSelectTab('Members List');
                   onCloseMobile();
                 }}
@@ -153,6 +202,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Users className={`w-4 h-4 ${activeTab === 'Members List' ? 'text-[#0A192F]' : 'text-[#C5A880]'}`} />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold">Members List</span>
                 {activeTab === 'Members List' && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
+              </button>
+              <button
+                onClick={() => {
+                  onSelectTab('Voting');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+                  activeTab === 'Voting'
+                    ? 'bg-amber-500 text-[#0A192F] font-bold shadow-lg shadow-amber-500/20'
+                    : 'text-amber-300 hover:text-white hover:bg-[#0E1E38] border border-amber-500/30'
+                }`}
+              >
+                <Vote className={`w-4 h-4 ${activeTab === 'Voting' ? 'text-[#0A192F]' : 'text-amber-400'}`} />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm">
+                  Voting &amp; Polls
+                </span>
+                {activeTab === 'Voting' && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
               </button>
             </div>
           )}

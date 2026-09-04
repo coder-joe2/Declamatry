@@ -348,17 +348,30 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-[#C5A880]/20 border border-[#C5A880] text-[#C5A880] flex items-center justify-center font-bold text-xs">
-                        🥇
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0">
+                        {winners[0].photoUrl ? (
+                          <img
+                            src={winners[0].photoUrl}
+                            alt={winners[0].name}
+                            className="w-11 h-11 rounded-full object-cover border-2 border-amber-400 shadow-md"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-full bg-[#C5A880]/20 border-2 border-[#C5A880] text-[#C5A880] flex items-center justify-center font-bold text-sm shadow-md font-cinzel">
+                            {winners[0].name ? winners[0].name.charAt(0).toUpperCase() : '🥇'}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-400 text-[#111B21] flex items-center justify-center text-[10px] font-bold shadow">
+                          👑
+                        </span>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-white leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-white leading-tight truncate">
                           {winners.map((w) => w.name).join(' & ')}
                         </p>
-                        {winners[0].roleOrTopic && (
-                          <p className="text-[11px] text-amber-200/80">
-                            {winners[0].roleOrTopic}
+                        {(winners[0].roleOrTopic || winners[0].department) && (
+                          <p className="text-[11px] text-amber-200/80 truncate mt-0.5">
+                            {winners[0].roleOrTopic || `${winners[0].year ? `${winners[0].year} • ` : ''}${winners[0].department}`}
                           </p>
                         )}
                       </div>
@@ -408,42 +421,71 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                         )}
 
                         <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
                             {/* Selector icon */}
                             {session.isActive ? (
                               hasUserVoted && !isChangingVote ? (
                                 isUserVotedThis ? (
-                                  <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
+                                  <span className="shrink-0 w-4.5 h-4.5 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold shadow-sm">
                                     <Check className="w-3 h-3 stroke-[3]" />
                                   </span>
                                 ) : (
-                                  <span className="shrink-0 w-4 h-4 rounded-full border border-slate-600" />
+                                  <span className="shrink-0 w-4.5 h-4.5 rounded-full border border-slate-600" />
                                 )
                               ) : (
                                 <div className="shrink-0 text-[#00A884]">
                                   {isSelected ? (
-                                    <CheckCircle2 className="w-4.5 h-4.5 fill-[#00A884] text-[#111B21]" />
+                                    <CheckCircle2 className="w-5 h-5 fill-[#00A884] text-[#111B21]" />
                                   ) : (
-                                    <Circle className="w-4.5 h-4.5 text-slate-500" />
+                                    <Circle className="w-5 h-5 text-slate-500" />
                                   )}
                                 </div>
                               )
                             ) : (
                               isUserVotedThis && (
-                                <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
+                                <span className="shrink-0 w-4.5 h-4.5 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
                                   <Check className="w-3 h-3 stroke-[3]" />
                                 </span>
                               )
                             )}
 
-                            {/* Candidate Info */}
+                            {/* Candidate Appointed User Photo */}
+                            <div className="relative shrink-0">
+                              {cand.photoUrl ? (
+                                <img
+                                  src={cand.photoUrl}
+                                  alt={cand.name}
+                                  className={`w-10 h-10 rounded-full object-cover border-2 shadow-sm transition-all ${
+                                    isSelected || (hasUserVoted && isUserVotedThis)
+                                      ? 'border-[#00A884] ring-2 ring-[#00A884]/30'
+                                      : 'border-[#2A3942]'
+                                  }`}
+                                />
+                              ) : (
+                                <div
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs border transition-colors ${
+                                    isSelected || (hasUserVoted && isUserVotedThis)
+                                      ? 'bg-[#00A884]/25 text-[#00A884] border-[#00A884]'
+                                      : 'bg-[#111B21] text-[#C5A880] border-[#2A3942]'
+                                  }`}
+                                >
+                                  {cand.name ? cand.name.charAt(0).toUpperCase() : '?'}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Candidate Name & Info */}
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-white leading-tight truncate">
+                              <p className="text-xs sm:text-sm font-bold text-white leading-tight truncate font-cinzel">
                                 {cand.name}
                               </p>
-                              {cand.roleOrTopic && (
-                                <p className="text-[10px] text-slate-400 truncate">
-                                  {cand.roleOrTopic}
+                              {(cand.roleOrTopic || cand.department) && (
+                                <p className="text-[10px] sm:text-[11px] text-slate-400 truncate mt-0.5">
+                                  {cand.roleOrTopic ? (
+                                    <span>{cand.roleOrTopic}</span>
+                                  ) : (
+                                    <span>{cand.year ? `${cand.year} • ` : ''}{cand.department}</span>
+                                  )}
                                 </p>
                               )}
                             </div>
@@ -464,7 +506,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                             </div>
                           ) : (
                             hasUserVoted && isUserVotedThis && !isChangingVote && (
-                              <span className="text-[10px] text-[#00A884] font-semibold shrink-0 bg-[#00A884]/15 px-2 py-0.5 rounded">
+                              <span className="text-[10px] text-[#00A884] font-semibold shrink-0 bg-[#00A884]/15 px-2 py-0.5 rounded border border-[#00A884]/30">
                                 Your Choice
                               </span>
                             )

@@ -23,7 +23,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { UserProfile, Poll, RegisteredMember, MeetingVotingSession } from './types';
+import { UserProfile, Poll, RegisteredMember, MeetingVotingSession, formatSpeakerRole, AppMessage } from './types';
 
 // User provided Firebase configuration
 const firebaseConfig = {
@@ -135,6 +135,7 @@ export async function saveUserLoginToFirebase(profile: UserProfile): Promise<{ s
       className: profile.className || '',
       photoUrl: profile.photoUrl || '',
       password: profile.password || '',
+      executiveRole: profile.executiveRole || '',
       isAdmin: sanitizedEmail === 'vjana537@gmail.com',
       updatedAt: new Date().toISOString(),
       createdAt: serverTimestamp(),
@@ -202,6 +203,16 @@ export async function authenticateMember(
       if (data.password && _password && data.password !== _password) {
         return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
       }
+      const rawSpeakerRoles = data.speakerRoles;
+      let speakerRolesList: string[] = [];
+      if (Array.isArray(rawSpeakerRoles)) {
+        speakerRolesList = rawSpeakerRoles.filter(Boolean);
+      } else if (typeof rawSpeakerRoles === 'string' && rawSpeakerRoles.trim()) {
+        speakerRolesList = rawSpeakerRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
+      } else if (typeof data.speakerRole === 'string' && data.speakerRole.trim()) {
+        speakerRolesList = data.speakerRole.split(',').map((s: string) => s.trim()).filter(Boolean);
+      }
+
       const profile: UserProfile = {
         name: data.name || identifier,
         gmail: data.gmail || identifier,
@@ -210,6 +221,9 @@ export async function authenticateMember(
         department: data.department || 'B.Sc',
         className: data.className || '',
         photoUrl: data.photoUrl || '',
+        executiveRole: data.executiveRole || '',
+        speakerRole: speakerRolesList.join(', '),
+        speakerRoles: speakerRolesList,
         isAdmin: (data.gmail || '').toLowerCase() === 'vjana537@gmail.com',
       };
       return { success: true, profile };
@@ -225,6 +239,16 @@ export async function authenticateMember(
         if (data.password && _password && data.password !== _password) {
           return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
         }
+        const rawSpeakerRoles = data.speakerRoles;
+        let speakerRolesList: string[] = [];
+        if (Array.isArray(rawSpeakerRoles)) {
+          speakerRolesList = rawSpeakerRoles.filter(Boolean);
+        } else if (typeof rawSpeakerRoles === 'string' && rawSpeakerRoles.trim()) {
+          speakerRolesList = rawSpeakerRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
+        } else if (typeof data.speakerRole === 'string' && data.speakerRole.trim()) {
+          speakerRolesList = data.speakerRole.split(',').map((s: string) => s.trim()).filter(Boolean);
+        }
+
         const profile: UserProfile = {
           name: data.name || identifier,
           gmail: data.gmail || identifier,
@@ -233,6 +257,9 @@ export async function authenticateMember(
           department: data.department || 'B.Sc',
           className: data.className || '',
           photoUrl: data.photoUrl || '',
+          executiveRole: data.executiveRole || '',
+          speakerRole: speakerRolesList.join(', '),
+          speakerRoles: speakerRolesList,
           isAdmin: docEmail === 'vjana537@gmail.com',
         };
         return { success: true, profile };
@@ -286,6 +313,7 @@ export async function handleGoogleSignIn(): Promise<{
             department: d.department || 'B.Sc',
             className: d.className || '',
             photoUrl: d.photoUrl || photoUrl,
+            executiveRole: d.executiveRole || '',
             isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
           };
         }
@@ -301,6 +329,7 @@ export async function handleGoogleSignIn(): Promise<{
         department: 'B.Sc',
         className: '',
         photoUrl: photoUrl,
+        executiveRole: '',
         isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
       };
 
@@ -867,6 +896,7 @@ export async function fetchAllRegisteredMembers(): Promise<RegisteredMember[]> {
         department: d.department || '',
         className: d.className || '',
         photoUrl: d.photoUrl || '',
+        executiveRole: d.executiveRole || '',
         isAdmin: d.isAdmin === true || (d.gmail || '').toLowerCase() === 'vjana537@gmail.com',
         password: d.password || '',
         createdAt: createdStr || d.loginTimestamp || '',
@@ -918,6 +948,16 @@ export function subscribeToRegisteredMembers(
             }
           }
 
+          const rawSpeakerRoles = d.speakerRoles;
+          let speakerRolesList: string[] = [];
+          if (Array.isArray(rawSpeakerRoles)) {
+            speakerRolesList = rawSpeakerRoles.filter(Boolean);
+          } else if (typeof rawSpeakerRoles === 'string' && rawSpeakerRoles.trim()) {
+            speakerRolesList = rawSpeakerRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
+          } else if (typeof d.speakerRole === 'string' && d.speakerRole.trim()) {
+            speakerRolesList = d.speakerRole.split(',').map((s: string) => s.trim()).filter(Boolean);
+          }
+
           list.push({
             id: docSnap.id,
             name: d.name || 'Anonymous Member',
@@ -927,6 +967,9 @@ export function subscribeToRegisteredMembers(
             department: d.department || '',
             className: d.className || '',
             photoUrl: d.photoUrl || '',
+            executiveRole: d.executiveRole || '',
+            speakerRole: speakerRolesList.join(', '),
+            speakerRoles: speakerRolesList,
             isAdmin: d.isAdmin === true || (d.gmail || '').toLowerCase() === 'vjana537@gmail.com',
             password: d.password || '',
             createdAt: createdStr || d.loginTimestamp || '',
@@ -955,6 +998,162 @@ export function subscribeToRegisteredMembers(
 }
 
 /**
+ * Admin action to update member's Executive Committee Role (President, Secretary, etc.)
+ */
+export async function updateMemberExecutiveRole(
+  memberDocId: string,
+  role: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'members', memberDocId);
+    await setDoc(
+      docRef,
+      {
+        executiveRole: role || '',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to update executive role';
+    console.error('updateMemberExecutiveRole error:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Admin action to add a Speaker Honor / Role to a member (Key Note Speakers, Best Role Players, etc.)
+ */
+export async function addSpeakerRoleToMember(
+  memberDocId: string,
+  role: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'members', memberDocId);
+    const snap = await getDoc(docRef);
+    let currentRoles: string[] = [];
+
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data.speakerRoles)) {
+        currentRoles = [...data.speakerRoles];
+      } else if (typeof data.speakerRoles === 'string' && data.speakerRoles.trim()) {
+        currentRoles = data.speakerRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
+      } else if (typeof data.speakerRole === 'string' && data.speakerRole.trim()) {
+        currentRoles = data.speakerRole.split(',').map((s: string) => s.trim()).filter(Boolean);
+      }
+    }
+
+    // Enforce 1 speaker role per member rule
+    const norm = (s: string) => s.trim().toLowerCase().replace(/s\b/g, '');
+    const targetNorm = norm(role);
+    const otherRoles = currentRoles.filter(
+      (r) => r !== role && norm(r) !== targetNorm && formatSpeakerRole(r) !== formatSpeakerRole(role)
+    );
+    if (otherRoles.length > 0) {
+      return {
+        success: false,
+        error: `Member already appointed to "${otherRoles.join(', ')}". A member can only hold one speaker role at a time.`,
+      };
+    }
+
+    await setDoc(
+      docRef,
+      {
+        speakerRoles: [role],
+        speakerRole: role,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to add speaker role';
+    console.error('addSpeakerRoleToMember error:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Admin action to remove a specific Speaker Honor / Role from a member
+ */
+export async function removeSpeakerRoleFromMember(
+  memberDocId: string,
+  role: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'members', memberDocId);
+    const snap = await getDoc(docRef);
+    let currentRoles: string[] = [];
+
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data.speakerRoles)) {
+        currentRoles = [...data.speakerRoles];
+      } else if (typeof data.speakerRoles === 'string' && data.speakerRoles.trim()) {
+        currentRoles = data.speakerRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
+      } else if (typeof data.speakerRole === 'string' && data.speakerRole.trim()) {
+        currentRoles = data.speakerRole.split(',').map((s: string) => s.trim()).filter(Boolean);
+      }
+    }
+
+    const norm = (s: string) => s.trim().toLowerCase().replace(/s\b/g, '');
+    const targetNorm = norm(role);
+
+    currentRoles = currentRoles.filter(
+      (r) => r !== role && norm(r) !== targetNorm && formatSpeakerRole(r) !== formatSpeakerRole(role)
+    );
+
+    await setDoc(
+      docRef,
+      {
+        speakerRoles: currentRoles,
+        speakerRole: currentRoles.length > 0 ? currentRoles.join(', ') : '',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to remove speaker role';
+    console.error('removeSpeakerRoleFromMember error:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Admin action to update/replace member's Speaker Honor / Role
+ */
+export async function updateMemberSpeakerRole(
+  memberDocId: string,
+  role: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'members', memberDocId);
+    const roles = role ? [role] : [];
+    await setDoc(
+      docRef,
+      {
+        speakerRole: role || '',
+        speakerRoles: roles,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to update speaker role';
+    console.error('updateMemberSpeakerRole error:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
  * Admin action to delete a registered member document from Firestore
  */
 export async function deleteMemberByAdmin(memberDocId: string): Promise<{ success: boolean; error?: string }> {
@@ -967,6 +1166,245 @@ export async function deleteMemberByAdmin(memberDocId: string): Promise<{ succes
     const errorMsg = err instanceof Error ? err.message : 'Failed to remove member document';
     console.error('deleteMemberByAdmin error:', errorMsg);
     return { success: false, error: errorMsg };
+  }
+}
+
+/* ========================================================================= */
+/* MESSAGES & NOTIFICATIONS SYSTEM                                           */
+/* ========================================================================= */
+
+const LOCAL_MESSAGES_KEY = 'declamate_app_messages_v1';
+
+export function getLocalStoredMessages(): AppMessage[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_MESSAGES_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn('Error reading local messages:', e);
+  }
+  return [];
+}
+
+export function saveLocalStoredMessages(messages: AppMessage[]): void {
+  try {
+    localStorage.setItem(LOCAL_MESSAGES_KEY, JSON.stringify(messages));
+  } catch (e) {
+    console.warn('Error saving local messages:', e);
+  }
+}
+
+/**
+ * Send an in-app message/notification.
+ * If targetEmail is 'public', all members (including admin) will receive it.
+ * If targetEmail is a specific member's email, only that member receives it.
+ */
+export async function sendAppMessage(
+  msg: Omit<AppMessage, 'id'>
+): Promise<{ success: boolean; message?: AppMessage; error?: string }> {
+  try {
+    const docId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const newMessage: AppMessage = {
+      ...msg,
+      id: docId,
+      readBy: msg.readBy || [],
+      createdAt: msg.createdAt || new Date().toISOString(),
+    };
+
+    // 1. Optimistically store in local cache
+    const existing = getLocalStoredMessages();
+    const updated = [newMessage, ...existing.filter((m) => m.id !== docId)];
+    saveLocalStoredMessages(updated);
+
+    // 2. Persist to Firestore
+    await ensureAuth();
+    const docRef = doc(db, 'messages', docId);
+    await setDoc(
+      docRef,
+      {
+        ...newMessage,
+        serverTime: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return { success: true, message: newMessage };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to send message';
+    console.error('sendAppMessage error:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+/**
+ * Real-time subscription to messages for a given user.
+ * Returns both public broadcast messages (for all members and admin)
+ * and personal messages addressed to this user's email.
+ */
+export function subscribeToUserMessages(
+  userEmail: string,
+  onUpdate: (messages: AppMessage[]) => void
+): () => void {
+  const normEmail = (userEmail || '').trim().toLowerCase();
+
+  // Initial cached render
+  const initialLocal = getLocalStoredMessages();
+  const filteredInitial = initialLocal.filter((m) => {
+    if (!m) return false;
+    if (m.targetEmail === 'public' || m.isBroadcast) return true;
+    if (normEmail && m.targetEmail?.toLowerCase() === normEmail) return true;
+    return false;
+  });
+  if (filteredInitial.length > 0) {
+    onUpdate(filteredInitial);
+  }
+
+  let unsubscribe = () => {};
+
+  try {
+    const colRef = collection(db, 'messages');
+    unsubscribe = onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const allRemote: AppMessage[] = snapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              type: data.type || 'general',
+              title: data.title || 'Message',
+              message: data.message || '',
+              targetEmail: data.targetEmail || 'public',
+              isBroadcast: data.isBroadcast ?? (data.targetEmail === 'public'),
+              roleName: data.roleName || undefined,
+              createdAt: data.createdAt || new Date().toISOString(),
+              createdBy: data.createdBy || { name: 'Admin' },
+              readBy: data.readBy || [],
+            };
+          });
+
+          // Sort newest first
+          allRemote.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+          // Save complete set to cache
+          saveLocalStoredMessages(allRemote);
+
+          // Filter for current user
+          const forUser = allRemote.filter((m) => {
+            if (m.targetEmail === 'public' || m.isBroadcast) return true;
+            if (normEmail && m.targetEmail?.toLowerCase() === normEmail) return true;
+            return false;
+          });
+
+          onUpdate(forUser);
+        } else {
+          onUpdate([]);
+        }
+      },
+      (error) => {
+        console.warn('Real-time messages listener note (using cache):', error.message);
+        onUpdate(filteredInitial);
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to subscribe to messages:', err);
+    onUpdate(filteredInitial);
+  }
+
+  return () => {
+    unsubscribe();
+  };
+}
+
+/**
+ * Mark a message as read by the user
+ */
+export async function markMessageAsRead(messageId: string, userEmail: string): Promise<void> {
+  const normEmail = (userEmail || '').trim().toLowerCase();
+  if (!normEmail) return;
+
+  // Local update
+  const current = getLocalStoredMessages();
+  const updated = current.map((m) => {
+    if (m.id === messageId) {
+      const readSet = new Set([...(m.readBy || []), normEmail]);
+      return { ...m, readBy: Array.from(readSet) };
+    }
+    return m;
+  });
+  saveLocalStoredMessages(updated);
+
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'messages', messageId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const currentRead = Array.isArray(data.readBy) ? data.readBy : [];
+      if (!currentRead.includes(normEmail)) {
+        await updateDoc(docRef, {
+          readBy: [...currentRead, normEmail],
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('markMessageAsRead note:', err);
+  }
+}
+
+/**
+ * Mark all user's messages as read
+ */
+export async function markAllMessagesAsRead(userEmail: string, messageIds: string[]): Promise<void> {
+  const normEmail = (userEmail || '').trim().toLowerCase();
+  if (!normEmail || messageIds.length === 0) return;
+
+  const current = getLocalStoredMessages();
+  const updated = current.map((m) => {
+    if (messageIds.includes(m.id)) {
+      const readSet = new Set([...(m.readBy || []), normEmail]);
+      return { ...m, readBy: Array.from(readSet) };
+    }
+    return m;
+  });
+  saveLocalStoredMessages(updated);
+
+  // Firestore update
+  try {
+    await ensureAuth();
+    for (const msgId of messageIds) {
+      const docRef = doc(db, 'messages', msgId);
+      getDoc(docRef).then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const currentRead = Array.isArray(data.readBy) ? data.readBy : [];
+          if (!currentRead.includes(normEmail)) {
+            updateDoc(docRef, { readBy: [...currentRead, normEmail] }).catch(() => {});
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('markAllMessagesAsRead note:', err);
+  }
+}
+
+/**
+ * Delete a message (Admin or user)
+ */
+export async function deleteAppMessage(messageId: string): Promise<boolean> {
+  const current = getLocalStoredMessages();
+  saveLocalStoredMessages(current.filter((m) => m.id !== messageId));
+
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'messages', messageId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    console.warn('deleteAppMessage note:', err);
+    return true;
   }
 }
 

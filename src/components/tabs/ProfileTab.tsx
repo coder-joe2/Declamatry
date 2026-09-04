@@ -1,6 +1,6 @@
 import React from 'react';
-import { UserProfile } from '../../types';
-import { User, Mail, Phone, GraduationCap, Calendar, ShieldCheck, Edit3 } from 'lucide-react';
+import { UserProfile, formatSpeakerRole } from '../../types';
+import { User, Mail, Phone, GraduationCap, Calendar, ShieldCheck, Edit3, Crown, Mic } from 'lucide-react';
 import { SocietyLogo } from '../SocietyLogo';
 
 interface ProfileTabProps {
@@ -9,6 +9,20 @@ interface ProfileTabProps {
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({ userProfile, onEditProfile }) => {
+  // If speakerRoles is an array (even if empty []), respect it!
+  const userSpeakerRoles = React.useMemo(() => {
+    if (Array.isArray(userProfile.speakerRoles)) {
+      return userProfile.speakerRoles.filter(Boolean);
+    }
+    if (typeof userProfile.speakerRole === 'string' && userProfile.speakerRole.trim()) {
+      return userProfile.speakerRole.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [userProfile.speakerRoles, userProfile.speakerRole]);
+
+  const hasSpeakerRole = userSpeakerRoles.length > 0;
+  const primarySpeakerRole = hasSpeakerRole ? formatSpeakerRole(userSpeakerRoles[0]) : '';
+
   return (
     <div className="space-y-8 animate-fadeIn text-slate-100">
       {/* Header Banner */}
@@ -36,9 +50,26 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ userProfile, onEditProfi
               </div>
             </div>
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[11px] font-semibold uppercase tracking-wider mb-1 border border-[#C5A880]/40">
-                <ShieldCheck className="w-3 h-3" />
-                <span>Verified Member</span>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[11px] font-semibold uppercase tracking-wider border border-[#C5A880]/40">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Verified Member</span>
+                </div>
+                {userProfile.executiveRole && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-bold uppercase tracking-wider border border-amber-500/40">
+                    <Crown className="w-3 h-3 text-amber-400" />
+                    <span>EC: {userProfile.executiveRole}</span>
+                  </div>
+                )}
+                {userSpeakerRoles.map((sRole) => (
+                  <div
+                    key={sRole}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-950/60 text-purple-300 text-[11px] font-bold uppercase tracking-wider border border-purple-500/40"
+                  >
+                    <Mic className="w-3 h-3 text-purple-400" />
+                    <span>{formatSpeakerRole(sRole)}</span>
+                  </div>
+                ))}
               </div>
               <h2 className="text-xl sm:text-3xl font-bold font-cinzel text-white">
                 {userProfile.name || 'Member'}
@@ -75,6 +106,50 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ userProfile, onEditProfi
               <p className="font-semibold text-white text-sm">{userProfile.name || 'Not provided'}</p>
             </div>
           </div>
+
+          {userProfile.executiveRole ? (
+            <div className="p-4 rounded-xl bg-[#0B1528] border border-amber-500/40 flex items-center gap-3.5 shadow-sm">
+              <div className="p-2.5 rounded-lg bg-[#030712] border border-amber-500/40 text-amber-400">
+                <Crown className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-amber-400/80 font-sans font-semibold">Executive Committee Post</p>
+                <p className="font-bold text-amber-300 text-sm font-cinzel">{userProfile.executiveRole}</p>
+              </div>
+            </div>
+          ) : hasSpeakerRole ? (
+            <div className="p-4 rounded-xl bg-[#0B1528] border border-purple-500/40 flex items-center gap-3.5 shadow-sm">
+              <div className="p-2.5 rounded-lg bg-[#030712] border border-purple-500/40 text-purple-400">
+                <Mic className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-purple-400/80 font-sans font-semibold">Speaker Honor</p>
+                <p className="font-bold text-purple-300 text-sm font-cinzel">{primarySpeakerRole}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-[#0B1528] border border-[#1E2E48] flex items-center gap-3.5">
+              <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] text-[#C5A880]">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-sans">Club Role</p>
+                <p className="font-semibold text-white text-sm">General Society Member</p>
+              </div>
+            </div>
+          )}
+
+          {hasSpeakerRole && userProfile.executiveRole && (
+            <div className="p-4 rounded-xl bg-[#0B1528] border border-purple-500/40 flex items-center gap-3.5 shadow-sm md:col-span-2">
+              <div className="p-2.5 rounded-lg bg-[#030712] border border-purple-500/40 text-purple-400">
+                <Mic className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-purple-400/80 font-sans font-semibold">Speaker Honor</p>
+                <p className="font-bold text-purple-300 text-sm font-cinzel">{primarySpeakerRole}</p>
+              </div>
+            </div>
+          )}
 
           <div className="p-4 rounded-xl bg-[#0B1528] border border-[#1E2E48] flex items-center gap-3.5">
             <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] text-[#C5A880]">

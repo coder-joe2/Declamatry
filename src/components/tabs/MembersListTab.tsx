@@ -24,8 +24,17 @@ import {
   BookOpen,
   ArrowUpDown,
   FileSpreadsheet,
+  Crown,
+  UserPlus,
+  FileText,
+  DollarSign,
+  Settings,
+  Award,
+  CheckCircle2,
+  X,
+  Mic,
 } from 'lucide-react';
-import { UserProfile, RegisteredMember } from '../../types';
+import { UserProfile, RegisteredMember, EXECUTIVE_ROLES_LIST, ExecutiveCommitteeRole, formatSpeakerRole } from '../../types';
 import { subscribeToRegisteredMembers, fetchAllRegisteredMembers, deleteMemberByAdmin } from '../../firebase';
 import { SocietyLogo } from '../SocietyLogo';
 
@@ -54,6 +63,61 @@ const normalizeYearCategory = (yearStr?: string): '1' | '2' | '3' | 'other' => {
   return 'other';
 };
 
+const getRoleConfig = (role?: string) => {
+  switch (role) {
+    case 'President':
+      return {
+        icon: Crown,
+        badgeClass: 'bg-amber-950/60 text-amber-300 border-amber-500/50',
+        dotClass: 'bg-amber-400',
+        textClass: 'text-amber-400',
+        short: 'PRES',
+      };
+    case 'Director of Learning':
+      return {
+        icon: BookOpen,
+        badgeClass: 'bg-sky-950/60 text-sky-300 border-sky-500/50',
+        dotClass: 'bg-sky-400',
+        textClass: 'text-sky-400',
+        short: 'LEARN',
+      };
+    case 'Director of Membership':
+      return {
+        icon: UserPlus,
+        badgeClass: 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50',
+        dotClass: 'bg-emerald-400',
+        textClass: 'text-emerald-400',
+        short: 'MEMB',
+      };
+    case 'Secretary':
+      return {
+        icon: FileText,
+        badgeClass: 'bg-purple-950/60 text-purple-300 border-purple-500/50',
+        dotClass: 'bg-purple-400',
+        textClass: 'text-purple-400',
+        short: 'SEC',
+      };
+    case 'Financial Officer':
+      return {
+        icon: DollarSign,
+        badgeClass: 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50',
+        dotClass: 'bg-emerald-400',
+        textClass: 'text-emerald-400',
+        short: 'FIN',
+      };
+    case 'Operations Officer':
+      return {
+        icon: Settings,
+        badgeClass: 'bg-orange-950/60 text-orange-300 border-orange-500/50',
+        dotClass: 'bg-orange-400',
+        textClass: 'text-orange-400',
+        short: 'OPS',
+      };
+    default:
+      return null;
+  }
+};
+
 export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) => {
   const [members, setMembers] = useState<RegisteredMember[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -61,8 +125,9 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('ALL');
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
-  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'dept' | 'year'>('recent');
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'dept' | 'year' | 'role'>('recent');
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedMemberModal, setSelectedMemberModal] = useState<RegisteredMember | null>(null);
@@ -144,12 +209,13 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
     const headers = [
       'S.No',
       'Full Name',
+      'Executive Committee Role',
       'Gmail / Email',
       'Phone Number',
       'Academic Year',
       'Department / Degree',
       'Class / Specialization',
-      'Admin Role',
+      'Admin Status',
       'Password',
       'Registered Date',
     ];
@@ -157,6 +223,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
     const rows = filteredMembers.map((m, index) => [
       index + 1,
       `"${(m.name || '').replace(/"/g, '""')}"`,
+      `"${(m.executiveRole || 'General Member').replace(/"/g, '""')}"`,
       `"${(m.gmail || '').replace(/"/g, '""')}"`,
       `"${(m.phone || '').replace(/"/g, '""')}"`,
       `"${(m.year || '').replace(/"/g, '""')}"`,
@@ -179,6 +246,11 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
     link.click();
     document.body.removeChild(link);
   };
+
+  // Count of appointed Executive Committee role holders
+  const totalECMembersCount = useMemo(() => {
+    return members.filter((m) => Boolean(m.executiveRole)).length;
+  }, [members]);
 
   // Extract distinct departments, years, and classes
   const departmentOptions = useMemo(() => {
@@ -209,7 +281,8 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
   const activeFilterCount =
     (selectedYear !== 'ALL' ? 1 : 0) +
     (selectedDept !== 'ALL' ? 1 : 0) +
-    (selectedClass !== 'ALL' ? 1 : 0);
+    (selectedClass !== 'ALL' ? 1 : 0) +
+    (selectedRoleFilter !== 'ALL' ? 1 : 0);
 
   // Filtered & Sorted Members
   const filteredMembers = useMemo(() => {
@@ -221,7 +294,8 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           member.gmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           member.phone?.includes(searchQuery) ||
           member.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          member.className?.toLowerCase().includes(searchQuery.toLowerCase());
+          member.className?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          member.executiveRole?.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesDept = selectedDept === 'ALL' || member.department === selectedDept;
 
@@ -242,7 +316,16 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
 
         const matchesClass = selectedClass === 'ALL' || member.className === selectedClass;
 
-        return matchesSearch && matchesDept && matchesYear && matchesClass;
+        let matchesRole = true;
+        if (selectedRoleFilter === 'EC_ONLY') {
+          matchesRole = Boolean(member.executiveRole);
+        } else if (selectedRoleFilter === 'GENERAL_ONLY') {
+          matchesRole = !member.executiveRole;
+        } else if (selectedRoleFilter !== 'ALL') {
+          matchesRole = member.executiveRole === selectedRoleFilter;
+        }
+
+        return matchesSearch && matchesDept && matchesYear && matchesClass && matchesRole;
       })
       .sort((a, b) => {
         if (sortBy === 'name') {
@@ -254,12 +337,15 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
         if (sortBy === 'year') {
           return (a.year || '').localeCompare(b.year || '');
         }
+        if (sortBy === 'role') {
+          return (b.executiveRole || '').localeCompare(a.executiveRole || '');
+        }
         // default recent
         const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return timeB - timeA;
       });
-  }, [members, searchQuery, selectedDept, selectedYear, selectedClass, sortBy]);
+  }, [members, searchQuery, selectedDept, selectedYear, selectedClass, selectedRoleFilter, sortBy]);
 
   // Department counts breakdown
   const deptBreakdown = useMemo(() => {
@@ -294,25 +380,43 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 text-slate-100 max-w-full">
-      {/* Top Header Banner - Stats & Actions Only */}
+      {/* Top Header Banner - Stats & Actions */}
       <div className="rounded-2xl bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] text-white p-3.5 sm:p-5 border border-[#C5A880]/40 shadow-xl relative overflow-hidden space-y-3.5">
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-          <div className="p-3 sm:p-4 rounded-xl bg-[#030712]/90 border border-[#1E2E48] text-center shadow-inner">
-            <span className="text-xl sm:text-3xl font-bold font-cinzel text-[#C5A880] block leading-tight">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="p-3 rounded-xl bg-[#030712]/90 border border-[#1E2E48] text-center shadow-inner">
+            <span className="text-lg sm:text-2xl font-bold font-cinzel text-[#C5A880] block leading-tight">
               {members.length}
             </span>
-            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-slate-300 font-semibold font-cinzel">
-              TOTAL MEMBERS
+            <span className="text-[9px] sm:text-xs uppercase tracking-wider text-slate-300 font-semibold font-cinzel">
+              Total Members
             </span>
           </div>
 
-          <div className="p-3 sm:p-4 rounded-xl bg-[#030712]/90 border border-[#1E2E48] text-center shadow-inner">
-            <span className="text-xl sm:text-3xl font-bold font-cinzel text-emerald-400 block leading-tight">
+          <div 
+            onClick={() => setSelectedRoleFilter(selectedRoleFilter === 'EC_ONLY' ? 'ALL' : 'EC_ONLY')}
+            className={`p-3 rounded-xl border text-center shadow-inner cursor-pointer transition-all ${
+              selectedRoleFilter === 'EC_ONLY' 
+                ? 'bg-amber-950/40 border-amber-500/60' 
+                : 'bg-[#030712]/90 border-[#1E2E48] hover:border-amber-500/40'
+            }`}
+            title="Click to filter Executive Committee"
+          >
+            <span className="text-lg sm:text-2xl font-bold font-cinzel text-amber-400 block leading-tight">
+              {totalECMembersCount} <span className="text-xs text-slate-400 font-normal">/ 6</span>
+            </span>
+            <span className="text-[9px] sm:text-xs uppercase tracking-wider text-amber-300 font-semibold font-cinzel flex items-center justify-center gap-1">
+              <Crown className="w-3 h-3 text-amber-400 hidden sm:inline" />
+              <span>EC Officers</span>
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[#030712]/90 border border-[#1E2E48] text-center shadow-inner">
+            <span className="text-lg sm:text-2xl font-bold font-cinzel text-emerald-400 block leading-tight">
               {departmentOptions.length}
             </span>
-            <span className="text-[10px] sm:text-xs uppercase tracking-wider text-slate-300 font-semibold font-cinzel">
-              DEPARTMENTS
+            <span className="text-[9px] sm:text-xs uppercase tracking-wider text-slate-300 font-semibold font-cinzel">
+              Departments
             </span>
           </div>
         </div>
@@ -323,7 +427,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span>Firebase Synced</span>
             <span className="text-slate-500">•</span>
-            <span className="text-slate-400 truncate">Karur Campus</span>
+            <span className="text-slate-400 truncate">Admin Role Manager</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -333,7 +437,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
               title="Download CSV file"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Export CSV</span>
+              <span className="hidden sm:inline">Export CSV</span>
             </button>
 
             <button
@@ -374,7 +478,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by member name, phone, department, branch, email..."
+            placeholder="Search by member name, role (e.g. President, Secretary), phone, department..."
             className="w-full bg-[#030712] border border-[#1E2E48] focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-lg pl-9.5 pr-8 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none transition-all"
           />
           {searchQuery && (
@@ -389,25 +493,41 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
         </div>
 
         {/* Filter Toggle Row */}
-        <div className="flex items-center justify-between gap-2 pt-0.5">
-          <button
-            type="button"
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
-              isFilterOpen || activeFilterCount > 0
-                ? 'bg-[#C5A880]/20 border-[#C5A880] text-[#C5A880]'
-                : 'bg-[#030712] border-[#1E2E48] text-slate-300 hover:text-white hover:border-slate-500'
-            }`}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            <span>Filter</span>
-            {activeFilterCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-[#C5A880] text-[#0A192F] text-[10px] font-bold">
-                {activeFilterCount}
-              </span>
-            )}
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`} />
-          </button>
+        <div className="flex items-center justify-between gap-2 pt-0.5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                isFilterOpen || activeFilterCount > 0
+                  ? 'bg-[#C5A880]/20 border-[#C5A880] text-[#C5A880]'
+                  : 'bg-[#030712] border-[#1E2E48] text-slate-300 hover:text-white hover:border-slate-500'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-[#C5A880] text-[#0A192F] text-[10px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Quick EC Filter Pill */}
+            <button
+              type="button"
+              onClick={() => setSelectedRoleFilter(selectedRoleFilter === 'EC_ONLY' ? 'ALL' : 'EC_ONLY')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+                selectedRoleFilter === 'EC_ONLY'
+                  ? 'bg-amber-950/70 border-amber-500 text-amber-300'
+                  : 'bg-[#030712] border-[#1E2E48] text-slate-300 hover:text-amber-300 hover:border-amber-500/40'
+              }`}
+            >
+              <Crown className="w-3 h-3 text-amber-400" />
+              <span>EC Members Only</span>
+            </button>
+          </div>
 
           <div className="text-[11px] text-slate-400">
             Showing <span className="text-[#C5A880] font-bold">{filteredMembers.length}</span> of{' '}
@@ -415,10 +535,32 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           </div>
         </div>
 
-        {/* Expandable Filter Options: 1st Year, 2nd Year, 3rd Year, Departments, Class */}
+        {/* Expandable Filter Options */}
         {isFilterOpen && (
           <div className="pt-3 border-t border-[#1E2E48]/80 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+              {/* Executive Role Filter */}
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-cinzel text-slate-400 font-semibold tracking-wider block">
+                  Executive Committee Role
+                </label>
+                <select
+                  value={selectedRoleFilter}
+                  onChange={(e) => setSelectedRoleFilter(e.target.value)}
+                  className="w-full bg-[#030712] border border-[#1E2E48] focus:border-[#C5A880] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer"
+                >
+                  <option value="ALL">All Roles &amp; Members</option>
+                  <option value="EC_ONLY">⭐ All Executive Committee</option>
+                  <option value="President">👑 President</option>
+                  <option value="Director of Learning">📚 Director of Learning</option>
+                  <option value="Director of Membership">👥 Director of Membership</option>
+                  <option value="Secretary">📝 Secretary</option>
+                  <option value="Financial Officer">💰 Financial Officer</option>
+                  <option value="Operations Officer">⚙️ Operations Officer</option>
+                  <option value="GENERAL_ONLY">General Members (No EC)</option>
+                </select>
+              </div>
+
               {/* Year Filter: 1st Year, 2nd Year, 3rd Year */}
               <div className="space-y-1">
                 <label className="text-[10px] uppercase font-cinzel text-slate-400 font-semibold tracking-wider block">
@@ -492,6 +634,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                     setSelectedYear('ALL');
                     setSelectedDept('ALL');
                     setSelectedClass('ALL');
+                    setSelectedRoleFilter('ALL');
                   }}
                   className="text-xs text-red-400 hover:text-red-300 underline font-medium cursor-pointer"
                 >
@@ -523,78 +666,102 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
         </div>
       ) : (
         <>
-          {/* PHONE & TABLET AUTO-VIEW: Clean & Minimal Cards (Click Card to Open Full Dossier) */}
+          {/* PHONE & TABLET AUTO-VIEW: Clean & Minimal Cards */}
           <div className="block lg:hidden space-y-2.5 sm:space-y-3">
             {filteredMembers.map((member, index) => {
               const isUserAdmin = member.isAdmin || member.gmail?.toLowerCase() === 'vjana537@gmail.com';
               const rowId = member.id || `member-card-${index}`;
+              const roleConfig = getRoleConfig(member.executiveRole);
 
               return (
                 <div
                   key={rowId}
                   onClick={() => setSelectedMemberModal(member)}
-                  className="p-3 sm:p-4 rounded-xl bg-[#0B1528] border border-[#1E2E48] hover:border-[#C5A880] active:scale-[0.99] transition-all shadow-md cursor-pointer group relative flex items-center justify-between gap-3 text-slate-200"
+                  className={`p-3 sm:p-4 rounded-xl border transition-all shadow-md cursor-pointer group relative flex flex-col gap-2.5 text-slate-200 ${
+                    member.executiveRole
+                      ? 'bg-[#0B1528] border-amber-500/40 hover:border-amber-400'
+                      : 'bg-[#0B1528] border-[#1E2E48] hover:border-[#C5A880]'
+                  }`}
                 >
-                  {/* Left: Avatar & Basic Info (Name, Dept, Year, Class) */}
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {member.photoUrl ? (
-                      <img
-                        src={member.photoUrl}
-                        alt={member.name}
-                        className="w-11 h-11 rounded-full object-cover border border-[#C5A880] shrink-0"
-                      />
-                    ) : (
-                      <div className="w-11 h-11 rounded-full bg-[#030712] border border-[#C5A880] flex items-center justify-center text-[#C5A880] font-bold text-sm shrink-0">
-                        {member.name ? member.name[0].toUpperCase() : 'M'}
-                      </div>
-                    )}
-
-                    <div className="min-w-0 flex-1 space-y-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-cinzel font-bold text-white text-sm truncate group-hover:text-[#C5A880] transition-colors">
-                          {member.name || 'Member'}
-                        </h4>
-                        {isUserAdmin && (
-                          <span className="px-1.5 py-0.2 text-[8px] rounded bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40 font-bold uppercase shrink-0">
-                            ADMIN
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Department & Year Badges */}
-                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                        <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[10px] text-[#C5A880] font-medium">
-                          {member.department || 'General'}
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[10px] text-slate-300 font-medium">
-                          {member.year || 'I Year'}
-                        </span>
-                      </div>
-
-                      {/* Class / Specialization */}
-                      {member.className && (
-                        <p className="text-[11px] text-slate-400 truncate font-sans pt-0.5">
-                          {member.className}
-                        </p>
+                  <div className="flex items-center justify-between gap-3 min-w-0">
+                    {/* Left: Avatar & Basic Info */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {member.photoUrl ? (
+                        <img
+                          src={member.photoUrl}
+                          alt={member.name}
+                          className="w-11 h-11 rounded-full object-cover border border-[#C5A880] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-full bg-[#030712] border border-[#C5A880] flex items-center justify-center text-[#C5A880] font-bold text-sm shrink-0">
+                          {member.name ? member.name[0].toUpperCase() : 'M'}
+                        </div>
                       )}
-                    </div>
-                  </div>
 
-                  {/* Right: Delete action & Chevron */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMemberToDelete(member);
-                      }}
-                      className="p-2 rounded-lg bg-[#030712] hover:bg-red-950/50 border border-[#1E2E48] hover:border-red-500/40 text-slate-400 hover:text-red-400 transition-colors"
-                      title="Delete Member"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <div className="p-1 text-slate-500 group-hover:text-[#C5A880] transition-colors">
-                      <ChevronRight className="w-5 h-5" />
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-cinzel font-bold text-white text-sm truncate group-hover:text-[#C5A880] transition-colors">
+                            {member.name || 'Member'}
+                          </h4>
+                          {isUserAdmin && (
+                            <span className="px-1.5 py-0.2 text-[8px] rounded bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40 font-bold uppercase shrink-0">
+                              ADMIN
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Executive Committee & Speaker Role Badges */}
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                          {member.executiveRole && (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${roleConfig?.badgeClass || 'bg-amber-950/60 text-amber-300 border-amber-500/50'}`}>
+                              <Crown className="w-3 h-3 text-amber-400" />
+                              <span>{member.executiveRole}</span>
+                            </span>
+                          )}
+                          {(Array.isArray(member.speakerRoles) && member.speakerRoles.length > 0
+                            ? member.speakerRoles
+                            : member.speakerRole
+                            ? member.speakerRole.split(',').map((s) => s.trim()).filter(Boolean)
+                            : []
+                          ).map((sRole) => (
+                            <span
+                              key={sRole}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-950/60 text-purple-300 border-purple-500/50"
+                            >
+                              <Mic className="w-3 h-3 text-purple-400" />
+                              <span>{formatSpeakerRole(sRole)}</span>
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Department & Year Badges */}
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                          <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[10px] text-[#C5A880] font-medium">
+                            {member.department || 'General'}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[10px] text-slate-300 font-medium">
+                            {member.year || 'I Year'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMemberToDelete(member);
+                        }}
+                        className="p-2 rounded-lg bg-[#030712] hover:bg-red-950/50 border border-[#1E2E48] hover:border-red-500/40 text-slate-400 hover:text-red-400 transition-colors"
+                        title="Delete Member"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="p-1 text-slate-500 group-hover:text-[#C5A880] transition-colors">
+                        <ChevronRight className="w-5 h-5" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -602,7 +769,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             })}
           </div>
 
-          {/* LAPTOP & DESKTOP AUTO-VIEW: Full Widescreen Table (Visible on screens >= 1024px) */}
+          {/* LAPTOP & DESKTOP AUTO-VIEW: Full Widescreen Table */}
           <div className="hidden lg:block rounded-xl bg-[#0B1528] border border-[#1E2E48] shadow-xl overflow-hidden max-w-full">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
@@ -610,15 +777,14 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                 <thead>
                   <tr className="bg-[#050B14] border-b border-[#1E2E48] text-slate-400 font-cinzel text-[10px] uppercase tracking-wider">
                     <th className="py-2.5 px-3 font-bold text-center w-10">#</th>
-                    <th className="py-2.5 px-3 font-bold min-w-[170px]">Member</th>
-                    <th className="py-2.5 px-3 font-bold min-w-[180px]">Gmail</th>
-                    <th className="py-2.5 px-3 font-bold min-w-[120px]">Phone</th>
-                    <th className="py-2.5 px-3 font-bold min-w-[90px]">Year</th>
+                    <th className="py-2.5 px-3 font-bold min-w-[160px]">Member</th>
+                    <th className="py-2.5 px-3 font-bold min-w-[170px]">Executive Committee Role</th>
+                    <th className="py-2.5 px-3 font-bold min-w-[170px]">Gmail</th>
+                    <th className="py-2.5 px-3 font-bold min-w-[110px]">Phone</th>
+                    <th className="py-2.5 px-3 font-bold min-w-[80px]">Year</th>
                     <th className="py-2.5 px-3 font-bold min-w-[110px]">Department</th>
-                    <th className="py-2.5 px-3 font-bold min-w-[150px]">Class / Branch</th>
                     <th className="py-2.5 px-3 font-bold min-w-[130px]">Password</th>
-                    <th className="py-2.5 px-3 font-bold min-w-[110px]">Date</th>
-                    <th className="py-2.5 px-3 font-bold text-right min-w-[80px]">Action</th>
+                    <th className="py-2.5 px-3 font-bold text-right min-w-[70px]">Action</th>
                   </tr>
                 </thead>
 
@@ -628,11 +794,14 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                     const isUserAdmin = member.isAdmin || member.gmail?.toLowerCase() === 'vjana537@gmail.com';
                     const rowId = member.id || `member-${index}`;
                     const isPasswordRevealed = revealedPasswords[rowId];
+                    const roleConfig = getRoleConfig(member.executiveRole);
 
                     return (
                       <tr
                         key={rowId}
-                        className="hover:bg-[#0E1E38]/80 transition-colors"
+                        className={`hover:bg-[#0E1E38]/80 transition-colors ${
+                          member.executiveRole ? 'bg-amber-950/10' : ''
+                        }`}
                       >
                         {/* Index */}
                         <td className="py-2.5 px-3 text-center font-mono text-slate-400 text-[11px]">
@@ -664,7 +833,41 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                                   </span>
                                 )}
                               </div>
+                              {member.className && (
+                                <p className="text-[10px] text-slate-400 truncate font-sans">
+                                  {member.className}
+                                </p>
+                              )}
                             </div>
+                          </div>
+                        </td>
+
+                        {/* Executive Committee & Speaker Role Display (View-Only) */}
+                        <td className="py-2.5 px-3">
+                          <div className="flex flex-col gap-1 items-start">
+                            {member.executiveRole && (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${roleConfig?.badgeClass || 'bg-amber-950/40 border-amber-500/60 text-amber-300'}`}>
+                                <Crown className="w-3 h-3 text-amber-400 shrink-0" />
+                                <span>{member.executiveRole}</span>
+                              </span>
+                            )}
+                            {(Array.isArray(member.speakerRoles) && member.speakerRoles.length > 0
+                              ? member.speakerRoles
+                              : member.speakerRole
+                              ? member.speakerRole.split(',').map((s) => s.trim()).filter(Boolean)
+                              : []
+                            ).map((sRole) => (
+                              <span
+                                key={sRole}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border bg-purple-950/40 border-purple-500/60 text-purple-300"
+                              >
+                                <Mic className="w-3 h-3 text-purple-400 shrink-0" />
+                                <span>{formatSpeakerRole(sRole)}</span>
+                              </span>
+                            ))}
+                            {!member.executiveRole && !member.speakerRole && (!member.speakerRoles || member.speakerRoles.length === 0) && (
+                              <span className="text-slate-500 text-xs italic">General Member</span>
+                            )}
                           </div>
                         </td>
 
@@ -673,7 +876,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                           <div className="flex items-center gap-1 font-mono text-xs">
                             <a
                               href={`mailto:${member.gmail}`}
-                              className="text-slate-300 hover:text-[#C5A880] truncate max-w-[150px]"
+                              className="text-slate-300 hover:text-[#C5A880] truncate max-w-[140px]"
                               title={member.gmail}
                             >
                               {member.gmail || 'N/A'}
@@ -735,13 +938,6 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                           </span>
                         </td>
 
-                        {/* Class / Branch */}
-                        <td className="py-2.5 px-3">
-                          <span className="text-xs text-slate-300 font-medium truncate block max-w-[150px]">
-                            {member.className || '—'}
-                          </span>
-                        </td>
-
                         {/* Password */}
                         <td className="py-2.5 px-3 font-mono text-xs">
                           {member.password ? (
@@ -779,13 +975,6 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                           )}
                         </td>
 
-                        {/* Registered Date */}
-                        <td className="py-2.5 px-3 text-[11px] text-slate-400 font-mono whitespace-nowrap">
-                          {member.createdAt
-                            ? new Date(member.createdAt).toLocaleDateString()
-                            : 'Recent'}
-                        </td>
-
                         {/* Actions */}
                         <td className="py-2.5 px-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
@@ -816,7 +1005,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
         </>
       )}
 
-      {/* Member Full Dossier Modal - Responsive Phone View */}
+      {/* Member Full Dossier Modal - Responsive Phone & Desktop */}
       {selectedMemberModal && (
         <div
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4"
@@ -873,6 +1062,39 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                 <p className="text-[11px] text-slate-400 truncate font-sans">
                   Sri Amaraavathi College, Karur
                 </p>
+              </div>
+            </div>
+
+            {/* Club Roles & Honors Info (View-Only) */}
+            <div className="p-3.5 rounded-xl bg-[#030712] border border-[#1E2E48] flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span>Club Roles &amp; Honors:</span>
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {selectedMemberModal.executiveRole && (
+                  <span className="px-2.5 py-1 rounded bg-amber-950/60 border border-amber-500/60 text-amber-300 font-bold text-xs flex items-center gap-1">
+                    <Crown className="w-3 h-3 text-amber-400" />
+                    <span>{selectedMemberModal.executiveRole}</span>
+                  </span>
+                )}
+                {(Array.isArray(selectedMemberModal.speakerRoles) && selectedMemberModal.speakerRoles.length > 0
+                  ? selectedMemberModal.speakerRoles
+                  : selectedMemberModal.speakerRole
+                  ? selectedMemberModal.speakerRole.split(',').map((s) => s.trim()).filter(Boolean)
+                  : []
+                ).map((sRole) => (
+                  <span
+                    key={sRole}
+                    className="px-2.5 py-1 rounded bg-purple-950/60 border border-purple-500/60 text-purple-300 font-bold text-xs flex items-center gap-1"
+                  >
+                    <Mic className="w-3 h-3 text-purple-400" />
+                    <span>{formatSpeakerRole(sRole)}</span>
+                  </span>
+                ))}
+                {!selectedMemberModal.executiveRole && !selectedMemberModal.speakerRole && (!selectedMemberModal.speakerRoles || selectedMemberModal.speakerRoles.length === 0) && (
+                  <span className="text-xs text-slate-500 italic">General Society Member</span>
+                )}
               </div>
             </div>
 
@@ -936,7 +1158,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
         </div>
       )}
 
-      {/* Delete Confirmation Modal - Responsive */}
+      {/* Delete Confirmation Modal */}
       {memberToDelete && (
         <div
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4"
