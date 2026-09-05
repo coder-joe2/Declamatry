@@ -453,38 +453,11 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
       {/* ========================================================================= */}
       <div className="w-full min-w-0 max-w-full bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-7 border border-[#C5A880]/40 shadow-2xl space-y-3 sm:space-y-4 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 min-w-0">
-          <div className="space-y-2 min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[10px] sm:text-xs font-semibold uppercase tracking-wider border border-[#C5A880]/40 font-cinzel">
-                <Vote className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                <span className="truncate">Declamate’s Polling Center</span>
-              </span>
-
-              {isAdmin && (
-                <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-bold border border-amber-500/40 shrink-0">
-                  <ShieldCheck className="w-3 h-3 shrink-0" />
-                  <span>Admin</span>
-                </span>
-              )}
-
-              {totalActive > 0 ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[#00A884]/20 text-[#00A884] text-[10px] sm:text-xs font-bold border border-[#00A884]/40 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00A884] animate-ping" />
-                  <span>{totalActive} Live {totalActive === 1 ? 'Session' : 'Sessions'}</span>
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full bg-[#111B21] text-slate-400 text-[10px] sm:text-xs border border-[#1E2E48] shrink-0">
-                  0 Active
-                </span>
-              )}
-            </div>
-
-            <h2 className="text-base sm:text-2xl md:text-3xl font-bold font-cinzel text-white tracking-wide break-words leading-snug">
-              Official Meeting Voting &amp; Secret Ballots
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base sm:text-2xl md:text-3xl font-bold font-cinzel text-white tracking-wide break-words leading-snug flex items-center gap-2.5">
+              <Vote className="w-5 h-5 sm:w-7 sm:h-7 text-[#00A884] shrink-0" />
+              <span>Voting Place</span>
             </h2>
-            <p className="text-slate-300 text-[11px] sm:text-sm leading-relaxed max-w-2xl break-words">
-              Vote for <span className="text-[#00A884] font-semibold">1. Best Role Players</span>, <span className="text-[#C5A880] font-semibold">2. Best Key Note Speakers</span>, <span className="text-sky-400 font-semibold">3. Best Evaluators</span>, and <span className="text-yellow-400 font-semibold">4. Best Quick Think Speaker</span>. Results remain confidential until declared by the admin.
-            </p>
           </div>
 
           {/* ADMIN PRIMARY ACTION BUTTONS - Mobile Full Width Stack */}
@@ -682,7 +655,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                     handleOptionSelect(poll, option.id);
                                   }
                                 }}
-                                className={`relative p-3 rounded-xl border transition-all select-none flex items-center ${
+                                className={`relative p-3 rounded-xl border transition-all select-none flex items-center overflow-hidden ${
                                   poll.isActive && (!hasUserVoted || currentSelected.length > 0)
                                     ? 'cursor-pointer hover:border-[#00A884]'
                                     : 'cursor-default'
@@ -696,10 +669,15 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                     : 'bg-[#111B21] border-[#222E35] text-slate-200'
                                 }`}
                               >
-                                {showResults && (
+                                {/* Live Progress Bar for All when votes exist */}
+                                {totalPollVotes > 0 && (
                                   <div
-                                    className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 ${
-                                      userVotedThis ? 'bg-[#00A884]/25 border-r-2 border-[#00A884]' : isLeader ? 'bg-[#C5A880]/20' : 'bg-slate-700/20'
+                                    className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 pointer-events-none ${
+                                      userVotedThis
+                                        ? 'bg-[#00A884]/20 border-r-2 border-[#00A884]'
+                                        : isLeader && showResults
+                                        ? 'bg-[#C5A880]/20'
+                                        : 'bg-slate-700/15'
                                     }`}
                                     style={{ width: `${percentage}%` }}
                                   />
@@ -742,21 +720,27 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                     <span className="text-xs font-medium">{option.text}</span>
                                   </div>
 
-                                  {showResults ? (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      {isLeader && totalPollVotes > 0 && (
-                                        <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
-                                      )}
-                                      <span className="text-xs font-bold text-slate-200">{percentage}%</span>
-                                      <span className="text-[10px] text-slate-500">({optionVotes})</span>
-                                    </div>
-                                  ) : (
-                                    hasUserVoted && userVotedThis && (
-                                      <span className="text-[10px] text-[#00A884] font-medium shrink-0 bg-[#00A884]/15 px-2 py-0.5 rounded">
-                                        Voted
+                                  {/* Live Vote Count & Percentage (Public, voter identities kept secret) */}
+                                  <div className="flex items-center gap-2 shrink-0 text-right">
+                                    {hasUserVoted && userVotedThis && (
+                                      <span className="text-[9px] sm:text-[10px] text-[#00A884] font-semibold shrink-0 bg-[#00A884]/20 px-1.5 sm:px-2 py-0.5 rounded border border-[#00A884]/35">
+                                        Your Choice
                                       </span>
-                                    )
-                                  )}
+                                    )}
+                                    {showResults && isLeader && totalPollVotes > 0 && (
+                                      <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
+                                    )}
+                                    <div className="flex flex-col items-end">
+                                      <span className="text-xs sm:text-sm font-bold text-white font-mono flex items-center gap-1">
+                                        {optionVotes} <span className="text-[10px] font-sans font-medium text-slate-400">{optionVotes === 1 ? 'vote' : 'votes'}</span>
+                                      </span>
+                                      {totalPollVotes > 0 && (
+                                        <span className="text-[10px] text-slate-400 font-mono">
+                                          {percentage}%
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             );

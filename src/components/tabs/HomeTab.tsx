@@ -1,11 +1,11 @@
 import React from 'react';
 import { SocietyLogo } from '../SocietyLogo';
-import { Sparkles, Mic, Compass, Award, ArrowRight, Quote } from 'lucide-react';
-import { UserProfile } from '../../types';
+import { Sparkles, Mic, Compass, Award, ArrowRight, Quote, Video } from 'lucide-react';
+import { UserProfile, SidebarTab } from '../../types';
 
 interface HomeTabProps {
   userProfile: UserProfile;
-  onNavigateTab: (tab: 'About Club' | 'Learning Tips' | 'Leaderboard' | 'Levels') => void;
+  onNavigateTab: (tab: SidebarTab) => void;
 }
 
 export const HomeTab: React.FC<HomeTabProps> = ({ userProfile, onNavigateTab }) => {
@@ -75,7 +75,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({ userProfile, onNavigateTab }) 
       </div>
 
       {/* Quick Action Navigation Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: About Club */}
         <div 
           onClick={() => onNavigateTab('About Club')}
@@ -116,10 +116,30 @@ export const HomeTab: React.FC<HomeTabProps> = ({ userProfile, onNavigateTab }) 
           </div>
         </div>
 
-        {/* Card 3: Growth & Experience */}
+        {/* Card 3: Recommended Videos */}
+        <div 
+          onClick={() => onNavigateTab('Recommended Videos')}
+          className="group p-6 rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#00A884] shadow-md hover:shadow-xl hover:shadow-[#00A884]/10 transition-all cursor-pointer flex flex-col justify-between space-y-4"
+        >
+          <div className="space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#00A884] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Video className="w-6 h-6" />
+            </div>
+            <h4 className="font-cinzel text-lg font-bold text-white group-hover:text-[#00A884] transition-colors">Recommend Video</h4>
+            <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
+              Watch the featured learning tutorial directly inside the club portal.
+            </p>
+          </div>
+          <div className="flex items-center text-xs font-bold font-cinzel text-[#00A884] tracking-wider pt-2">
+            <span>WATCH VIDEO</span>
+            <ArrowRight className="w-4 h-4 ml-1.5 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </div>
+
+        {/* Card 4: Leadership & Levels */}
         <div 
           onClick={() => onNavigateTab('Levels')}
-          className="group p-6 rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#C5A880] shadow-md hover:shadow-xl hover:shadow-[#C5A880]/5 transition-all cursor-pointer flex flex-col justify-between space-y-4 sm:col-span-2 lg:col-span-1"
+          className="group p-6 rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#C5A880] shadow-md hover:shadow-xl hover:shadow-[#C5A880]/5 transition-all cursor-pointer flex flex-col justify-between space-y-4"
         >
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880] flex items-center justify-center group-hover:scale-105 transition-transform">

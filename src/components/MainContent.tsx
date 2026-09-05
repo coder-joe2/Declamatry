@@ -11,6 +11,7 @@ import { ProfileTab } from './tabs/ProfileTab';
 import { MembersListTab } from './tabs/MembersListTab';
 import { ExecutiveRolesTab } from './tabs/ExecutiveRolesTab';
 import { SpeakerRolesTab } from './tabs/SpeakerRolesTab';
+import { RecommendedVideosTab } from './tabs/RecommendedVideosTab';
 import { MessagesModal } from './MessagesModal';
 import { subscribeToUserMessages } from '../firebase';
 
@@ -140,6 +141,8 @@ export const MainContent: React.FC<MainContentProps> = ({
         {activeTab === 'About Club' && <AboutClubTab />}
 
         {activeTab === 'Learning Tips' && <LearningTipsTab />}
+
+        {activeTab === 'Recommended Videos' && <RecommendedVideosTab userProfile={userProfile} />}
 
         {activeTab === 'Leaderboard' && <LeaderboardTab userProfile={userProfile} />}
 

@@ -97,6 +97,7 @@ export type SidebarTab =
   | 'About Club'
   | 'Leadership Roles'
   | 'Learning Tips'
+  | 'Recommended Videos'
   | 'Leaderboard'
   | 'Levels'
   | 'Voting'
@@ -104,6 +105,20 @@ export type SidebarTab =
   | 'Members List'
   | 'Admin Executive Committee Roles'
   | 'Admin Speaker Roles';
+
+export interface RecommendedVideo {
+  id: string;
+  title: string;
+  channelName: string;
+  youtubeUrl: string;
+  youtubeId: string;
+  category: 'Communication Improvement' | 'Body Language' | 'Programming Skills' | 'Public Speaking';
+  description: string;
+  duration?: string;
+  badge?: string;
+  thumbnailUrl?: string;
+  createdAt?: string;
+}
 
 export interface PollOption {
   id: string;

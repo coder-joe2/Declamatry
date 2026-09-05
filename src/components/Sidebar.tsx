@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Crown,
   Mic,
+  Video,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -47,6 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { name: 'About Club', icon: Users },
     { name: 'Leadership Roles', label: 'Leadership Roles', icon: Crown },
     { name: 'Learning Tips', icon: Lightbulb },
+    { name: 'Recommended Videos', label: 'Recommend Videos', icon: Video },
     { name: 'Leaderboard', icon: Trophy },
     { name: 'Levels', icon: Layers },
     { name: 'Profile', icon: User },
@@ -56,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { name: 'Home', icon: Home },
     { name: 'About Club', icon: Users },
     { name: 'Learning Tips', icon: Lightbulb },
+    { name: 'Recommended Videos', label: 'Recommend Videos', icon: Video },
     { name: 'Leaderboard', icon: Trophy },
     { name: 'Levels', icon: Layers },
     { name: 'Profile', icon: User },

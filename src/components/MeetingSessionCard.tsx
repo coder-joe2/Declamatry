@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
-  Flame
+  Flame,
+  Edit3
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { MeetingVotingSession, UserProfile } from '../types';
@@ -142,12 +143,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
           <div className="space-y-1.5 min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              {session.isActive ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[#00A884]/20 text-[#00A884] text-[10px] sm:text-xs font-bold border border-[#00A884]/40 shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-[#00A884] animate-ping" />
-                  Live Meeting Voting Session
-                </span>
-              ) : (
+              {!session.isActive && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[10px] sm:text-xs font-bold border border-[#C5A880]/40 shadow-sm font-cinzel">
                   <Trophy className="w-3.5 h-3.5 text-[#C5A880]" />
                   Voting Closed • Winners Declared
@@ -251,26 +247,6 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
             </span>
           </div>
         )}
-
-        {/* Voted Confirmation Notice */}
-        {session.isActive && hasUserVoted && !isChangingVote && (
-          <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-[#00A884]/10 border border-[#00A884]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2 text-xs text-[#00A884]">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span className="font-semibold text-[11px] sm:text-xs">
-                Your secret ballot is recorded! Results will be announced once closed.
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsChangingVote(true)}
-              className="text-[11px] font-bold text-slate-300 hover:text-white bg-[#111B21] px-3 py-1.5 rounded-lg border border-[#222E35] cursor-pointer self-start sm:self-auto"
-            >
-              Change My Vote
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Categories & Nominees Grid */}
@@ -318,14 +294,8 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                   </div>
 
                   {session.isActive ? (
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        isCategoryAnswered
-                          ? 'bg-[#00A884]/20 text-[#00A884] border border-[#00A884]/40'
-                          : 'bg-[#182229] text-slate-400'
-                      }`}
-                    >
-                      {isCategoryAnswered ? 'Selected' : 'Choose 1'}
+                    <span className="text-[10px] font-bold text-[#00A884] bg-[#00A884]/15 px-2.5 py-0.5 rounded-full border border-[#00A884]/30">
+                      {totalCatVotes} {totalCatVotes === 1 ? 'Vote' : 'Votes'}
                     </span>
                   ) : (
                     <span className="text-[10px] font-bold text-[#C5A880] flex items-center gap-1">
@@ -392,7 +362,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                       <div
                         key={cand.id}
                         onClick={() => handleSelectCandidate(cat.id, cand.id)}
-                        className={`relative p-3 rounded-xl border transition-all select-none flex items-center ${
+                        className={`relative p-3 rounded-xl border transition-all select-none flex items-center overflow-hidden ${
                           session.isActive && (!hasUserVoted || isChangingVote)
                             ? 'cursor-pointer hover:border-[#00A884] active:scale-[0.99]'
                             : 'cursor-default'
@@ -406,15 +376,15 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                             : 'bg-[#111B21] border-[#222E35] text-slate-200'
                         }`}
                       >
-                        {/* Progress Bar (Closed view) */}
-                        {showResults && (
+                        {/* Progress Bar (Live and public for all when there are votes) */}
+                        {totalCatVotes > 0 && (
                           <div
-                            className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 ${
+                            className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 pointer-events-none ${
                               isUserVotedThis
-                                ? 'bg-[#00A884]/25 border-r-2 border-[#00A884]'
-                                : isWinner && totalCatVotes > 0
+                                ? 'bg-[#00A884]/20 border-r-2 border-[#00A884]'
+                                : isWinner && showResults
                                 ? 'bg-[#C5A880]/20'
-                                : 'bg-slate-700/20'
+                                : 'bg-slate-700/15'
                             }`}
                             style={{ width: `${percentage}%` }}
                           />
@@ -491,26 +461,27 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                             </div>
                           </div>
 
-                          {/* Result Percentage (Closed view) */}
-                          {showResults ? (
-                            <div className="flex items-center gap-1 shrink-0 text-right">
-                              {isWinner && totalCatVotes > 0 && (
-                                <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
+                          {/* Live Vote Count & Percentage (Publicly visible, voter identity is completely secret) */}
+                          <div className="flex items-center gap-2 shrink-0 text-right">
+                            {hasUserVoted && isUserVotedThis && !isChangingVote && (
+                              <span className="text-[9px] sm:text-[10px] text-[#00A884] font-semibold shrink-0 bg-[#00A884]/20 px-1.5 sm:px-2 py-0.5 rounded border border-[#00A884]/35">
+                                Your Vote
+                              </span>
+                            )}
+                            {showResults && isWinner && totalCatVotes > 0 && (
+                              <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
+                            )}
+                            <div className="flex flex-col items-end">
+                              <span className="text-xs sm:text-sm font-bold text-white font-mono flex items-center gap-1">
+                                {candVotes} <span className="text-[10px] font-sans font-medium text-slate-400">{candVotes === 1 ? 'vote' : 'votes'}</span>
+                              </span>
+                              {totalCatVotes > 0 && (
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {percentage}%
+                                </span>
                               )}
-                              <span className="text-xs font-bold text-slate-200">
-                                {percentage}%
-                              </span>
-                              <span className="text-[10px] text-slate-500">
-                                ({candVotes})
-                              </span>
                             </div>
-                          ) : (
-                            hasUserVoted && isUserVotedThis && !isChangingVote && (
-                              <span className="text-[10px] text-[#00A884] font-semibold shrink-0 bg-[#00A884]/15 px-2 py-0.5 rounded border border-[#00A884]/30">
-                                Your Choice
-                              </span>
-                            )
-                          )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -551,9 +522,23 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
           })}
         </div>
 
+        {/* Change My Vote Button at Bottom of Voting Section */}
+        {session.isActive && hasUserVoted && !isChangingVote && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setIsChangingVote(true)}
+              className="w-full py-3.5 rounded-2xl bg-[#111B21] hover:bg-[#1A2730] text-slate-200 hover:text-[#00A884] font-bold text-xs sm:text-sm border border-[#222E35] hover:border-[#00A884]/50 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.99]"
+            >
+              <Edit3 className="w-4 h-4 text-[#00A884]" />
+              <span>Change My Vote</span>
+            </button>
+          </div>
+        )}
+
         {/* Big Submit Button for Live Session */}
         {session.isActive && (!hasUserVoted || isChangingVote) && (
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <button
               type="button"
               onClick={handleCastMeetingVote}
@@ -573,6 +558,26 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                 </>
               )}
             </button>
+
+            {hasUserVoted && isChangingVote && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsChangingVote(false);
+                  const currentSelections: Record<string, string> = {};
+                  session.categories.forEach((cat) => {
+                    const userChoice = cat.candidates.find((c) => c.voterEmails?.includes(userEmail));
+                    if (userChoice) {
+                      currentSelections[cat.id] = userChoice.id;
+                    }
+                  });
+                  setSelectedMap(currentSelections);
+                }}
+                className="w-full py-2.5 rounded-xl bg-[#111B21] hover:bg-[#182229] text-slate-400 hover:text-slate-200 text-xs font-semibold border border-[#222E35] transition-all cursor-pointer"
+              >
+                Cancel & Keep Current Vote
+              </button>
+            )}
           </div>
         )}
       </div>
