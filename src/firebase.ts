@@ -1408,5 +1408,368 @@ export async function deleteAppMessage(messageId: string): Promise<boolean> {
   }
 }
 
+/* ========================================================================== */
+/* SPEECH EVALUATION SHEETS (Toastmasters Speech Evaluation System)           */
+/* ========================================================================== */
+
+const LOCAL_SPEECH_EVALUATIONS_KEY = 'declamates_speech_evaluations';
+
+function getLocalSpeechEvaluations(): any[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_SPEECH_EVALUATIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalSpeechEvaluations(list: any[]) {
+  try {
+    localStorage.setItem(LOCAL_SPEECH_EVALUATIONS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('Failed to save evaluations locally:', e);
+  }
+}
+
+export async function saveSpeechEvaluation(
+  evaluation: any
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  const docId = evaluation.id || `eval_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const fullData = {
+    ...evaluation,
+    id: docId,
+    updatedAt: new Date().toISOString(),
+    createdAt: evaluation.createdAt || new Date().toISOString(),
+  };
+
+  // Local sync
+  const localList = getLocalSpeechEvaluations();
+  const existingIdx = localList.findIndex((item) => item.id === docId);
+  if (existingIdx >= 0) {
+    localList[existingIdx] = fullData;
+  } else {
+    localList.unshift(fullData);
+  }
+  saveLocalSpeechEvaluations(localList);
+
+  // Firestore sync
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'speech_evaluations', docId);
+    await setDoc(docRef, fullData, { merge: true });
+    return { success: true, id: docId };
+  } catch (err) {
+    console.warn('Firestore saveSpeechEvaluation note:', err);
+    return { success: true, id: docId };
+  }
+}
+
+export function subscribeToSpeechEvaluations(
+  callback: (evaluations: any[]) => void
+): () => void {
+  // Fire local first
+  callback(getLocalSpeechEvaluations());
+
+  let unsub: (() => void) | null = null;
+  ensureAuth()
+    .then(() => {
+      const q = query(collection(db, 'speech_evaluations'), orderBy('createdAt', 'desc'));
+      unsub = onSnapshot(
+        q,
+        (snapshot) => {
+          const items: any[] = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ ...docSnap.data(), id: docSnap.id });
+          });
+          if (items.length > 0) {
+            saveLocalSpeechEvaluations(items);
+            callback(items);
+          } else {
+            callback(getLocalSpeechEvaluations());
+          }
+        },
+        (error) => {
+          console.warn('subscribeToSpeechEvaluations snapshot error:', error);
+          callback(getLocalSpeechEvaluations());
+        }
+      );
+    })
+    .catch((err) => {
+      console.warn('subscribeToSpeechEvaluations auth error:', err);
+      callback(getLocalSpeechEvaluations());
+    });
+
+  return () => {
+    if (unsub) unsub();
+  };
+}
+
+export async function deleteSpeechEvaluation(id: string): Promise<boolean> {
+  const localList = getLocalSpeechEvaluations().filter((e) => e.id !== id);
+  saveLocalSpeechEvaluations(localList);
+
+  try {
+    await ensureAuth();
+    await deleteDoc(doc(db, 'speech_evaluations', id));
+    return true;
+  } catch (err) {
+    console.warn('deleteSpeechEvaluation note:', err);
+    return true;
+  }
+}
+
+/* ========================================================================== */
+/* TIME STEWARD RECORDS (Meeting Speaking Durations & Stopwatch Details)       */
+/* ========================================================================== */
+
+const LOCAL_TIME_STEWARD_RECORDS_KEY = 'declamates_time_steward_records';
+
+function getLocalTimeStewardRecords(): any[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_TIME_STEWARD_RECORDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalTimeStewardRecords(list: any[]) {
+  try {
+    localStorage.setItem(LOCAL_TIME_STEWARD_RECORDS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('Failed to save time steward records locally:', e);
+  }
+}
+
+export async function saveTimeStewardRecord(
+  record: any
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  const docId = record.id || `timer_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const fullData = {
+    ...record,
+    id: docId,
+    updatedAt: new Date().toISOString(),
+    createdAt: record.createdAt || new Date().toISOString(),
+  };
+
+  // Local storage sync
+  const localList = getLocalTimeStewardRecords();
+  const existingIdx = localList.findIndex((item) => item.id === docId);
+  if (existingIdx >= 0) {
+    localList[existingIdx] = fullData;
+  } else {
+    localList.unshift(fullData);
+  }
+  saveLocalTimeStewardRecords(localList);
+
+  // Firestore sync
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'time_steward_records', docId);
+    await setDoc(docRef, fullData, { merge: true });
+    return { success: true, id: docId };
+  } catch (err) {
+    console.warn('Firestore saveTimeStewardRecord note:', err);
+    return { success: true, id: docId };
+  }
+}
+
+export function subscribeToTimeStewardRecords(
+  callback: (records: any[]) => void
+): () => void {
+  // Fire local first
+  callback(getLocalTimeStewardRecords());
+
+  let unsub: (() => void) | null = null;
+  ensureAuth()
+    .then(() => {
+      const q = query(collection(db, 'time_steward_records'), orderBy('createdAt', 'desc'));
+      unsub = onSnapshot(
+        q,
+        (snapshot) => {
+          const items: any[] = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ ...docSnap.data(), id: docSnap.id });
+          });
+          // Always save latest snapshot (including empty list) and notify subscriber
+          saveLocalTimeStewardRecords(items);
+          callback(items);
+        },
+        (error) => {
+          console.warn('subscribeToTimeStewardRecords snapshot error:', error);
+          callback(getLocalTimeStewardRecords());
+        }
+      );
+    })
+    .catch((err) => {
+      console.warn('subscribeToTimeStewardRecords auth error:', err);
+      callback(getLocalTimeStewardRecords());
+    });
+
+  return () => {
+    if (unsub) unsub();
+  };
+}
+
+export async function deleteTimeStewardRecord(recordOrId: string | any): Promise<boolean> {
+  const targetId = typeof recordOrId === 'string' ? recordOrId : recordOrId?.id;
+  const currentList = getLocalTimeStewardRecords();
+  const filtered = currentList.filter((e) => {
+    if (targetId && e.id === targetId) return false;
+    if (typeof recordOrId === 'object' && recordOrId !== null) {
+      if (e.id && recordOrId.id && e.id === recordOrId.id) return false;
+      if (e.createdAt && recordOrId.createdAt && e.createdAt === recordOrId.createdAt) return false;
+      if (
+        (e.speakerName || '').trim().toLowerCase() === (recordOrId.speakerName || '').trim().toLowerCase() &&
+        (e.formattedTime || '') === (recordOrId.formattedTime || '')
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+  saveLocalTimeStewardRecords(filtered);
+
+  if (targetId) {
+    try {
+      await ensureAuth();
+      await deleteDoc(doc(db, 'time_steward_records', targetId));
+      return true;
+    } catch (err) {
+      console.warn('deleteTimeStewardRecord note:', err);
+      return true;
+    }
+  }
+  return true;
+}
+
+/* ========================================================================== */
+/* FILLER COUNTER RECORDS (Ah-Counter Log & Crutch Word Counts)              */
+/* ========================================================================== */
+
+const LOCAL_FILLER_COUNTER_RECORDS_KEY = 'declamates_filler_counter_records';
+
+function getLocalFillerCounterRecords(): any[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_FILLER_COUNTER_RECORDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalFillerCounterRecords(list: any[]) {
+  try {
+    localStorage.setItem(LOCAL_FILLER_COUNTER_RECORDS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('Failed to save filler counter records locally:', e);
+  }
+}
+
+export async function saveFillerCounterRecord(
+  record: any
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  const docId = record.id || `filler_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const fullData = {
+    ...record,
+    id: docId,
+    updatedAt: new Date().toISOString(),
+    createdAt: record.createdAt || new Date().toISOString(),
+  };
+
+  // Local storage sync
+  const localList = getLocalFillerCounterRecords();
+  const existingIdx = localList.findIndex((item) => item.id === docId);
+  if (existingIdx >= 0) {
+    localList[existingIdx] = fullData;
+  } else {
+    localList.unshift(fullData);
+  }
+  saveLocalFillerCounterRecords(localList);
+
+  // Firestore sync
+  try {
+    await ensureAuth();
+    const docRef = doc(db, 'filler_counter_records', docId);
+    await setDoc(docRef, fullData, { merge: true });
+    return { success: true, id: docId };
+  } catch (err) {
+    console.warn('Firestore saveFillerCounterRecord note:', err);
+    return { success: true, id: docId };
+  }
+}
+
+export function subscribeToFillerCounterRecords(
+  callback: (records: any[]) => void
+): () => void {
+  // Fire local first
+  callback(getLocalFillerCounterRecords());
+
+  let unsub: (() => void) | null = null;
+  ensureAuth()
+    .then(() => {
+      const q = query(collection(db, 'filler_counter_records'), orderBy('createdAt', 'desc'));
+      unsub = onSnapshot(
+        q,
+        (snapshot) => {
+          const items: any[] = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ ...docSnap.data(), id: docSnap.id });
+          });
+          if (items.length > 0) {
+            saveLocalFillerCounterRecords(items);
+            callback(items);
+          } else {
+            callback(getLocalFillerCounterRecords());
+          }
+        },
+        (error) => {
+          console.warn('subscribeToFillerCounterRecords snapshot error:', error);
+          callback(getLocalFillerCounterRecords());
+        }
+      );
+    })
+    .catch((err) => {
+      console.warn('subscribeToFillerCounterRecords auth error:', err);
+      callback(getLocalFillerCounterRecords());
+    });
+
+  return () => {
+    if (unsub) unsub();
+  };
+}
+
+export async function deleteFillerCounterRecord(recordOrId: string | any): Promise<boolean> {
+  const targetId = typeof recordOrId === 'string' ? recordOrId : recordOrId?.id;
+  const currentList = getLocalFillerCounterRecords();
+  const filtered = currentList.filter((e) => {
+    if (targetId && e.id === targetId) return false;
+    if (typeof recordOrId === 'object' && recordOrId !== null) {
+      if (e.id && recordOrId.id && e.id === recordOrId.id) return false;
+      if (e.createdAt && recordOrId.createdAt && e.createdAt === recordOrId.createdAt) return false;
+      if (
+        (e.speakerName || '').trim().toLowerCase() === (recordOrId.speakerName || '').trim().toLowerCase() &&
+        (e.meetingNumber || '').trim().toLowerCase() === (recordOrId.meetingNumber || '').trim().toLowerCase()
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+  saveLocalFillerCounterRecords(filtered);
+
+  if (targetId) {
+    try {
+      await ensureAuth();
+      await deleteDoc(doc(db, 'filler_counter_records', targetId));
+      return true;
+    } catch (err) {
+      console.warn('deleteFillerCounterRecord note:', err);
+      return true;
+    }
+  }
+  return true;
+}
+
 export default app;
 

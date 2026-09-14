@@ -12,6 +12,10 @@ import { MembersListTab } from './tabs/MembersListTab';
 import { ExecutiveRolesTab } from './tabs/ExecutiveRolesTab';
 import { SpeakerRolesTab } from './tabs/SpeakerRolesTab';
 import { RecommendedVideosTab } from './tabs/RecommendedVideosTab';
+import { SpeechEvaluatorTab } from './tabs/SpeechEvaluatorTab';
+import { TimeStewardTab } from './tabs/TimeStewardTab';
+import { FillerCounterTab } from './tabs/FillerCounterTab';
+import { ActivityTab } from './tabs/ActivityTab';
 import { MessagesModal } from './MessagesModal';
 import { subscribeToUserMessages } from '../firebase';
 
@@ -80,6 +84,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                 ? 'Leadership Roles'
                 : activeTab === 'Admin Speaker Roles'
                 ? 'Speaker Roles'
+                : activeTab === 'Activity'
+                ? 'Activity'
                 : activeTab}
             </h1>
             <p className="text-[9px] sm:text-[11px] text-[#C5A880] uppercase tracking-widest font-semibold font-cinzel truncate max-w-[180px] sm:max-w-none">
@@ -138,6 +144,13 @@ export const MainContent: React.FC<MainContentProps> = ({
           />
         )}
 
+        {activeTab === 'Activity' && (
+          <ActivityTab 
+            userProfile={userProfile} 
+            onNavigateTab={(tab) => onSelectTab(tab)} 
+          />
+        )}
+
         {activeTab === 'About Club' && <AboutClubTab />}
 
         {activeTab === 'Learning Tips' && <LearningTipsTab />}
@@ -174,6 +187,24 @@ export const MainContent: React.FC<MainContentProps> = ({
           <SpeakerRolesTab 
             userProfile={userProfile} 
             onUpdateProfile={onUpdateProfile}
+          />
+        )}
+
+        {activeTab === 'Speech Evaluator Page' && (
+          <SpeechEvaluatorTab 
+            userProfile={userProfile} 
+          />
+        )}
+
+        {activeTab === 'Time Steward' && (
+          <TimeStewardTab 
+            userProfile={userProfile} 
+          />
+        )}
+
+        {activeTab === 'Filler Counter Page' && (
+          <FillerCounterTab 
+            userProfile={userProfile} 
           />
         )}
       </main>

@@ -3,6 +3,7 @@ import { SidebarTab, UserProfile } from '../types';
 import { SocietyLogo } from './SocietyLogo';
 import {
   Home,
+  Activity,
   Users,
   Lightbulb,
   Trophy,
@@ -18,6 +19,9 @@ import {
   Crown,
   Mic,
   Video,
+  FileCheck,
+  Timer,
+  Filter,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -45,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const userSidebarItems: { name: SidebarTab; label?: string; icon: React.FC<{ className?: string }> }[] = [
     { name: 'Home', icon: Home },
+    { name: 'Activity', label: 'Activity', icon: Activity },
     { name: 'About Club', icon: Users },
     { name: 'Leadership Roles', label: 'Leadership Roles', icon: Crown },
     { name: 'Learning Tips', icon: Lightbulb },
@@ -56,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const adminSidebarItems: { name: SidebarTab; label?: string; icon: React.FC<{ className?: string }> }[] = [
     { name: 'Home', icon: Home },
+    { name: 'Activity', label: 'Activity', icon: Activity },
     { name: 'About Club', icon: Users },
     { name: 'Learning Tips', icon: Lightbulb },
     { name: 'Recommended Videos', label: 'Recommend Videos', icon: Video },
@@ -65,6 +71,94 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const sidebarItems = isAdmin ? adminSidebarItems : userSidebarItems;
+
+  // Speech Evaluator Page is strictly shown ONLY for the appointed feedbacker / evaluator chosen by the admin
+  const isUserEvaluator = React.useMemo(() => {
+    const roles: string[] = [];
+    if (Array.isArray(userProfile.speakerRoles)) {
+      roles.push(...userProfile.speakerRoles);
+    }
+    if (typeof userProfile.speakerRole === 'string' && userProfile.speakerRole.trim()) {
+      roles.push(...userProfile.speakerRole.split(','));
+    }
+    return roles.some((r) => {
+      const s = r.trim().toLowerCase();
+      return (
+        s === 'evaluators' ||
+        s === 'evaluator' ||
+        s === 'best evaluators' ||
+        s === 'best evaluator' ||
+        s === 'feedbacker' ||
+        s === 'feedbackers' ||
+        s === 'feed backer' ||
+        s === 'feed backers' ||
+        s === 'speech evaluator' ||
+        s === 'speech evaluators' ||
+        s === 'evaluators (feedbacker)' ||
+        s === 'evaluator (feedbacker)' ||
+        s.includes('evaluator') ||
+        s.includes('feedbacker')
+      );
+    });
+  }, [userProfile.speakerRoles, userProfile.speakerRole]);
+
+  const canAccessEvaluator = isUserEvaluator || isAdmin;
+
+  // Time Steward Page is shown ONLY for the appointed Time Steward (and Admin for testing)
+  const isUserTimeSteward = React.useMemo(() => {
+    const roles: string[] = [];
+    if (Array.isArray(userProfile.speakerRoles)) {
+      roles.push(...userProfile.speakerRoles);
+    }
+    if (typeof userProfile.speakerRole === 'string' && userProfile.speakerRole.trim()) {
+      roles.push(...userProfile.speakerRole.split(','));
+    }
+    return roles.some((r) => {
+      const s = r.trim().toLowerCase();
+      return (
+        s === 'time steward' ||
+        s === 'timer' ||
+        s === 'timer steward' ||
+        s === 'best time steward' ||
+        s.includes('time steward') ||
+        s.includes('timer')
+      );
+    });
+  }, [userProfile.speakerRoles, userProfile.speakerRole]);
+
+  const canAccessTimeSteward = isUserTimeSteward || isAdmin;
+
+  // Filler Counter Page is shown for the appointed Filler Counter / Filter Counter (and Admin for testing)
+  const isUserFillerCounter = React.useMemo(() => {
+    const roles: string[] = [];
+    if (Array.isArray(userProfile.speakerRoles)) {
+      roles.push(...userProfile.speakerRoles);
+    }
+    if (typeof userProfile.speakerRole === 'string' && userProfile.speakerRole.trim()) {
+      roles.push(...userProfile.speakerRole.split(','));
+    }
+    return roles.some((r) => {
+      const s = r.trim().toLowerCase();
+      return (
+        s === 'filter counter' ||
+        s === 'fillter counter' ||
+        s === 'filler counter' ||
+        s === 'filler' ||
+        s === 'filter' ||
+        s === 'ah counter' ||
+        s === 'ah-counter' ||
+        s === 'best filter counter' ||
+        s === 'best fillter counter' ||
+        s === 'best filler counter' ||
+        s.includes('filler') ||
+        s.includes('filter counter') ||
+        s.includes('ah counter') ||
+        s.includes('ah-counter')
+      );
+    });
+  }, [userProfile.speakerRoles, userProfile.speakerRole]);
+
+  const canAccessFillerCounter = isUserFillerCounter || isAdmin;
 
   return (
     <>
@@ -142,6 +236,102 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
+
+          {/* Speech Evaluator Page - Conditionally rendered only for appointed Evaluators / Feedbacker (and Admin) */}
+          {canAccessEvaluator && (
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  onSelectTab('Speech Evaluator Page');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer relative border ${
+                  activeTab === 'Speech Evaluator Page'
+                    ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-lg shadow-amber-500/20'
+                    : 'bg-amber-950/25 text-amber-300 hover:text-white hover:bg-amber-900/35 border-amber-500/40'
+                }`}
+              >
+                <FileCheck
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'Speech Evaluator Page' ? 'text-slate-950' : 'text-amber-400'
+                  }`}
+                />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm truncate">
+                  Speech Evaluator Page
+                </span>
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white rounded-full animate-pulse shadow-sm shrink-0">
+                  NEW
+                </span>
+                {activeTab === 'Speech Evaluator Page' && (
+                  <ChevronRight className="w-4 h-4 text-slate-950 shrink-0" />
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Time Steward Page - Conditionally rendered for appointed Time Steward (and Admin) with NEW badge */}
+          {canAccessTimeSteward && (
+            <div className="pt-1.5">
+              <button
+                onClick={() => {
+                  onSelectTab('Time Steward');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer relative border ${
+                  activeTab === 'Time Steward'
+                    ? 'bg-orange-500 text-slate-950 font-bold border-orange-400 shadow-lg shadow-orange-500/20'
+                    : 'bg-orange-950/25 text-orange-300 hover:text-white hover:bg-orange-900/35 border-orange-500/40'
+                }`}
+              >
+                <Timer
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'Time Steward' ? 'text-slate-950' : 'text-orange-400'
+                  }`}
+                />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm truncate">
+                  Time Steward
+                </span>
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white rounded-full animate-pulse shadow-sm shrink-0">
+                  NEW
+                </span>
+                {activeTab === 'Time Steward' && (
+                  <ChevronRight className="w-4 h-4 text-slate-950 shrink-0" />
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Filler Counter Page - Conditionally rendered for appointed Filler Counter (and Admin) with NEW badge */}
+          {canAccessFillerCounter && (
+            <div className="pt-1.5">
+              <button
+                onClick={() => {
+                  onSelectTab('Filler Counter Page');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer relative border ${
+                  activeTab === 'Filler Counter Page'
+                    ? 'bg-teal-500 text-slate-950 font-bold border-teal-400 shadow-lg shadow-teal-500/20'
+                    : 'bg-teal-950/25 text-teal-300 hover:text-white hover:bg-teal-900/35 border-teal-500/40'
+                }`}
+              >
+                <Filter
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'Filler Counter Page' ? 'text-slate-950' : 'text-teal-400'
+                  }`}
+                />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm truncate">
+                  Filler Counter Page
+                </span>
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white rounded-full animate-pulse shadow-sm shrink-0">
+                  NEW
+                </span>
+                {activeTab === 'Filler Counter Page' && (
+                  <ChevronRight className="w-4 h-4 text-slate-950 shrink-0" />
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Dedicated Admin Portal Section */}
           {isAdmin && (

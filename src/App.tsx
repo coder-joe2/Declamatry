@@ -40,12 +40,14 @@ export default function App() {
     const unsub = subscribeToRegisteredMembers((membersList) => {
       const currentEmail = userProfile.gmail?.trim().toLowerCase();
       const currentPhone = userProfile.phone?.trim();
+      const currentName = userProfile.name?.trim().toLowerCase();
       const currentId = userProfile.id;
 
       const matched = membersList.find((m) => {
         if (currentId && m.id === currentId) return true;
         if (currentEmail && m.gmail && m.gmail.trim().toLowerCase() === currentEmail) return true;
         if (currentPhone && m.phone && m.phone.trim() === currentPhone) return true;
+        if (currentName && m.name && m.name.trim().toLowerCase() === currentName) return true;
         return false;
       });
 
@@ -119,6 +121,87 @@ export default function App() {
   const [loginScreenMode, setLoginScreenMode] = useState<'login' | 'register' | 'edit_profile'>('login');
   const [activeTab, setActiveTab] = useState<SidebarTab>('Home');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
+  // If user is currently on Speech Evaluator Page but is not the appointed evaluator, safely redirect to Home
+  useEffect(() => {
+    if (activeTab === 'Speech Evaluator Page') {
+      const roles: string[] = [];
+      if (Array.isArray(userProfile.speakerRoles)) roles.push(...userProfile.speakerRoles);
+      if (typeof userProfile.speakerRole === 'string' && userProfile.speakerRole.trim()) {
+        roles.push(...userProfile.speakerRole.split(','));
+      }
+      const isEval = roles.some((r) => {
+        const s = r.trim().toLowerCase();
+        return (
+          s === 'evaluators' ||
+          s === 'evaluator' ||
+          s === 'best evaluators' ||
+          s === 'best evaluator' ||
+          s === 'feedbacker' ||
+          s === 'feedbackers' ||
+          s === 'feed backer' ||
+          s === 'speech evaluator' ||
+          s.includes('evaluator') ||
+          s.includes('feedbacker')
+        );
+      });
+      if (!isEval && !userProfile.isAdmin && userProfile.gmail?.toLowerCase() !== 'vjana537@gmail.com') {
+        setActiveTab('Home');
+      }
+    }
+
+    if (activeTab === 'Time Steward') {
+      const roles: string[] = [];
+      if (Array.isArray(userProfile.speakerRoles)) roles.push(...userProfile.speakerRoles);
+      if (typeof userProfile.speakerRole === 'string' && userProfile.speakerRole.trim()) {
+        roles.push(...userProfile.speakerRole.split(','));
+      }
+      const isTimer = roles.some((r) => {
+        const s = r.trim().toLowerCase();
+        return (
+          s === 'time steward' ||
+          s === 'timer' ||
+          s === 'timer steward' ||
+          s === 'best time steward' ||
+          s.includes('time steward') ||
+          s.includes('timer')
+        );
+      });
+      if (!isTimer && !userProfile.isAdmin && userProfile.gmail?.toLowerCase() !== 'vjana537@gmail.com') {
+        setActiveTab('Home');
+      }
+    }
+
+    if (activeTab === 'Filler Counter Page') {
+      const roles: string[] = [];
+      if (Array.isArray(userProfile.speakerRoles)) roles.push(...userProfile.speakerRoles);
+      if (typeof userProfile.speakerRole === 'string' && userProfile.speakerRole.trim()) {
+        roles.push(...userProfile.speakerRole.split(','));
+      }
+      const isFiller = roles.some((r) => {
+        const s = r.trim().toLowerCase();
+        return (
+          s === 'filter counter' ||
+          s === 'fillter counter' ||
+          s === 'filler counter' ||
+          s === 'filler' ||
+          s === 'filter' ||
+          s === 'ah counter' ||
+          s === 'ah-counter' ||
+          s === 'best filter counter' ||
+          s === 'best fillter counter' ||
+          s === 'best filler counter' ||
+          s.includes('filler') ||
+          s.includes('filter counter') ||
+          s.includes('ah counter') ||
+          s.includes('ah-counter')
+        );
+      });
+      if (!isFiller && !userProfile.isAdmin && userProfile.gmail?.toLowerCase() !== 'vjana537@gmail.com') {
+        setActiveTab('Home');
+      }
+    }
+  }, [activeTab, userProfile.speakerRoles, userProfile.speakerRole, userProfile.isAdmin, userProfile.gmail]);
 
   const handleUpdateProfile = (updated: UserProfile) => {
     setUserProfile(updated);

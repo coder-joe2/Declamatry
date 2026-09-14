@@ -21,6 +21,15 @@ service cloud.firestore {
     match /notifications/{document=**} {
       allow read, write: if true;
     }
+    match /speech_evaluations/{document=**} {
+      allow read, write: if true;
+    }
+    match /time_steward_records/{document=**} {
+      allow read, write: if true;
+    }
+    match /filler_counter_records/{document=**} {
+      allow read, write: if true;
+    }
     
     // Default fallback
     match /{document=**} {

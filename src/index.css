@@ -116,3 +116,40 @@
   }
 }
 
+/* ========================================================================= */
+/* Print Media Styles for Speech Evaluation Sheet                           */
+/* ========================================================================= */
+@media print {
+  aside,
+  header,
+  nav,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background-color: #050B14 !important;
+    color: #F8FAFC !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #printable-speech-evaluation-sheet {
+    border-width: 2px !important;
+    border-color: #C5A880 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #050B14 !important;
+    color: #F8FAFC !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+}
+

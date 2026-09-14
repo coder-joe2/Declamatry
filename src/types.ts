@@ -9,6 +9,12 @@ export type ExecutiveCommitteeRole =
 
 export type SpeakerHonorRole =
   | 'Key Note Speakers'
+  | 'Role Players'
+  | 'Evaluators'
+  | 'Quick Think Speaker'
+  | 'Filter Counter'
+  | 'Filler Counter'
+  | 'Time Steward'
   | 'Best Role Players'
   | 'Best Evaluators'
   | 'Best Quick Think Speaker'
@@ -47,11 +53,53 @@ export const EXECUTIVE_ROLES_LIST = [
   { id: 'Operations Officer', label: 'Operations Officer', short: 'OPS', desc: 'Manages meeting hall logistics, stage setup, and technical equipment.' },
 ] as const;
 
-export const SPEAKER_ROLES_LIST = [
-  { id: 'Key Note Speakers', label: 'Key Note Speakers', short: 'KEYNOTE' },
-  { id: 'Best Role Players', label: 'Best Role Players', short: 'ROLE' },
-  { id: 'Best Evaluators', label: 'Best Evaluators', short: 'EVAL' },
-  { id: 'Best Quick Think Speaker', label: 'Best Quick Think Speaker', short: 'QUICK' },
+export interface SpeakerRoleItem {
+  id: SpeakerHonorRole;
+  label: string;
+  short: string;
+  maxMembers?: number; // undefined means unlimited ("ethana peru vena add pannala")
+  desc: string;
+}
+
+export const SPEAKER_ROLES_LIST: readonly SpeakerRoleItem[] = [
+  {
+    id: 'Key Note Speakers',
+    label: 'Key Note Speakers',
+    short: 'KEYNOTE',
+    desc: 'Delivers the featured keynote speeches and prepared presentations.',
+  },
+  {
+    id: 'Role Players',
+    label: 'Role Players',
+    short: 'ROLE',
+    desc: 'Distinguished meeting role performers.',
+  },
+  {
+    id: 'Evaluators',
+    label: 'Evaluators (Feedbacker)',
+    short: 'EVAL',
+    desc: 'Provides constructive evaluations and feedback for speakers. The appointed feedbacker unlocks the Speech Evaluator Page in their sidebar.',
+  },
+  {
+    id: 'Quick Think Speaker',
+    label: 'Quick Think Speaker',
+    short: 'QUICK',
+    desc: 'Excelled in impromptu and table topics speaking.',
+  },
+  {
+    id: 'Filter Counter',
+    label: 'Filler Counter',
+    short: 'FILLER',
+    maxMembers: 1, // Only 1 member allowed
+    desc: 'Notes and counts crutch/filler words, pauses, and repeated phrases during speeches. Appointed member unlocks the Filler Counter Page in their sidebar.',
+  },
+  {
+    id: 'Time Steward',
+    label: 'Time Steward',
+    short: 'TIMER',
+    maxMembers: 1, // Only 1 member allowed
+    desc: 'Monitors speaking durations and operates meeting timing signals.',
+  },
 ] as const;
 
 export function formatSpeakerRole(role?: string): string {
@@ -78,9 +126,16 @@ export function formatSpeakerRole(role?: string): string {
     lower === 'best evaluators' ||
     lower === 'evaluators' ||
     lower === 'best evaluator' ||
-    lower === 'evaluator'
+    lower === 'evaluator' ||
+    lower === 'feedbacker' ||
+    lower === 'feedbackers' ||
+    lower === 'feed backer' ||
+    lower === 'feed backers' ||
+    lower === 'speech evaluator' ||
+    lower === 'evaluators (feedbacker)' ||
+    lower === 'evaluator (feedbacker)'
   ) {
-    return 'Evaluator';
+    return 'Evaluator (Feedbacker)';
   }
   if (
     lower === 'best quick think speaker' ||
@@ -89,11 +144,33 @@ export function formatSpeakerRole(role?: string): string {
   ) {
     return 'Quick Think Speaker';
   }
+  if (
+    lower === 'filter counter' ||
+    lower === 'fillter counter' ||
+    lower === 'filler counter' ||
+    lower === 'filler' ||
+    lower === 'ah counter' ||
+    lower === 'ah-counter' ||
+    lower === 'best filter counter' ||
+    lower === 'best fillter counter' ||
+    lower === 'best filler counter'
+  ) {
+    return 'Filler Counter';
+  }
+  if (
+    lower === 'time steward' ||
+    lower === 'timer' ||
+    lower === 'timer steward' ||
+    lower === 'best time steward'
+  ) {
+    return 'Time Steward';
+  }
   return trimmed;
 }
 
 export type SidebarTab =
   | 'Home'
+  | 'Activity'
   | 'About Club'
   | 'Leadership Roles'
   | 'Learning Tips'
@@ -104,7 +181,101 @@ export type SidebarTab =
   | 'Profile'
   | 'Members List'
   | 'Admin Executive Committee Roles'
-  | 'Admin Speaker Roles';
+  | 'Admin Speaker Roles'
+  | 'Speech Evaluator Page'
+  | 'Time Steward'
+  | 'Filler Counter Page';
+
+export interface TimeStewardRecord {
+  id?: string;
+  speakerName: string;
+  speakerEmail?: string;
+  speakerRole?: string;
+  speakerDepartment?: string;
+  speechTitle?: string;
+  meetingNumber: string;
+  durationSeconds: number;
+  formattedTime: string; // e.g. "05:42"
+  timeStewardName: string;
+  timeStewardEmail?: string;
+  date: string;
+  notes?: string;
+  status?: 'green' | 'amber' | 'red' | 'normal';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type FillerSummaryRating = 'Excellent' | 'Okay' | 'Needs Improvement';
+
+export interface FillerCounts {
+  ah: number;
+  um: number;
+  er: number;
+  well: number;
+  so: number;
+  like: number;
+  but: number;
+  repeats: number;
+  other: number;
+}
+
+export interface FillerCounterRecord {
+  id?: string;
+  speakerName: string;
+  speakerEmail?: string;
+  speakerRole?: string;
+  speakerDepartment?: string;
+  meetingNumber: string; // e.g. "1st Meeting"
+  date: string;
+  time?: string;
+  roleOrTitle?: string;
+  counts: FillerCounts;
+  totalFillers: number;
+  otherDetails?: string; // e.g., "you know x2, actually x1"
+  summaryRating: FillerSummaryRating;
+  notes?: string;
+  fillerCounterName: string;
+  fillerCounterEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type EvaluationRatingLevel =
+  | 'Excellent'
+  | 'Above Average'
+  | 'Satisfactory'
+  | 'Should Improve'
+  | 'Must Improve';
+
+export interface SpeechEvaluationCategoryItem {
+  id: number;
+  title: string;
+  desc: string;
+}
+
+export interface SpeechEvaluationSheetData {
+  id?: string;
+  clubName: string;
+  areaNumber: string;
+  speakerName: string;
+  speakerEmail?: string;
+  speakerRole?: string;
+  speakerDepartment?: string;
+  speechTitle: string;
+  speechTime?: string;
+  meetingNumber?: string;
+  ratings: Record<number, EvaluationRatingLevel | ''>;
+  commend1: string; // 2. COMMEND (What was done well)
+  recommend: string; // 3. RECOMMEND (Suggestions for improvement)
+  commend2: string; // 4. COMMEND (What to keep doing/continue)
+  actionPlan: string; // 5. ACTION PLAN (One key action the speaker can take for the next speech)
+  overallEvaluation: EvaluationRatingLevel | '';
+  evaluatorName: string;
+  evaluatorEmail: string;
+  date: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface RecommendedVideo {
   id: string;
