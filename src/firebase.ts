@@ -1,11 +1,14 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getFirestore, 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection, 
   addDoc, 
   setDoc, 
   getDocs,
-  getDoc,
+  getDoc, 
   doc, 
   updateDoc,
   deleteDoc,
@@ -23,7 +26,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { UserProfile, Poll, RegisteredMember, MeetingVotingSession, formatSpeakerRole, AppMessage } from './types';
+import { UserProfile, Poll, RegisteredMember, MeetingVotingSession, formatSpeakerRole, AppMessage, isUserAdmin, isUserRoleEntry } from './types';
 
 // User provided Firebase configuration
 const firebaseConfig = {
@@ -38,18 +41,77 @@ const firebaseConfig = {
 
 // Initialize Firebase App singleton
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-export const db = getFirestore(app);
+
+// Initialize Firestore with reliable HTTP long-polling and multi-tab persistent cache
+// This fixes: "Could not reach Cloud Firestore backend", "Failed to get document because the client is offline"
+function createFirestoreInstance() {
+  try {
+    return initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch {
+    try {
+      return initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+      });
+    } catch {
+      return getFirestore(app);
+    }
+  }
+}
+
+export const db = createFirestoreInstance();
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Attempt anonymous sign-in if enabled on Firebase Console
+const CACHED_MEMBERS_KEY = 'declamate_cached_members_v2';
+
+export function getCachedMembers(): RegisteredMember[] {
+  try {
+    const raw = localStorage.getItem(CACHED_MEMBERS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Ignore storage issues
+  }
+  return [];
+}
+
+export function saveMemberToCache(member: RegisteredMember | UserProfile) {
+  try {
+    const members = getCachedMembers();
+    const email = (member.gmail || '').toLowerCase().trim();
+    const name = (member.name || '').toLowerCase().trim();
+    const filtered = members.filter((m) => {
+      const mEmail = (m.gmail || '').toLowerCase().trim();
+      const mName = (m.name || '').toLowerCase().trim();
+      if (email && mEmail === email) return false;
+      if (!email && name && mName === name) return false;
+      return true;
+    });
+    filtered.unshift(member as RegisteredMember);
+    localStorage.setItem(CACHED_MEMBERS_KEY, JSON.stringify(filtered.slice(0, 100)));
+  } catch {
+    // Ignore storage issues
+  }
+}
+
+// Attempt anonymous sign-in if enabled on Firebase Console, non-blocking with quick timeout
 async function ensureAuth() {
   try {
     if (!auth.currentUser) {
-      await signInAnonymously(auth);
+      await Promise.race([
+        signInAnonymously(auth),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
+      ]);
     }
   } catch {
-    // Anonymous auth might not be enabled in console, proceed to direct write
+    // Anonymous auth might not be enabled in console or network is offline, proceed safely
   }
 }
 
@@ -136,7 +198,8 @@ export async function saveUserLoginToFirebase(profile: UserProfile): Promise<{ s
       photoUrl: profile.photoUrl || '',
       password: profile.password || '',
       executiveRole: profile.executiveRole || '',
-      isAdmin: sanitizedEmail === 'vjana537@gmail.com',
+      isAdmin: isUserAdmin(profile),
+      isRoleEntry: isUserRoleEntry(profile),
       updatedAt: new Date().toISOString(),
       createdAt: serverTimestamp(),
     };
@@ -153,6 +216,9 @@ export async function saveUserLoginToFirebase(profile: UserProfile): Promise<{ s
     } catch {
       // Non-blocking log
     }
+
+    // Cache member locally for offline resilience
+    saveMemberToCache({ ...profile, id: userDocRef.id });
 
     return { success: true, id: userDocRef.id };
   } catch (err: unknown) {
@@ -176,18 +242,150 @@ export async function authenticateMember(
     return { success: false, error: 'Please enter your username or email address.' };
   }
 
-  // 1. If identifier looks like email and password provided, try Firebase Auth
+  const cleanPass = (_password || '').trim();
+
+  // 1. Check Admin Credentials:
+  // Admin credentials: "Admin" and password "Declamate@123"
+  if (
+    queryClean === 'admin' ||
+    queryClean === 'administrator' ||
+    queryClean === 'admin@declamate.com'
+  ) {
+    if (cleanPass === 'Declamate@123') {
+      const adminProfile: UserProfile = {
+        id: 'admin_master',
+        name: 'Admin',
+        gmail: 'admin@declamate.com',
+        phone: '+91 98765 43210',
+        year: 'III Year',
+        department: 'Executive Board',
+        className: 'Administration',
+        photoUrl: '',
+        isAdmin: true,
+        isRoleEntry: false,
+        executiveRole: 'President',
+        speakerRole: '',
+        speakerRoles: [],
+      };
+
+      // Non-blocking lookup for customized admin profile
+      try {
+        const docSnap = await Promise.race([
+          getDoc(doc(db, 'members', 'admin')),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200))
+        ]);
+        if (docSnap && 'exists' in docSnap && docSnap.exists()) {
+          const d = docSnap.data();
+          if (d.name) adminProfile.name = d.name;
+          if (d.gmail) adminProfile.gmail = d.gmail;
+          if (d.photoUrl) adminProfile.photoUrl = d.photoUrl;
+          if (d.phone) adminProfile.phone = d.phone;
+          if (d.department) adminProfile.department = d.department;
+          if (d.executiveRole) adminProfile.executiveRole = d.executiveRole;
+        }
+      } catch {
+        // Offline or connection error - continue seamlessly with default admin profile
+      }
+      return { success: true, profile: adminProfile };
+    } else {
+      return {
+        success: false,
+        error: 'Incorrect password for Admin. Please verify your password.',
+      };
+    }
+  }
+
+  // 2. Check "Role Entry" Credentials:
+  // Role Entry credentials: "Role Entry" and password "Declamate@123"
+  if (
+    queryClean === 'role entry' ||
+    queryClean === 'roleentry' ||
+    queryClean === 'role entry coordinator' ||
+    queryClean === 'roleentry@declamate.com'
+  ) {
+    if (cleanPass === 'Declamate@123') {
+      const roleEntryProfile: UserProfile = {
+        id: 'role_entry',
+        name: 'Role Entry',
+        gmail: 'roleentry@declamate.com',
+        phone: '+91 98765 00000',
+        year: 'II Year',
+        department: 'Speaker Roles Coordinator',
+        className: 'Role Entry',
+        photoUrl: '',
+        isAdmin: false,
+        isRoleEntry: true,
+        speakerRole: 'Role Entry Coordinator',
+        speakerRoles: ['Role Entry Coordinator'],
+      };
+
+      try {
+        const docSnap = await Promise.race([
+          getDoc(doc(db, 'members', 'role_entry')),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200))
+        ]);
+        if (docSnap && 'exists' in docSnap && docSnap.exists()) {
+          const d = docSnap.data();
+          if (d.name) roleEntryProfile.name = d.name;
+          if (d.gmail) roleEntryProfile.gmail = d.gmail;
+          if (d.photoUrl) roleEntryProfile.photoUrl = d.photoUrl;
+        }
+      } catch {
+        // Offline or connection error - continue seamlessly
+      }
+      return { success: true, profile: roleEntryProfile };
+    } else {
+      return {
+        success: false,
+        error: 'Incorrect password for Role Entry. Please verify your password.',
+      };
+    }
+  }
+
+  // 3. If identifier looks like email and password provided, try Firebase Auth
   if (queryClean.includes('@') && _password) {
     try {
-      await signInWithEmailAndPassword(auth, queryClean, _password);
+      await Promise.race([
+        signInWithEmailAndPassword(auth, queryClean, _password),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500))
+      ]);
     } catch (authErr: unknown) {
       const authObj = authErr as { code?: string; message?: string };
       if (authObj?.code === 'auth/wrong-password' || authObj?.code === 'auth/invalid-credential') {
         return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
       }
-      // If user-not-found in Firebase Auth, we will still check Firestore
+      // If user-not-found in Firebase Auth, proceed to check Firestore / local cache
     }
   }
+
+  const isNetworkOrOffline = (err: any) => {
+    if (!err) return false;
+    const msg = String(err.message || err).toLowerCase();
+    const code = String(err.code || '').toLowerCase();
+    return (
+      code === 'unavailable' ||
+      code === 'failed-precondition' ||
+      msg.includes('offline') ||
+      msg.includes('client is offline') ||
+      msg.includes('could not reach') ||
+      msg.includes('network')
+    );
+  };
+
+  const parseSpeakerRoles = (rawRoles: any, fallbackRole?: string): string[] => {
+    if (Array.isArray(rawRoles)) {
+      return rawRoles.filter(Boolean);
+    }
+    if (typeof rawRoles === 'string' && rawRoles.trim()) {
+      return rawRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (fallbackRole && typeof fallbackRole === 'string' && fallbackRole.trim()) {
+      return fallbackRole.split(',').map((s: string) => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  let offlineEncountered = false;
 
   try {
     await ensureAuth();
@@ -195,23 +393,24 @@ export async function authenticateMember(
     // 2. Direct document lookup by sanitized email ID
     const sanitizedKey = queryClean.replace(/[^a-zA-Z0-9]/g, '_');
     const docRef = doc(db, 'members', sanitizedKey);
-    const docSnap = await getDoc(docRef);
+    let docSnap: any = null;
 
-    if (docSnap.exists()) {
+    try {
+      docSnap = await Promise.race([
+        getDoc(docRef),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+      ]);
+    } catch (dErr) {
+      if (isNetworkOrOffline(dErr)) offlineEncountered = true;
+    }
+
+    if (docSnap && 'exists' in docSnap && docSnap.exists()) {
       const data = docSnap.data();
       // If user has a password set and password was provided, verify it
       if (data.password && _password && data.password !== _password) {
         return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
       }
-      const rawSpeakerRoles = data.speakerRoles;
-      let speakerRolesList: string[] = [];
-      if (Array.isArray(rawSpeakerRoles)) {
-        speakerRolesList = rawSpeakerRoles.filter(Boolean);
-      } else if (typeof rawSpeakerRoles === 'string' && rawSpeakerRoles.trim()) {
-        speakerRolesList = rawSpeakerRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
-      } else if (typeof data.speakerRole === 'string' && data.speakerRole.trim()) {
-        speakerRolesList = data.speakerRole.split(',').map((s: string) => s.trim()).filter(Boolean);
-      }
+      const speakerRolesList = parseSpeakerRoles(data.speakerRoles, data.speakerRole);
 
       const profile: UserProfile = {
         name: data.name || identifier,
@@ -224,49 +423,95 @@ export async function authenticateMember(
         executiveRole: data.executiveRole || '',
         speakerRole: speakerRolesList.join(', '),
         speakerRoles: speakerRolesList,
-        isAdmin: (data.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+        isAdmin: isUserAdmin(data),
+        isRoleEntry: isUserRoleEntry(data),
       };
+      saveMemberToCache(profile);
       return { success: true, profile };
     }
 
     // 3. Query collection for matching email or name
-    const membersSnap = await getDocs(collection(db, 'members'));
-    for (const d of membersSnap.docs) {
-      const data = d.data();
-      const docEmail = (data.gmail || '').toLowerCase().trim();
-      const docName = (data.name || '').toLowerCase().trim();
-      if (docEmail === queryClean || docName === queryClean) {
-        if (data.password && _password && data.password !== _password) {
-          return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
-        }
-        const rawSpeakerRoles = data.speakerRoles;
-        let speakerRolesList: string[] = [];
-        if (Array.isArray(rawSpeakerRoles)) {
-          speakerRolesList = rawSpeakerRoles.filter(Boolean);
-        } else if (typeof rawSpeakerRoles === 'string' && rawSpeakerRoles.trim()) {
-          speakerRolesList = rawSpeakerRoles.split(',').map((s: string) => s.trim()).filter(Boolean);
-        } else if (typeof data.speakerRole === 'string' && data.speakerRole.trim()) {
-          speakerRolesList = data.speakerRole.split(',').map((s: string) => s.trim()).filter(Boolean);
-        }
+    let membersSnap: any = null;
+    try {
+      membersSnap = await Promise.race([
+        getDocs(collection(db, 'members')),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500))
+      ]);
+    } catch (cErr) {
+      if (isNetworkOrOffline(cErr)) offlineEncountered = true;
+    }
 
-        const profile: UserProfile = {
-          name: data.name || identifier,
-          gmail: data.gmail || identifier,
-          phone: data.phone || '',
-          year: data.year || 'I Year',
-          department: data.department || 'B.Sc',
-          className: data.className || '',
-          photoUrl: data.photoUrl || '',
-          executiveRole: data.executiveRole || '',
-          speakerRole: speakerRolesList.join(', '),
-          speakerRoles: speakerRolesList,
-          isAdmin: docEmail === 'vjana537@gmail.com',
-        };
-        return { success: true, profile };
+    if (membersSnap && membersSnap.docs) {
+      for (const d of membersSnap.docs) {
+        const data = d.data();
+        const docEmail = (data.gmail || '').toLowerCase().trim();
+        const docName = (data.name || '').toLowerCase().trim();
+        if (docEmail === queryClean || docName === queryClean) {
+          if (data.password && _password && data.password !== _password) {
+            return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
+          }
+          const speakerRolesList = parseSpeakerRoles(data.speakerRoles, data.speakerRole);
+
+          const profile: UserProfile = {
+            name: data.name || identifier,
+            gmail: data.gmail || identifier,
+            phone: data.phone || '',
+            year: data.year || 'I Year',
+            department: data.department || 'B.Sc',
+            className: data.className || '',
+            photoUrl: data.photoUrl || '',
+            executiveRole: data.executiveRole || '',
+            speakerRole: speakerRolesList.join(', '),
+            speakerRoles: speakerRolesList,
+            isAdmin: isUserAdmin(data),
+            isRoleEntry: isUserRoleEntry(data),
+          };
+          saveMemberToCache(profile);
+          return { success: true, profile };
+        }
       }
     }
-  } catch (e) {
-    console.error('Firestore authentication error:', e);
+  } catch (e: any) {
+    if (isNetworkOrOffline(e)) {
+      offlineEncountered = true;
+    } else {
+      console.warn('Firestore authentication lookup notice:', e?.message || e);
+    }
+  }
+
+  // 4. Offline Fallback: Check locally cached registered members
+  const cached = getCachedMembers();
+  for (const m of cached) {
+    const mEmail = (m.gmail || '').toLowerCase().trim();
+    const mName = (m.name || '').toLowerCase().trim();
+    if (mEmail === queryClean || mName === queryClean) {
+      if (m.password && _password && m.password !== _password) {
+        return { success: false, error: 'Incorrect password. Please verify your password or use "Forgot password?".' };
+      }
+      const speakerRolesList = parseSpeakerRoles(m.speakerRoles, m.speakerRole);
+      const profile: UserProfile = {
+        name: m.name || identifier,
+        gmail: m.gmail || identifier,
+        phone: m.phone || '',
+        year: m.year || 'I Year',
+        department: m.department || 'B.Sc',
+        className: m.className || '',
+        photoUrl: m.photoUrl || '',
+        executiveRole: m.executiveRole || '',
+        speakerRole: speakerRolesList.join(', '),
+        speakerRoles: speakerRolesList,
+        isAdmin: isUserAdmin(m),
+        isRoleEntry: isUserRoleEntry(m),
+      };
+      return { success: true, profile };
+    }
+  }
+
+  if (offlineEncountered) {
+    return {
+      success: false,
+      error: 'Network connection is currently offline or reconnecting. Please check your internet connection and try again.',
+    };
   }
 
   return {
@@ -314,7 +559,7 @@ export async function handleGoogleSignIn(): Promise<{
             className: d.className || '',
             photoUrl: d.photoUrl || photoUrl,
             executiveRole: d.executiveRole || '',
-            isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
+            isAdmin: isUserAdmin(d),
           };
         }
       } catch {
@@ -330,7 +575,7 @@ export async function handleGoogleSignIn(): Promise<{
         className: '',
         photoUrl: photoUrl,
         executiveRole: '',
-        isAdmin: email.toLowerCase() === 'vjana537@gmail.com',
+        isAdmin: isUserAdmin({ name, gmail: email }),
       };
 
       try {
@@ -897,7 +1142,8 @@ export async function fetchAllRegisteredMembers(): Promise<RegisteredMember[]> {
         className: d.className || '',
         photoUrl: d.photoUrl || '',
         executiveRole: d.executiveRole || '',
-        isAdmin: d.isAdmin === true || (d.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+        isAdmin: isUserAdmin(d),
+        isRoleEntry: isUserRoleEntry(d),
         password: d.password || '',
         createdAt: createdStr || d.loginTimestamp || '',
         updatedAt: updatedStr,
@@ -911,10 +1157,16 @@ export async function fetchAllRegisteredMembers(): Promise<RegisteredMember[]> {
       return timeB - timeA;
     });
 
+    try {
+      localStorage.setItem(CACHED_MEMBERS_KEY, JSON.stringify(list));
+    } catch {
+      // Ignore
+    }
+
     return list;
   } catch (err) {
-    console.error('Error fetching all members from Firestore:', err);
-    return [];
+    console.warn('Firestore fetch note (falling back to cache):', err);
+    return getCachedMembers();
   }
 }
 
@@ -924,6 +1176,12 @@ export async function fetchAllRegisteredMembers(): Promise<RegisteredMember[]> {
 export function subscribeToRegisteredMembers(
   callback: (members: RegisteredMember[]) => void
 ): () => void {
+  // Immediately provide cached members if available for snappy offline/startup rendering
+  const initialCache = getCachedMembers();
+  if (initialCache && initialCache.length > 0) {
+    callback(initialCache);
+  }
+
   try {
     const unsubscribe = onSnapshot(
       collection(db, 'members'),
@@ -970,7 +1228,8 @@ export function subscribeToRegisteredMembers(
             executiveRole: d.executiveRole || '',
             speakerRole: speakerRolesList.join(', '),
             speakerRoles: speakerRolesList,
-            isAdmin: d.isAdmin === true || (d.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+            isAdmin: isUserAdmin(d),
+            isRoleEntry: isUserRoleEntry(d),
             password: d.password || '',
             createdAt: createdStr || d.loginTimestamp || '',
             updatedAt: updatedStr,
@@ -984,6 +1243,13 @@ export function subscribeToRegisteredMembers(
           return timeB - timeA;
         });
 
+        // Persist to offline cache
+        try {
+          localStorage.setItem(CACHED_MEMBERS_KEY, JSON.stringify(list));
+        } catch {
+          // Ignore
+        }
+
         callback(list);
       },
       (err) => {
@@ -992,7 +1258,7 @@ export function subscribeToRegisteredMembers(
     );
     return unsubscribe;
   } catch (err) {
-    console.error('Error in subscribeToRegisteredMembers:', err);
+    console.warn('Real-time subscription setup note:', err);
     return () => {};
   }
 }
@@ -1208,39 +1474,94 @@ export async function sendAppMessage(
     const newMessage: AppMessage = {
       ...msg,
       id: docId,
-      readBy: msg.readBy || [],
+      readBy: Array.isArray(msg.readBy) ? msg.readBy : [],
+      deletedBy: Array.isArray(msg.deletedBy) ? msg.deletedBy : [],
       createdAt: msg.createdAt || new Date().toISOString(),
     };
 
-    // 1. Optimistically store in local cache
+    // 1. Optimistically store in local cache and notify listeners immediately
     const existing = getLocalStoredMessages();
     const updated = [newMessage, ...existing.filter((m) => m.id !== docId)];
     saveLocalStoredMessages(updated);
+    try {
+      window.dispatchEvent(new CustomEvent('declamates_local_messages_changed'));
+    } catch {
+      // Ignore in environments without window event dispatch
+    }
 
-    // 2. Persist to Firestore
-    await ensureAuth();
-    const docRef = doc(db, 'messages', docId);
-    await setDoc(
-      docRef,
-      {
-        ...newMessage,
-        serverTime: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    // 2. Prepare clean Firestore payload (no undefined values)
+    const cleanPayload: Record<string, any> = {
+      id: docId,
+      type: newMessage.type || 'general',
+      title: newMessage.title || 'Message',
+      message: newMessage.message || '',
+      targetEmail: (newMessage.targetEmail || 'public').trim().toLowerCase(),
+      isBroadcast: Boolean(newMessage.isBroadcast ?? (newMessage.targetEmail === 'public')),
+      createdAt: newMessage.createdAt,
+      readBy: Array.isArray(newMessage.readBy) ? newMessage.readBy : [],
+      deletedBy: Array.isArray(newMessage.deletedBy) ? newMessage.deletedBy : [],
+    };
+    if (newMessage.roleName) {
+      cleanPayload.roleName = newMessage.roleName;
+    }
+    if (newMessage.createdBy) {
+      cleanPayload.createdBy = {
+        name: newMessage.createdBy.name || 'Admin',
+        ...(newMessage.createdBy.gmail ? { gmail: newMessage.createdBy.gmail } : {}),
+        ...(newMessage.createdBy.photoUrl ? { photoUrl: newMessage.createdBy.photoUrl } : {}),
+      };
+    }
+
+    // 3. Persist to Firestore with error resilience
+    try {
+      await ensureAuth();
+      const docRef = doc(db, 'messages', docId);
+      await setDoc(docRef, cleanPayload, { merge: true });
+    } catch (firestoreErr: unknown) {
+      const errorMsg = firestoreErr instanceof Error ? firestoreErr.message : String(firestoreErr);
+      // Log as non-fatal warning so missing rules on remote project do not break app or throw errors
+      console.warn('sendAppMessage Firestore note (saved locally):', errorMsg);
+    }
 
     return { success: true, message: newMessage };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to send message';
-    console.error('sendAppMessage error:', errorMsg);
-    return { success: false, error: errorMsg };
+    console.warn('sendAppMessage local note:', errorMsg);
+    return { success: true };
+  }
+}
+
+const DISMISSED_MESSAGES_KEY_PREFIX = 'declamates_dismissed_msgs_';
+
+export function getLocalDismissedMessageIds(userEmail?: string): string[] {
+  const normEmail = (userEmail || '').trim().toLowerCase();
+  const key = normEmail ? `${DISMISSED_MESSAGES_KEY_PREFIX}${normEmail}` : 'declamates_dismissed_msgs_anon';
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalDismissedMessageId(messageId: string, userEmail?: string): void {
+  const normEmail = (userEmail || '').trim().toLowerCase();
+  const key = normEmail ? `${DISMISSED_MESSAGES_KEY_PREFIX}${normEmail}` : 'declamates_dismissed_msgs_anon';
+  try {
+    const existing = getLocalDismissedMessageIds(userEmail);
+    if (!existing.includes(messageId)) {
+      existing.push(messageId);
+      localStorage.setItem(key, JSON.stringify(existing));
+    }
+  } catch (e) {
+    console.warn('Failed to save dismissed message ID locally:', e);
   }
 }
 
 /**
  * Real-time subscription to messages for a given user.
  * Returns both public broadcast messages (for all members and admin)
- * and personal messages addressed to this user's email.
+ * and personal messages addressed to this user's email, filtering out any deleted/dismissed messages.
  */
 export function subscribeToUserMessages(
   userEmail: string,
@@ -1248,23 +1569,36 @@ export function subscribeToUserMessages(
 ): () => void {
   const normEmail = (userEmail || '').trim().toLowerCase();
 
-  // Initial cached render
-  const initialLocal = getLocalStoredMessages();
-  const filteredInitial = initialLocal.filter((m) => {
-    if (!m) return false;
-    if (m.targetEmail === 'public' || m.isBroadcast) return true;
-    if (normEmail && m.targetEmail?.toLowerCase() === normEmail) return true;
-    return false;
-  });
-  if (filteredInitial.length > 0) {
-    onUpdate(filteredInitial);
+  const getFilteredMessages = () => {
+    const liveDismissedSet = new Set(getLocalDismissedMessageIds(normEmail));
+    const all = getLocalStoredMessages();
+    return all.filter((m) => {
+      if (!m || liveDismissedSet.has(m.id)) return false;
+      const deletedList = Array.isArray(m.deletedBy) ? m.deletedBy.map((e) => e.toLowerCase()) : [];
+      if (normEmail && deletedList.includes(normEmail)) return false;
+
+      if (m.targetEmail === 'public' || m.isBroadcast) return true;
+      if (normEmail && m.targetEmail?.toLowerCase() === normEmail) return true;
+      return false;
+    });
+  };
+
+  // Immediate cached render
+  onUpdate(getFilteredMessages());
+
+  // Listen for local tab updates
+  const handleLocalUpdate = () => {
+    onUpdate(getFilteredMessages());
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('declamates_local_messages_changed', handleLocalUpdate);
   }
 
-  let unsubscribe = () => {};
+  let unsubscribeFirestore = () => {};
 
   try {
     const colRef = collection(db, 'messages');
-    unsubscribe = onSnapshot(
+    unsubscribeFirestore = onSnapshot(
       colRef,
       (snapshot) => {
         if (!snapshot.empty) {
@@ -1280,7 +1614,8 @@ export function subscribeToUserMessages(
               roleName: data.roleName || undefined,
               createdAt: data.createdAt || new Date().toISOString(),
               createdBy: data.createdBy || { name: 'Admin' },
-              readBy: data.readBy || [],
+              readBy: Array.isArray(data.readBy) ? data.readBy : [],
+              deletedBy: Array.isArray(data.deletedBy) ? data.deletedBy : [],
             };
           });
 
@@ -1289,31 +1624,26 @@ export function subscribeToUserMessages(
 
           // Save complete set to cache
           saveLocalStoredMessages(allRemote);
-
-          // Filter for current user
-          const forUser = allRemote.filter((m) => {
-            if (m.targetEmail === 'public' || m.isBroadcast) return true;
-            if (normEmail && m.targetEmail?.toLowerCase() === normEmail) return true;
-            return false;
-          });
-
-          onUpdate(forUser);
+          onUpdate(getFilteredMessages());
         } else {
-          onUpdate([]);
+          onUpdate(getFilteredMessages());
         }
       },
       (error) => {
-        console.warn('Real-time messages listener note (using cache):', error.message);
-        onUpdate(filteredInitial);
+        console.warn('Real-time messages listener note (using local cache):', error.message);
+        onUpdate(getFilteredMessages());
       }
     );
   } catch (err) {
     console.warn('Failed to subscribe to messages:', err);
-    onUpdate(filteredInitial);
+    onUpdate(getFilteredMessages());
   }
 
   return () => {
-    unsubscribe();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('declamates_local_messages_changed', handleLocalUpdate);
+    }
+    unsubscribeFirestore();
   };
 }
 
@@ -1334,6 +1664,9 @@ export async function markMessageAsRead(messageId: string, userEmail: string): P
     return m;
   });
   saveLocalStoredMessages(updated);
+  try {
+    window.dispatchEvent(new CustomEvent('declamates_local_messages_changed'));
+  } catch {}
 
   try {
     await ensureAuth();
@@ -1369,6 +1702,9 @@ export async function markAllMessagesAsRead(userEmail: string, messageIds: strin
     return m;
   });
   saveLocalStoredMessages(updated);
+  try {
+    window.dispatchEvent(new CustomEvent('declamates_local_messages_changed'));
+  } catch {}
 
   // Firestore update
   try {
@@ -1391,19 +1727,55 @@ export async function markAllMessagesAsRead(userEmail: string, messageIds: strin
 }
 
 /**
- * Delete a message (Admin or user)
+ * Delete / dismiss a message (Admin or individual user)
  */
-export async function deleteAppMessage(messageId: string): Promise<boolean> {
+export async function deleteAppMessage(messageId: string, userEmail?: string): Promise<boolean> {
+  const normEmail = (userEmail || '').trim().toLowerCase();
+
+  // 1. Immediately store in user-specific dismissed list so it never reappears on this client
+  saveLocalDismissedMessageId(messageId, normEmail);
+
+  // 2. Optimistically remove from local messages cache
   const current = getLocalStoredMessages();
   saveLocalStoredMessages(current.filter((m) => m.id !== messageId));
+  try {
+    window.dispatchEvent(new CustomEvent('declamates_local_messages_changed'));
+  } catch {}
 
+  // 3. Persist to Firestore: delete document if personal or admin; otherwise update deletedBy array
   try {
     await ensureAuth();
     const docRef = doc(db, 'messages', messageId);
-    await deleteDoc(docRef);
+    const snap = await getDoc(docRef);
+
+    if (snap.exists()) {
+      const data = snap.data();
+      const isBroadcast = data.isBroadcast || data.targetEmail === 'public';
+      const isAdmin = normEmail === 'admin' || normEmail === 'admin@declamate.com';
+      const isTargetMe = data.targetEmail && data.targetEmail.toLowerCase() === normEmail;
+
+      if (isAdmin || isTargetMe || !isBroadcast) {
+        // Personal message or admin deletion removes the document entirely
+        await deleteDoc(docRef);
+      } else if (normEmail) {
+        // Public broadcast notification: add user email to deletedBy so other members still see it
+        const currentDeleted = Array.isArray(data.deletedBy) ? data.deletedBy : [];
+        if (!currentDeleted.map((e: string) => e.toLowerCase()).includes(normEmail)) {
+          await updateDoc(docRef, {
+            deletedBy: [...currentDeleted, normEmail],
+          });
+        }
+      } else {
+        // Anonymous/fallback: attempt deleteDoc
+        await deleteDoc(docRef);
+      }
+    } else {
+      // Document not found in Firestore, remove any stale reference
+      await deleteDoc(docRef).catch(() => {});
+    }
     return true;
   } catch (err) {
-    console.warn('deleteAppMessage note:', err);
+    console.warn('deleteAppMessage Firestore sync note (handled via local dismissal):', err);
     return true;
   }
 }
@@ -1481,12 +1853,9 @@ export function subscribeToSpeechEvaluations(
           snapshot.forEach((docSnap) => {
             items.push({ ...docSnap.data(), id: docSnap.id });
           });
-          if (items.length > 0) {
-            saveLocalSpeechEvaluations(items);
-            callback(items);
-          } else {
-            callback(getLocalSpeechEvaluations());
-          }
+          // Always save latest snapshot (including empty list) and notify subscriber
+          saveLocalSpeechEvaluations(items);
+          callback(items);
         },
         (error) => {
           console.warn('subscribeToSpeechEvaluations snapshot error:', error);
@@ -1504,18 +1873,37 @@ export function subscribeToSpeechEvaluations(
   };
 }
 
-export async function deleteSpeechEvaluation(id: string): Promise<boolean> {
-  const localList = getLocalSpeechEvaluations().filter((e) => e.id !== id);
-  saveLocalSpeechEvaluations(localList);
+export async function deleteSpeechEvaluation(idOrRecord: string | any): Promise<boolean> {
+  const targetId = typeof idOrRecord === 'string' ? idOrRecord : idOrRecord?.id;
+  const currentList = getLocalSpeechEvaluations();
+  const filtered = currentList.filter((e) => {
+    if (targetId && e.id === targetId) return false;
+    if (typeof idOrRecord === 'object' && idOrRecord !== null) {
+      if (e.id && idOrRecord.id && e.id === idOrRecord.id) return false;
+      if (e.createdAt && idOrRecord.createdAt && e.createdAt === idOrRecord.createdAt) return false;
+      if (
+        (e.speakerName || '').trim().toLowerCase() === (idOrRecord.speakerName || '').trim().toLowerCase() &&
+        (e.meetingNumber || e.speechTime || '').trim().toLowerCase() ===
+          (idOrRecord.meetingNumber || idOrRecord.speechTime || '').trim().toLowerCase()
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+  saveLocalSpeechEvaluations(filtered);
 
-  try {
-    await ensureAuth();
-    await deleteDoc(doc(db, 'speech_evaluations', id));
-    return true;
-  } catch (err) {
-    console.warn('deleteSpeechEvaluation note:', err);
-    return true;
+  if (targetId) {
+    try {
+      await ensureAuth();
+      await deleteDoc(doc(db, 'speech_evaluations', targetId));
+      return true;
+    } catch (err) {
+      console.warn('deleteSpeechEvaluation note:', err);
+      return true;
+    }
   }
+  return true;
 }
 
 /* ========================================================================== */

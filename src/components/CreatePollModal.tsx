@@ -155,15 +155,15 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
       {/* Modal Container - Fullscreen on mobile, modal on desktop */}
       <div 
         id="create-poll-dialog"
-        className="w-full sm:max-w-lg bg-[#111B21] border-t sm:border border-[#2A3942] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-auto sm:max-h-[90vh] text-slate-100 transition-all duration-300"
+        className="w-full sm:max-w-lg bg-[#06111F] border-t sm:border border-[#BFA373]/30 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-auto sm:max-h-[90vh] text-slate-100 transition-all duration-300"
       >
         {/* Mobile Pull-Down Indicator (shown on mobile only) */}
-        <div className="w-full sm:hidden pt-2.5 pb-1 flex justify-center bg-[#111B21]">
+        <div className="w-full sm:hidden pt-2.5 pb-1 flex justify-center bg-[#06111F]">
           <div className="w-12 h-1 rounded-full bg-slate-600/60" />
         </div>
 
         {/* Header (WhatsApp style: Close X icon + Create poll text) */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-[#111B21] border-b border-[#202C33] select-none shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 bg-[#06111F] border-b border-[#202C33] select-none shrink-0">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -179,7 +179,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-[11px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-[#00A884]/20 text-[#00A884] border border-[#00A884]/40 font-cinzel">
+            <span className="text-[10px] sm:text-[11px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-[#BFA373]/20 text-[#BFA373] border border-[#BFA373]/40 font-cinzel">
               Declamate's
             </span>
           </div>
@@ -200,7 +200,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
             </h3>
             
             <div className="relative group">
-              <div className="flex items-center justify-between pb-1.5 border-b-2 border-[#00A884] transition-colors focus-within:border-[#25D366]">
+              <div className="flex items-center justify-between pb-1.5 border-b-2 border-[#BFA373] transition-colors focus-within:border-[#BFA373]">
                 <input
                   ref={questionInputRef}
                   type="text"
@@ -214,7 +214,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                   onClick={() =>
                     setActiveEmojiTarget(activeEmojiTarget === 'question' ? null : 'question')
                   }
-                  className="p-2 text-slate-400 hover:text-[#00A884] hover:bg-[#202C33] rounded-full transition-colors cursor-pointer shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  className="p-2 text-slate-400 hover:text-[#BFA373] hover:bg-[#202C33] rounded-full transition-colors cursor-pointer shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center"
                   title="Add emoji"
                 >
                   <Smile className="w-5 h-5" />
@@ -223,13 +223,13 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
               {/* Quick Emoji Popover for Question */}
               {activeEmojiTarget === 'question' && (
-                <div className="absolute right-0 top-full mt-2 z-30 bg-[#202C33] border border-[#2A3942] p-2.5 rounded-2xl shadow-2xl w-64 max-w-[calc(100vw-32px)] grid grid-cols-6 gap-1 animate-fadeIn">
+                <div className="absolute right-0 top-full mt-2 z-30 bg-[#202C33] border border-[#BFA373]/30 p-2.5 rounded-2xl shadow-2xl w-64 max-w-[calc(100vw-32px)] grid grid-cols-6 gap-1 animate-fadeIn">
                   {COMMON_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => insertEmoji(emoji)}
-                      className="p-2 text-base hover:bg-[#2A3942] rounded-lg transition-transform hover:scale-125 flex items-center justify-center cursor-pointer"
+                      className="p-2 text-base hover:bg-[#BFA373]/30 rounded-lg transition-transform hover:scale-125 flex items-center justify-center cursor-pointer"
                     >
                       {emoji}
                     </button>
@@ -253,7 +253,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <div className="space-y-3.5">
               {options.map((option, index) => (
                 <div key={index} className="relative group flex items-center gap-2">
-                  <div className="flex-1 flex items-center justify-between pb-1 border-b border-[#374248] focus-within:border-[#00A884] transition-colors min-h-[44px]">
+                  <div className="flex-1 flex items-center justify-between pb-1 border-b border-[#374248] focus-within:border-[#BFA373] transition-colors min-h-[44px]">
                     <input
                       ref={(el) => (optionInputRefs.current[index] = el)}
                       type="text"
@@ -270,7 +270,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
                         onClick={() =>
                           setActiveEmojiTarget(activeEmojiTarget === index ? null : index)
                         }
-                        className="p-1.5 text-slate-400 hover:text-[#00A884] active:bg-[#202C33] rounded-full transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-[#BFA373] active:bg-[#202C33] rounded-full transition-colors cursor-pointer"
                         title="Add emoji"
                       >
                         <Smile className="w-5 h-5" />
@@ -297,13 +297,13 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
 
                   {/* Quick Emoji Popover for this option */}
                   {activeEmojiTarget === index && (
-                    <div className="absolute right-8 top-full mt-2 z-30 bg-[#202C33] border border-[#2A3942] p-2.5 rounded-2xl shadow-2xl w-64 max-w-[calc(100vw-48px)] grid grid-cols-6 gap-1 animate-fadeIn">
+                    <div className="absolute right-8 top-full mt-2 z-30 bg-[#202C33] border border-[#BFA373]/30 p-2.5 rounded-2xl shadow-2xl w-64 max-w-[calc(100vw-48px)] grid grid-cols-6 gap-1 animate-fadeIn">
                       {COMMON_EMOJIS.map((emoji) => (
                         <button
                           key={emoji}
                           type="button"
                           onClick={() => insertEmoji(emoji)}
-                          className="p-2 text-base hover:bg-[#2A3942] rounded-lg transition-transform hover:scale-125 flex items-center justify-center cursor-pointer"
+                          className="p-2 text-base hover:bg-[#BFA373]/30 rounded-lg transition-transform hover:scale-125 flex items-center justify-center cursor-pointer"
                         >
                           {emoji}
                         </button>
@@ -319,7 +319,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddOption}
-                className="inline-flex items-center gap-1.5 text-xs text-[#00A884] hover:text-[#25D366] font-medium py-2 px-3 rounded-xl hover:bg-[#202C33] active:bg-[#202C33] transition-colors cursor-pointer mt-1"
+                className="inline-flex items-center gap-1.5 text-xs text-[#BFA373] hover:text-[#BFA373] font-medium py-2 px-3 rounded-xl hover:bg-[#202C33] active:bg-[#202C33] transition-colors cursor-pointer mt-1"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add another option</span>
@@ -333,10 +333,10 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
               <img
                 src={userProfile.photoUrl}
                 alt={userProfile.name}
-                className="w-6 h-6 rounded-full object-cover border border-[#00A884]"
+                className="w-6 h-6 rounded-full object-cover border border-[#BFA373]"
               />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-[#202C33] text-[#00A884] flex items-center justify-center font-bold">
+              <div className="w-6 h-6 rounded-full bg-[#202C33] text-[#BFA373] flex items-center justify-center font-bold">
                 {userProfile.name ? userProfile.name[0].toUpperCase() : 'M'}
               </div>
             )}
@@ -350,7 +350,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
         </form>
 
         {/* Sticky Mobile/Desktop Footer */}
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 bg-[#111B21] border-t border-[#202C33] shrink-0">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 bg-[#06111F] border-t border-[#202C33] shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -363,11 +363,11 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3 bg-[#00A884] hover:bg-[#009272] active:scale-95 text-[#111B21] font-bold rounded-2xl shadow-lg shadow-[#00A884]/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            className="inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3 bg-[#BFA373] hover:bg-[#BFA373] active:scale-95 text-[#06111F] font-bold rounded-2xl shadow-lg shadow-[#BFA373]/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
           >
             {isSubmitting ? (
               <>
-                <div className="w-4 h-4 border-2 border-[#111B21] border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-[#06111F] border-t-transparent rounded-full animate-spin" />
                 <span>Starting Poll...</span>
               </>
             ) : (

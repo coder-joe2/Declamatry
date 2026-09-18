@@ -140,12 +140,12 @@ export const AboutClubTab: React.FC = () => {
   return (
     <div className="space-y-8 animate-fadeIn text-slate-100">
       {/* Header Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] text-white p-6 sm:p-10 border border-[#C5A880]/40 shadow-2xl relative overflow-hidden">
+      <div className="rounded-3xl bg-gradient-to-br from-[#06111F] via-[#06111F] to-[#06111F] text-white p-6 sm:p-10 border border-[#BFA373]/40 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <SocietyLogo size="2xl" />
         </div>
         <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-xs font-semibold uppercase tracking-wider border border-[#C5A880]/40">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#BFA373]/20 text-[#BFA373] text-xs font-semibold uppercase tracking-wider border border-[#BFA373]/40">
             <Users className="w-3.5 h-3.5" />
             <span>Club Overview &amp; Structure</span>
           </div>
@@ -159,23 +159,23 @@ export const AboutClubTab: React.FC = () => {
       </div>
 
       {/* 1. What is it? */}
-      <div className="bg-[#050B14] rounded-2xl border border-[#1E2E48] p-6 sm:p-8 shadow-xl hover:border-[#C5A880]/60 transition-colors">
+      <div className="bg-[#06111F] rounded-2xl border border-[#BFA373]/30 p-6 sm:p-8 shadow-xl hover:border-[#BFA373]/60 transition-colors">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2.5 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880]">
+          <div className="p-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373]">
             <Sparkles className="w-5 h-5" />
           </div>
           <h3 className="text-xl font-bold font-cinzel text-white">What is it?</h3>
         </div>
-        <p className="text-slate-200 text-base leading-relaxed font-sans bg-[#0B1528] p-5 rounded-xl border border-[#1E2E48]">
-          It is a <strong className="text-[#C5A880] font-semibold">student-led platform inspired by professional public-speaking club practices</strong>, but built exclusively for our students at Sri Amaraavathi College of Arts and Science.
+        <p className="text-slate-200 text-base leading-relaxed font-sans bg-[#06111F] p-5 rounded-xl border border-[#BFA373]/30">
+          It is a <strong className="text-[#BFA373] font-semibold">student-led platform inspired by professional public-speaking club practices</strong>, but built exclusively for our students at Sri Amaraavathi College of Arts and Science.
         </p>
       </div>
 
       {/* 2. Executive Committee - 6 Core Leadership Roles */}
-      <div className="bg-[#050B14] rounded-2xl border border-[#1E2E48] p-6 sm:p-8 shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#1E2E48]">
+      <div className="bg-[#06111F] rounded-2xl border border-[#BFA373]/30 p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#BFA373]/30">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880]">
+            <div className="p-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373]">
               <Crown className="w-5 h-5" />
             </div>
             <div>
@@ -183,7 +183,7 @@ export const AboutClubTab: React.FC = () => {
               <p className="text-xs text-slate-400">Club Office Bearers elected to administer and lead society activities</p>
             </div>
           </div>
-          <span className="self-start sm:self-auto text-xs font-bold font-cinzel text-[#C5A880] bg-[#C5A880]/15 px-3.5 py-1.5 rounded-full border border-[#C5A880]/40">
+          <span className="self-start sm:self-auto text-xs font-bold font-cinzel text-[#BFA373] bg-[#BFA373]/15 px-3.5 py-1.5 rounded-full border border-[#BFA373]/40">
             6 CORE POSTINGS
           </span>
         </div>
@@ -196,7 +196,7 @@ export const AboutClubTab: React.FC = () => {
             return (
               <div
                 key={item.role}
-                className="p-4 sm:p-5 rounded-2xl bg-[#09152A] border border-[#1E2E48] hover:border-[#C5A880]/60 transition-all flex flex-col justify-between gap-3 shadow-md"
+                className="p-4 sm:p-5 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-[#BFA373]/60 transition-all flex flex-col justify-between gap-3 shadow-md"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -207,15 +207,15 @@ export const AboutClubTab: React.FC = () => {
                       {item.role}
                     </h4>
                   </div>
-                  <span className="text-[10px] font-bold font-cinzel text-slate-400 uppercase tracking-wider shrink-0 px-2 py-0.5 rounded bg-black/40 border border-[#1E2E48]">
+                  <span className="text-[10px] font-bold font-cinzel text-slate-400 uppercase tracking-wider shrink-0 px-2 py-0.5 rounded bg-black/40 border border-[#BFA373]/30">
                     Role {idx + 1}
                   </span>
                 </div>
 
                 {/* Role Work in Simple Clear English Words */}
-                <div className="bg-[#030712]/70 rounded-xl p-2.5 border border-[#1E2E48]/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#C5A880] font-cinzel">
-                    <Briefcase className="w-3 h-3 text-[#C5A880]" />
+                <div className="bg-[#06111F]/70 rounded-xl p-2.5 border border-[#BFA373]/30/80 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#BFA373] font-cinzel">
+                    <Briefcase className="w-3 h-3 text-[#BFA373]" />
                     <span>Work & Responsibility</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
@@ -223,7 +223,7 @@ export const AboutClubTab: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="pt-2.5 border-t border-[#1E2E48]">
+                <div className="pt-2.5 border-t border-[#BFA373]/30">
                   {holder ? (
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
@@ -231,10 +231,10 @@ export const AboutClubTab: React.FC = () => {
                           <img
                             src={holder.photoUrl}
                             alt={holder.name}
-                            className="w-7 h-7 rounded-full object-cover border border-[#C5A880]/60 shrink-0"
+                            className="w-7 h-7 rounded-full object-cover border border-[#BFA373]/60 shrink-0"
                           />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-[#030712] border border-[#C5A880]/60 text-[#C5A880] flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-[#06111F] border border-[#BFA373]/60 text-[#BFA373] flex items-center justify-center font-bold text-xs shrink-0">
                             {holder.name ? holder.name[0].toUpperCase() : 'M'}
                           </div>
                         )}
@@ -270,9 +270,9 @@ export const AboutClubTab: React.FC = () => {
       </div>
 
       {/* 3. How it Works */}
-      <div className="bg-[#050B14] rounded-2xl border border-[#1E2E48] p-6 sm:p-8 shadow-xl space-y-5">
+      <div className="bg-[#06111F] rounded-2xl border border-[#BFA373]/30 p-6 sm:p-8 shadow-xl space-y-5">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880]">
+          <div className="p-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373]">
             <Layers className="w-5 h-5" />
           </div>
           <div>
@@ -289,9 +289,9 @@ export const AboutClubTab: React.FC = () => {
           {pillars.map((item, idx) => (
             <div
               key={idx}
-              className="p-4 rounded-xl bg-[#0B1528] border border-[#1E2E48] hover:border-[#C5A880]/60 transition-colors flex items-start gap-3"
+              className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 hover:border-[#BFA373]/60 transition-colors flex items-start gap-3"
             >
-              <div className="w-6 h-6 rounded-full bg-[#030712] border border-[#C5A880]/50 text-[#C5A880] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 font-cinzel">
+              <div className="w-6 h-6 rounded-full bg-[#06111F] border border-[#BFA373]/50 text-[#BFA373] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 font-cinzel">
                 {idx + 1}
               </div>
               <div>
@@ -304,10 +304,10 @@ export const AboutClubTab: React.FC = () => {
       </div>
 
       {/* 4. Meeting Structure */}
-      <div className="bg-[#050B14] rounded-2xl border border-[#1E2E48] p-6 sm:p-8 shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#1E2E48]">
+      <div className="bg-[#06111F] rounded-2xl border border-[#BFA373]/30 p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#BFA373]/30">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880]">
+            <div className="p-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373]">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -315,7 +315,7 @@ export const AboutClubTab: React.FC = () => {
               <p className="text-xs text-slate-400">Standard 90-minute session breakdown for maximum impact</p>
             </div>
           </div>
-          <span className="self-start sm:self-auto text-xs font-bold font-cinzel text-[#C5A880] bg-[#C5A880]/15 px-3.5 py-1.5 rounded-full border border-[#C5A880]/40">
+          <span className="self-start sm:self-auto text-xs font-bold font-cinzel text-[#BFA373] bg-[#BFA373]/15 px-3.5 py-1.5 rounded-full border border-[#BFA373]/40">
             TOTAL: 90 MINUTES
           </span>
         </div>
@@ -326,11 +326,11 @@ export const AboutClubTab: React.FC = () => {
             return (
               <div
                 key={idx}
-                className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-[#1E2E48] bg-[#0B1528] hover:border-[#C5A880]/50 transition-all"
+                className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-[#BFA373]/30 bg-[#06111F] hover:border-[#BFA373]/50 transition-all"
               >
                 {/* Time Badge */}
                 <div className="flex items-center gap-3 shrink-0">
-                  <div className="w-10 h-10 rounded-xl bg-[#030712] border border-[#1E2E48] text-[#C5A880] flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] flex items-center justify-center shrink-0">
                     <Icon className="w-5 h-5" />
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider font-cinzel border ${item.badgeColor}`}>

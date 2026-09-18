@@ -1,10 +1,30 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary-navy: #06111F;
+  --color-primary-gold: #BFA373;
+  --color-secondary-gold: #BFA475;
+  --color-text-offwhite: #E0E0E0;
+  --color-bronze-gold: #D1B079;
+  --color-accent-gold: #CBA96D;
+  --color-accent-tan: #BFA474;
+}
+
+:root {
+  --primary-navy: #06111F;
+  --primary-gold: #BFA373;
+  --secondary-accent-gold: #BFA475;
+  --text-offwhite: #E0E0E0;
+  --secondary-gold-bronze: #D1B079;
+  --accent-gold: #CBA96D;
+  --another-accent: #BFA474;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    background-color: #030712;
-    color: #F3F4F6;
+    background-color: #06111F;
+    color: #E0E0E0;
   }
   
   /* Custom sleek dark scrollbar */
@@ -13,14 +33,14 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #050B14;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1E2E48;
+    background: #475569;
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #C5A880;
+    background: #64748b;
   }
 }
 
@@ -129,22 +149,22 @@
   }
 
   body {
-    background-color: #050B14 !important;
-    color: #F8FAFC !important;
+    background-color: #06111F !important;
+    color: #E0E0E0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   #printable-speech-evaluation-sheet {
     border-width: 2px !important;
-    border-color: #C5A880 !important;
+    border-color: #BFA373 !important;
     box-shadow: none !important;
     margin: 0 !important;
     padding: 12px !important;
     width: 100% !important;
     max-width: 100% !important;
-    background: #050B14 !important;
-    color: #F8FAFC !important;
+    background: #06111F !important;
+    color: #E0E0E0 !important;
   }
 
   @page {

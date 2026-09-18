@@ -304,7 +304,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
         useCORS: true,
         allowTaint: true,
         logging: false,
-        backgroundColor: '#050B14',
+        backgroundColor: '#06111F',
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
@@ -369,27 +369,27 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
       <div className="space-y-4">
         {/* Loading State */}
         {isLoading ? (
-          <div className="p-12 text-center rounded-2xl bg-[#050B14] border border-[#1E2E48] space-y-3">
-            <Loader2 className="w-8 h-8 text-[#C5A880] animate-spin mx-auto" />
+          <div className="p-12 text-center rounded-2xl bg-[#06111F] border border-[#BFA373]/30 space-y-3">
+            <Loader2 className="w-8 h-8 text-[#BFA373] animate-spin mx-auto" />
             <p className="text-slate-400 text-sm">Loading your activity records...</p>
           </div>
         ) : meetingFolders.length === 0 ? (
           /* Empty State */
-          <div className="p-8 sm:p-14 text-center rounded-3xl bg-[#050B14] border border-[#1E2E48] shadow-xl space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-[#0A192F] border border-[#1E2E48] text-[#C5A880] flex items-center justify-center mx-auto shadow-inner">
-              <Folder className="w-8 h-8 text-[#C5A880]" />
+          <div className="p-8 sm:p-14 text-center rounded-3xl bg-[#06111F] border border-[#BFA373]/30 shadow-xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] flex items-center justify-center mx-auto shadow-inner">
+              <Folder className="w-8 h-8 text-[#BFA373]" />
             </div>
             <div className="space-y-1.5 max-w-md mx-auto">
               <h4 className="font-cinzel text-lg font-bold text-white">
                 No Meeting Folders Yet
               </h4>
               <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
-                Your activity section is currently empty. When your Feedbacker or Time Steward records your keynote speech with a meeting number (such as <strong className="text-[#C5A880]">&ldquo;1st Meeting&rdquo;</strong>) and submits it, your dedicated meeting folder will be automatically created right here with your feedback forms and official speech timings stored inside!
+                Your activity section is currently empty. When your Feedbacker or Time Steward records your keynote speech with a meeting number (such as <strong className="text-[#BFA373]">&ldquo;1st Meeting&rdquo;</strong>) and submits it, your dedicated meeting folder will be automatically created right here with your feedback forms and official speech timings stored inside!
               </p>
             </div>
             <div className="pt-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-[#0A192F] text-slate-400 border border-[#1E2E48]">
-                <User className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-[#06111F] text-slate-400 border border-[#BFA373]/30">
+                <User className="w-3.5 h-3.5 text-[#BFA373]" />
                 Viewing Activity for: {userProfile.name || 'Member'}
               </span>
             </div>
@@ -400,14 +400,14 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
           /* ========================================================================= */
           <div className="space-y-4 animate-in fade-in duration-200">
             {/* Breadcrumb Navigation & Back Button */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-[#081220] border border-[#1E2E48]">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30">
               <div className="flex items-center gap-2 text-xs sm:text-sm">
                 <button
                   type="button"
                   onClick={() => setOpenedFolder(null)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#1E2E48] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#BFA373]/30 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <ArrowLeft className="w-3.5 h-3.5 text-[#BFA373]" />
                   <span>All Folders</span>
                 </button>
                 <span className="text-slate-500">/</span>
@@ -429,7 +429,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                         openedFolder.toLowerCase() === f.folderName.toLowerCase()
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                          : 'bg-[#050B14] text-slate-400 hover:text-white border border-[#1E2E48]'
+                          : 'bg-[#06111F] text-slate-400 hover:text-white border border-[#BFA373]/30'
                       }`}
                     >
                       {f.folderName}
@@ -447,20 +447,20 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   <div
                     key={item.id}
                     onClick={() => setSelectedEvaluation(item)}
-                    className="group relative overflow-hidden rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#C5A880] p-5 shadow-lg hover:shadow-2xl hover:shadow-[#C5A880]/10 transition-all cursor-pointer flex flex-col justify-between space-y-4"
+                    className="group relative overflow-hidden rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-[#BFA373] p-5 shadow-lg hover:shadow-2xl hover:shadow-[#BFA373]/10 transition-all cursor-pointer flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-3">
                       {/* Card Top Pill */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0E1F36] border border-[#1E2E48] text-[#C5A880] text-[11px] font-bold font-cinzel tracking-wider">
-                          <FileCheck className="w-3.5 h-3.5 text-[#C5A880]" />
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] text-[11px] font-bold font-cinzel tracking-wider">
+                          <FileCheck className="w-3.5 h-3.5 text-[#BFA373]" />
                           <span>FEEDBACKER SUGGESTION</span>
                         </div>
                       </div>
 
                       {/* Speech Title & Info */}
                       <div className="space-y-1">
-                        <h4 className="font-cinzel text-base sm:text-lg font-bold text-white group-hover:text-[#C5A880] transition-colors leading-tight">
+                        <h4 className="font-cinzel text-base sm:text-lg font-bold text-white group-hover:text-[#BFA373] transition-colors leading-tight">
                           {item.speechTitle || 'Keynote Speech Presentation'}
                         </h4>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 pt-0.5">
@@ -483,7 +483,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
                       {/* Snippet summary */}
                       {(item.commend1 || item.recommend) && (
-                        <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]/80 text-xs text-slate-300 space-y-1.5">
+                        <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30/80 text-xs text-slate-300 space-y-1.5">
                           {item.commend1 && (
                             <p className="line-clamp-2">
                               <strong className="text-emerald-400">Commend:</strong> {item.commend1}
@@ -499,10 +499,10 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                     </div>
 
                     {/* Card Bottom CTA */}
-                    <div className="flex items-center justify-end pt-3 border-t border-[#1E2E48] text-xs">
+                    <div className="flex items-center justify-end pt-3 border-t border-[#BFA373]/30 text-xs">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 font-cinzel font-bold text-[#C5A880] group-hover:translate-x-0.5 transition-transform"
+                        className="inline-flex items-center gap-1 font-cinzel font-bold text-[#BFA373] group-hover:translate-x-0.5 transition-transform"
                       >
                         <span>VIEW EVALUATION</span>
                         <ChevronRight className="w-4 h-4" />
@@ -518,13 +518,13 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   <div
                     key={rec.id}
                     onClick={() => setSelectedTimingRecord(rec)}
-                    className="group relative overflow-hidden rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#C5A880] p-5 shadow-lg hover:shadow-2xl hover:shadow-[#C5A880]/10 transition-all cursor-pointer flex flex-col justify-between space-y-4"
+                    className="group relative overflow-hidden rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-[#BFA373] p-5 shadow-lg hover:shadow-2xl hover:shadow-[#BFA373]/10 transition-all cursor-pointer flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-3">
                       {/* Card Top Pill - matching FEEDBACKER SUGGESTION style and color */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0E1F36] border border-[#1E2E48] text-[#C5A880] text-[11px] font-bold font-cinzel tracking-wider">
-                          <Timer className="w-3.5 h-3.5 text-[#C5A880]" />
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] text-[11px] font-bold font-cinzel tracking-wider">
+                          <Timer className="w-3.5 h-3.5 text-[#BFA373]" />
                           <span>TIME STEWARD RECORD</span>
                         </div>
                       </div>
@@ -533,8 +533,8 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                       <div className="space-y-2">
                         {/* Monospace Stopwatch Time Pill & Compliance Tag */}
                         <div className="pt-1 pb-1 flex flex-wrap items-center gap-2">
-                          <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-[#030712] border border-[#1E2E48]">
-                            <Clock className="w-4 h-4 text-[#C5A880]" />
+                          <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
+                            <Clock className="w-4 h-4 text-[#BFA373]" />
                             <span className="text-xs text-slate-400">Total Duration:</span>
                             <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400 tracking-wider">
                               {rec.formattedTime}
@@ -574,17 +574,17 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
                       {/* Notes snippet if present */}
                       {rec.notes && (
-                        <div className="p-2.5 rounded-xl bg-[#030712] border border-[#1E2E48]/80 text-xs text-slate-300">
-                          <strong className="text-[#C5A880]">Notes:</strong> {rec.notes}
+                        <div className="p-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30/80 text-xs text-slate-300">
+                          <strong className="text-[#BFA373]">Notes:</strong> {rec.notes}
                         </div>
                       )}
                     </div>
 
                       {/* Card Bottom CTA */}
-                    <div className="flex items-center justify-end pt-3 border-t border-[#1E2E48] text-xs">
+                    <div className="flex items-center justify-end pt-3 border-t border-[#BFA373]/30 text-xs">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 font-cinzel font-bold text-[#C5A880] group-hover:translate-x-0.5 transition-transform"
+                        className="inline-flex items-center gap-1 font-cinzel font-bold text-[#BFA373] group-hover:translate-x-0.5 transition-transform"
                       >
                         <span>VIEW TIMING REPORT</span>
                         <ChevronRight className="w-4 h-4" />
@@ -600,12 +600,12 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   <div
                     key={rec.id}
                     onClick={() => setSelectedFillerRecord(rec)}
-                    className="group relative overflow-hidden rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#C5A880] p-5 shadow-lg hover:shadow-2xl hover:shadow-[#C5A880]/10 transition-all cursor-pointer flex flex-col justify-between space-y-4"
+                    className="group relative overflow-hidden rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-[#BFA373] p-5 shadow-lg hover:shadow-2xl hover:shadow-[#BFA373]/10 transition-all cursor-pointer flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-3">
                       {/* Card Top Pill */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0E1F36] border border-[#1E2E48] text-teal-300 text-[11px] font-bold font-cinzel tracking-wider">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#06111F] border border-[#BFA373]/30 text-teal-300 text-[11px] font-bold font-cinzel tracking-wider">
                           <Filter className="w-3.5 h-3.5 text-teal-400" />
                           <span>FILLER COUNTER RECORD</span>
                         </div>
@@ -626,7 +626,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                       {/* Total Fillers & Info */}
                       <div className="space-y-2">
                         <div className="pt-1 pb-1 flex flex-wrap items-center gap-2">
-                          <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                          <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                             <span className="text-xs text-slate-400">Total Fillers:</span>
                             <span className="font-mono text-xl sm:text-2xl font-black text-teal-400">
                               {rec.totalFillers}
@@ -635,19 +635,19 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
                           {/* Quick breakdown preview chips */}
                           <div className="flex flex-wrap gap-1 text-[10px] font-mono">
-                            <span className="px-1.5 py-0.5 rounded bg-[#081220] text-amber-300 border border-[#1E2E48]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#06111F] text-amber-300 border border-[#BFA373]/30">
                               Ah: {rec.counts.ah}
                             </span>
-                            <span className="px-1.5 py-0.5 rounded bg-[#081220] text-orange-300 border border-[#1E2E48]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#06111F] text-orange-300 border border-[#BFA373]/30">
                               Um: {rec.counts.um}
                             </span>
-                            <span className="px-1.5 py-0.5 rounded bg-[#081220] text-teal-300 border border-[#1E2E48]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#06111F] text-teal-300 border border-[#BFA373]/30">
                               Well: {rec.counts.well}
                             </span>
-                            <span className="px-1.5 py-0.5 rounded bg-[#081220] text-sky-300 border border-[#1E2E48]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#06111F] text-sky-300 border border-[#BFA373]/30">
                               So: {rec.counts.so}
                             </span>
-                            <span className="px-1.5 py-0.5 rounded bg-[#081220] text-emerald-300 border border-[#1E2E48]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#06111F] text-emerald-300 border border-[#BFA373]/30">
                               Rep: {rec.counts.repeats}
                             </span>
                           </div>
@@ -673,17 +673,17 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
                       {/* Notes snippet if present */}
                       {rec.notes && (
-                        <div className="p-2.5 rounded-xl bg-[#030712] border border-[#1E2E48]/80 text-xs text-slate-300">
-                          <strong className="text-[#C5A880]">Notes:</strong> {rec.notes}
+                        <div className="p-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30/80 text-xs text-slate-300">
+                          <strong className="text-[#BFA373]">Notes:</strong> {rec.notes}
                         </div>
                       )}
                     </div>
 
                     {/* Card Bottom CTA */}
-                    <div className="flex items-center justify-end pt-3 border-t border-[#1E2E48] text-xs">
+                    <div className="flex items-center justify-end pt-3 border-t border-[#BFA373]/30 text-xs">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 font-cinzel font-bold text-[#C5A880] group-hover:translate-x-0.5 transition-transform"
+                        className="inline-flex items-center gap-1 font-cinzel font-bold text-[#BFA373] group-hover:translate-x-0.5 transition-transform"
                       >
                         <span>VIEW FILLER REPORT</span>
                         <ChevronRight className="w-4 h-4" />
@@ -701,7 +701,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <Folder className="w-5 h-5 text-[#C5A880]" />
+                <Folder className="w-5 h-5 text-[#BFA373]" />
                 <h3 className="font-cinzel text-lg sm:text-xl font-bold text-white tracking-wide">
                   Meeting Folders
                 </h3>
@@ -717,16 +717,16 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   <div
                     key={folder.folderName}
                     onClick={() => setOpenedFolder(folder.folderName)}
-                    className="group relative overflow-hidden rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#C5A880] p-5 shadow-xl hover:shadow-2xl hover:shadow-[#C5A880]/15 transition-all cursor-pointer flex flex-col justify-between space-y-4 hover:-translate-y-0.5"
+                    className="group relative overflow-hidden rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-[#BFA373] p-5 shadow-xl hover:shadow-2xl hover:shadow-[#BFA373]/15 transition-all cursor-pointer flex flex-col justify-between space-y-4 hover:-translate-y-0.5"
                   >
                     <div className="space-y-3.5">
                       {/* Folder Top Row */}
                       <div className="flex items-start justify-between gap-2">
-                        <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-[#C5A880] group-hover:bg-[#C5A880] group-hover:text-[#050B14] transition-colors shadow-inner">
+                        <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-[#BFA373] group-hover:bg-[#BFA373] group-hover:text-[#06111F] transition-colors shadow-inner">
                           <Folder className="w-6 h-6" />
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-[#0E1F36] text-[#C5A880] border border-[#1E2E48]">
+                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-[#06111F] text-[#BFA373] border border-[#BFA373]/30">
                             {folder.totalCount} {folder.totalCount === 1 ? 'Record' : 'Records'}
                           </span>
                         </div>
@@ -734,7 +734,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
                       {/* Folder Name & Info */}
                       <div className="space-y-1.5">
-                        <h4 className="font-cinzel text-lg font-bold text-white group-hover:text-[#C5A880] transition-colors">
+                        <h4 className="font-cinzel text-lg font-bold text-white group-hover:text-[#BFA373] transition-colors">
                           {folder.folderName}
                         </h4>
 
@@ -785,11 +785,11 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                     </div>
 
                     {/* Folder Footer Button */}
-                    <div className="flex items-center justify-between pt-3 border-t border-[#1E2E48] text-xs">
+                    <div className="flex items-center justify-between pt-3 border-t border-[#BFA373]/30 text-xs">
                       <span className="text-[11px] text-slate-400">
                         Click to open folder
                       </span>
-                      <div className="inline-flex items-center gap-1 font-cinzel font-bold text-[#C5A880] group-hover:translate-x-1 transition-transform">
+                      <div className="inline-flex items-center gap-1 font-cinzel font-bold text-[#BFA373] group-hover:translate-x-1 transition-transform">
                         <span>OPEN FOLDER</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
@@ -807,11 +807,11 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
       {/* ========================================================================= */}
       {selectedEvaluation && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in">
-          <div className="bg-[#050B14] border border-[#1E2E48] rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+          <div className="bg-[#06111F] border border-[#BFA373]/30 rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden my-auto">
             {/* Modal Top Bar */}
-            <div className="p-4 sm:p-5 border-b border-[#1E2E48] flex items-center justify-between bg-[#081220] shrink-0">
+            <div className="p-4 sm:p-5 border-b border-[#BFA373]/30 flex items-center justify-between bg-[#06111F] shrink-0">
               <div className="flex items-center gap-3">
-                <span className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[#C5A880]">
+                <span className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[#BFA373]">
                   <FileCheck className="w-5 h-5" />
                 </span>
                 <div>
@@ -857,14 +857,14 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
             </div>
 
             {/* Modal Body: The Authentic Golden-Black Evaluation Sheet */}
-            <div className="p-3 sm:p-6 overflow-y-auto flex-1 space-y-6 bg-[#030712]">
+            <div className="p-3 sm:p-6 overflow-y-auto flex-1 space-y-6 bg-[#06111F]">
               <div
                 ref={sheetModalRef}
-                className="w-full bg-[#050B14] text-slate-100 border-2 border-[#C5A880]/50 shadow-2xl rounded-2xl p-4 sm:p-6 lg:p-8 font-sans space-y-5"
+                className="w-full bg-[#06111F] text-slate-100 border-2 border-[#BFA373]/50 shadow-2xl rounded-2xl p-4 sm:p-6 lg:p-8 font-sans space-y-5"
               >
                 {/* Header Crest Info */}
-                <div className="border-b border-[#1E2E48] pb-4 text-center space-y-1">
-                  <h3 className="font-cinzel text-lg sm:text-xl font-bold text-[#C5A880] tracking-wider uppercase">
+                <div className="border-b border-[#BFA373]/30 pb-4 text-center space-y-1">
+                  <h3 className="font-cinzel text-lg sm:text-xl font-bold text-[#BFA373] tracking-wider uppercase">
                     The Declamate&apos;s Society &bull; Evaluation Sheet
                   </h3>
                   <p className="text-xs text-slate-300 font-medium">
@@ -873,9 +873,9 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                 </div>
 
                 {/* Speaker & Speech Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#081220] border border-[#1E2E48] rounded-xl text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-[#06111F] border border-[#BFA373]/30 rounded-xl text-xs">
                   <div>
-                    <span className="block text-[#C5A880] font-bold uppercase text-[10px] tracking-wider font-cinzel">
+                    <span className="block text-[#BFA373] font-bold uppercase text-[10px] tracking-wider font-cinzel">
                       Speaker Name:
                     </span>
                     <span className="font-semibold text-white text-sm">
@@ -883,7 +883,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[#C5A880] font-bold uppercase text-[10px] tracking-wider font-cinzel">
+                    <span className="block text-[#BFA373] font-bold uppercase text-[10px] tracking-wider font-cinzel">
                       Speech Title:
                     </span>
                     <span className="font-semibold text-white text-sm">
@@ -891,7 +891,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[#C5A880] font-bold uppercase text-[10px] tracking-wider font-cinzel">
+                    <span className="block text-[#BFA373] font-bold uppercase text-[10px] tracking-wider font-cinzel">
                       Meeting Number:
                     </span>
                     <span className="font-semibold text-white text-sm flex items-center gap-1.5">
@@ -903,34 +903,34 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
                 {/* 18 Categories Evaluation Table (Read-Only) */}
                 <div className="space-y-2">
-                  <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-[#C5A880]">
+                  <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-[#BFA373]">
                     1. Detailed Evaluation Matrix (18 Categories)
                   </h4>
-                  <div className="border border-[#1E2E48] rounded-xl overflow-hidden shadow-inner">
+                  <div className="border border-[#BFA373]/30 rounded-xl overflow-hidden shadow-inner">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                          <tr className="bg-[#081220] text-slate-300 border-b border-[#1E2E48]">
+                          <tr className="bg-[#06111F] text-slate-300 border-b border-[#BFA373]/30">
                             <th className="p-2.5 sm:p-3 font-cinzel font-bold text-white min-w-[200px]">
                               Categories
                             </th>
                             {RATING_COLUMNS.map((col) => (
                               <th
                                 key={col}
-                                className="p-2 sm:p-2.5 text-center font-bold text-[10px] sm:text-xs tracking-wider uppercase text-[#C5A880] border-l border-[#1E2E48] min-w-[90px]"
+                                className="p-2 sm:p-2.5 text-center font-bold text-[10px] sm:text-xs tracking-wider uppercase text-[#BFA373] border-l border-[#BFA373]/30 min-w-[90px]"
                               >
                                 {col}
                               </th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#1E2E48]/60 bg-[#030712]">
+                        <tbody className="divide-y divide-[#BFA373]/30/60 bg-[#06111F]">
                           {EVALUATION_CATEGORIES.map((cat, idx) => {
                             const currentRating = selectedEvaluation.ratings?.[cat.id];
                             return (
                               <tr
                                 key={cat.id}
-                                className={idx % 2 === 0 ? 'bg-[#050B14]' : 'bg-[#030712]'}
+                                className={idx % 2 === 0 ? 'bg-[#06111F]' : 'bg-[#06111F]'}
                               >
                                 <td className="p-2.5 sm:p-3">
                                   <div className="font-bold text-white text-xs">{cat.title}</div>
@@ -941,10 +941,10 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                                   return (
                                     <td
                                       key={col}
-                                      className="p-1.5 sm:p-2 text-center border-l border-[#1E2E48]/60"
+                                      className="p-1.5 sm:p-2 text-center border-l border-[#BFA373]/30/60"
                                     >
                                       {isSelected ? (
-                                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold bg-[#C5A880] text-[#050B14] shadow-md shadow-amber-500/20">
+                                        <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold bg-[#BFA373] text-[#06111F] shadow-md shadow-amber-500/20">
                                           &bull; Rated &bull;
                                         </span>
                                       ) : (
@@ -964,12 +964,12 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
                 {/* Structured Qualitative Feedback (Read-Only) */}
                 <div className="space-y-4 pt-2">
-                  <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-[#C5A880]">
+                  <h4 className="font-cinzel text-xs font-bold uppercase tracking-wider text-[#BFA373]">
                     Feedback &amp; Action Plan (Suggestions)
                   </h4>
 
                   {/* 2. Commend */}
-                  <div className="p-4 rounded-xl bg-[#081220] border border-[#1E2E48] space-y-1">
+                  <div className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-1">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 font-cinzel">
                       2. Commend (What was done well)
                     </span>
@@ -979,7 +979,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   </div>
 
                   {/* 3. Recommend */}
-                  <div className="p-4 rounded-xl bg-[#081220] border border-[#1E2E48] space-y-1">
+                  <div className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-1">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 font-cinzel">
                       3. Recommend (Suggestions for improvement)
                     </span>
@@ -989,7 +989,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   </div>
 
                   {/* 4. Commend */}
-                  <div className="p-4 rounded-xl bg-[#081220] border border-[#1E2E48] space-y-1">
+                  <div className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-1">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 font-cinzel">
                       4. Commend (What to keep doing / continue)
                     </span>
@@ -999,7 +999,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   </div>
 
                   {/* 5. Action Plan */}
-                  <div className="p-4 rounded-xl bg-[#081220] border border-[#1E2E48] space-y-1">
+                  <div className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-1">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400 font-cinzel">
                       5. Action Plan (Key action for your next speech)
                     </span>
@@ -1009,8 +1009,8 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   </div>
 
                   {/* 6. Overall Evaluation */}
-                  <div className="p-4 rounded-xl bg-[#081220] border border-[#1E2E48] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#C5A880] font-cinzel">
+                  <div className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#BFA373] font-cinzel">
                       6. Overall Speech Evaluation Rating:
                     </span>
                     <span
@@ -1023,7 +1023,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                   </div>
 
                   {/* Signature block */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#1E2E48] text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#BFA373]/30 text-xs">
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
                         Evaluator Signature:
@@ -1046,7 +1046,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[#1E2E48] flex items-center justify-between bg-[#081220] shrink-0">
+            <div className="p-4 border-t border-[#BFA373]/30 flex items-center justify-between bg-[#06111F] shrink-0">
               <span className="text-xs text-slate-400 hidden sm:inline">
                 Evaluation sheet stored in your personal Activity tab.
               </span>
@@ -1067,9 +1067,9 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
       {/* ========================================================================= */}
       {selectedTimingRecord && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in">
-          <div className="bg-[#050B14] border border-[#1E2E48] rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden my-auto">
+          <div className="bg-[#06111F] border border-[#BFA373]/30 rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden my-auto">
             {/* Modal Top Bar */}
-            <div className="p-4 sm:p-5 border-b border-[#1E2E48] flex items-center justify-between bg-[#081220] shrink-0">
+            <div className="p-4 sm:p-5 border-b border-[#BFA373]/30 flex items-center justify-between bg-[#06111F] shrink-0">
               <div className="flex items-center gap-3">
                 <span className="p-2 rounded-xl bg-orange-500/15 border border-orange-500/30 text-orange-400">
                   <Timer className="w-5 h-5" />
@@ -1096,7 +1096,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
             {/* Modal Body */}
             <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
               {/* Speaker & Meeting Meta Card */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-[#081220] border border-[#1E2E48] text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-xs">
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
                     Keynote Speaker:
@@ -1135,7 +1135,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
               </div>
 
               {/* Big Duration & Signal Spotlight Card */}
-              <div className="p-6 rounded-2xl bg-radial from-orange-950/20 via-[#050B14] to-[#030712] border border-orange-500/30 text-center space-y-3">
+              <div className="p-6 rounded-2xl bg-radial from-orange-950/20 via-[#06111F] to-[#06111F] border border-orange-500/30 text-center space-y-3">
                 <span className="text-xs uppercase font-bold tracking-widest text-slate-400 font-cinzel">
                   Official Speech Duration
                 </span>
@@ -1171,7 +1171,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
                         : 'Qualified Timing (3+ Mins)'}
                     </span>
                   )}
-                  <span className="px-3 py-1 rounded-full text-xs font-mono bg-[#0E1F36] text-slate-300 border border-[#1E2E48]">
+                  <span className="px-3 py-1 rounded-full text-xs font-mono bg-[#06111F] text-slate-300 border border-[#BFA373]/30">
                     {getRecordDurationSeconds(selectedTimingRecord)} Seconds
                   </span>
                 </div>
@@ -1179,7 +1179,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
               {/* Notes from Time Steward */}
               {selectedTimingRecord.notes && (
-                <div className="p-4 rounded-xl bg-[#081220] border border-[#1E2E48] space-y-1">
+                <div className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-1">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-orange-400 font-cinzel">
                     Time Steward Remarks:
                   </span>
@@ -1228,7 +1228,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[#1E2E48] flex items-center justify-between bg-[#081220] shrink-0">
+            <div className="p-4 border-t border-[#BFA373]/30 flex items-center justify-between bg-[#06111F] shrink-0">
               <span className="text-xs text-slate-400 hidden sm:inline">
                 Synchronized under meeting folder &ldquo;{selectedTimingRecord.meetingNumber || '1st Meeting'}&rdquo;
               </span>
@@ -1249,9 +1249,9 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
       {/* ========================================================================= */}
       {selectedFillerRecord && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-[#050B14] border border-[#1E2E48] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col my-auto max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95">
+          <div className="relative w-full max-w-2xl bg-[#06111F] border border-[#BFA373]/30 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col my-auto max-h-[92vh] overflow-hidden animate-in fade-in zoom-in-95">
             {/* Modal Top Header */}
-            <div className="p-4 sm:p-5 border-b border-[#1E2E48] flex items-center justify-between bg-[#081220] shrink-0">
+            <div className="p-4 sm:p-5 border-b border-[#BFA373]/30 flex items-center justify-between bg-[#06111F] shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-400">
                   <Filter className="w-5 h-5" />
@@ -1283,7 +1283,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
             {/* Modal Body */}
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
               {/* Speaker Metadata Bar */}
-              <div className="p-3.5 rounded-xl bg-[#030712] border border-[#1E2E48] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-cinzel">Speaker</span>
                   <strong className="text-white text-xs sm:text-sm font-semibold truncate block">
@@ -1311,7 +1311,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
               </div>
 
               {/* Total Fillers & Overall Assessment Card */}
-              <div className="p-5 rounded-2xl bg-gradient-to-b from-[#0B1528] to-[#050B14] border border-[#1E2E48] text-center space-y-2">
+              <div className="p-5 rounded-2xl bg-gradient-to-b from-[#06111F] to-[#06111F] border border-[#BFA373]/30 text-center space-y-2">
                 <span className="text-xs uppercase font-cinzel font-bold text-slate-400 tracking-wider">
                   Total Fillers Recorded
                 </span>
@@ -1336,43 +1336,43 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
               {/* Detailed Breakdown Grid */}
               <div className="space-y-2">
-                <span className="text-xs font-bold uppercase font-cinzel tracking-wider text-[#C5A880] block">
+                <span className="text-xs font-bold uppercase font-cinzel tracking-wider text-[#BFA373] block">
                   Category Breakdown:
                 </span>
                 <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 text-center text-xs">
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-amber-300 font-mono block">AH</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.ah}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-orange-300 font-mono block">UM / UHH</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.um}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-rose-300 font-mono block">ER</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.er}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-teal-300 font-mono block">WELL</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.well}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-sky-300 font-mono block">SO</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.so}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-purple-300 font-mono block">LIKE</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.like}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-indigo-300 font-mono block">BUT</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.but}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-emerald-300 font-mono block">REPEATS</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.repeats}</strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48]">
+                  <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30">
                     <span className="text-[10px] text-cyan-300 font-mono block">OTHER</span>
                     <strong className="font-mono text-lg text-white">{selectedFillerRecord.counts.other}</strong>
                   </div>
@@ -1381,7 +1381,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
               {/* Other Details if present */}
               {selectedFillerRecord.otherDetails && (
-                <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48] text-xs">
+                <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-xs">
                   <span className="text-slate-400 font-bold block text-[10px] uppercase font-cinzel">
                     Other Specific Words Noted:
                   </span>
@@ -1391,7 +1391,7 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
 
               {/* Notes from Filler Counter */}
               {selectedFillerRecord.notes && (
-                <div className="p-4 rounded-xl bg-[#081220] border border-[#1E2E48] space-y-1">
+                <div className="p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-1">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400 font-cinzel">
                     Filler Counter Remarks &bull; Notes:
                   </span>
@@ -1402,18 +1402,18 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ userProfile, onNavigat
               )}
 
               {/* Club Quotes & Motto */}
-              <div className="p-3.5 rounded-xl bg-[#030712] border border-[#1E2E48] text-center space-y-1">
+              <div className="p-3.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-center space-y-1">
                 <p className="text-xs text-slate-300 italic font-serif">
                   &ldquo;Silence is powerful. Pause with purpose, not fillers.&rdquo;
                 </p>
-                <p className="text-[10px] text-[#C5A880] font-cinzel font-bold tracking-widest uppercase pt-1">
+                <p className="text-[10px] text-[#BFA373] font-cinzel font-bold tracking-widest uppercase pt-1">
                   FEWER FILLERS. GREATER IMPACT.
                 </p>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[#1E2E48] flex items-center justify-between bg-[#081220] shrink-0">
+            <div className="p-4 border-t border-[#BFA373]/30 flex items-center justify-between bg-[#06111F] shrink-0">
               <span className="text-xs text-slate-400 hidden sm:inline">
                 Synchronized under meeting folder &ldquo;{selectedFillerRecord.meetingNumber || '1st Meeting'}&rdquo;
               </span>

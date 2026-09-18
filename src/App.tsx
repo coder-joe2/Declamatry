@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SidebarTab, UserProfile } from './types';
+import { SidebarTab, UserProfile, isUserAdmin, isUserRoleEntry } from './types';
 import { LoginDetailsScreen } from './components/LoginDetailsScreen';
 import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
@@ -82,7 +82,8 @@ export default function App() {
               executiveRole: matched.executiveRole || '',
               speakerRole: updatedSpeakerRole,
               speakerRoles: updatedSpeakerRoles,
-              isAdmin: matched.isAdmin === true || (matched.gmail || '').toLowerCase() === 'vjana537@gmail.com',
+              isAdmin: isUserAdmin(matched) || isUserAdmin(prev),
+              isRoleEntry: isUserRoleEntry(matched) || isUserRoleEntry(prev),
             };
 
             try {
@@ -145,7 +146,7 @@ export default function App() {
           s.includes('feedbacker')
         );
       });
-      if (!isEval && !userProfile.isAdmin && userProfile.gmail?.toLowerCase() !== 'vjana537@gmail.com') {
+      if (!isEval && !isUserAdmin(userProfile)) {
         setActiveTab('Home');
       }
     }
@@ -167,7 +168,7 @@ export default function App() {
           s.includes('timer')
         );
       });
-      if (!isTimer && !userProfile.isAdmin && userProfile.gmail?.toLowerCase() !== 'vjana537@gmail.com') {
+      if (!isTimer && !isUserAdmin(userProfile)) {
         setActiveTab('Home');
       }
     }
@@ -197,11 +198,18 @@ export default function App() {
           s.includes('ah-counter')
         );
       });
-      if (!isFiller && !userProfile.isAdmin && userProfile.gmail?.toLowerCase() !== 'vjana537@gmail.com') {
+      if (!isFiller && !isUserAdmin(userProfile)) {
         setActiveTab('Home');
       }
     }
-  }, [activeTab, userProfile.speakerRoles, userProfile.speakerRole, userProfile.isAdmin, userProfile.gmail]);
+
+    if (activeTab === 'Admin Speaker Roles') {
+      const canAccess = isUserAdmin(userProfile) || isUserRoleEntry(userProfile);
+      if (!canAccess) {
+        setActiveTab('Home');
+      }
+    }
+  }, [activeTab, userProfile.speakerRoles, userProfile.speakerRole, userProfile.isAdmin, userProfile.isRoleEntry, userProfile.gmail, userProfile.name]);
 
   const handleUpdateProfile = (updated: UserProfile) => {
     setUserProfile(updated);
@@ -255,7 +263,7 @@ export default function App() {
 
   // Render Main Layout with Sidebar and Content Pages
   return (
-    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-slate-950 text-slate-100 font-sans">
+    <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-[#06111F] text-[#E0E0E0] font-sans">
       <Sidebar
         activeTab={activeTab}
         onSelectTab={(tab) => setActiveTab(tab)}

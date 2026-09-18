@@ -20,7 +20,7 @@ import {
   Timer,
   UserCheck,
 } from 'lucide-react';
-import { UserProfile, RegisteredMember, SPEAKER_ROLES_LIST, formatSpeakerRole } from '../../types';
+import { UserProfile, RegisteredMember, SPEAKER_ROLES_LIST, formatSpeakerRole, isUserAdmin, isUserRoleEntry } from '../../types';
 import {
   subscribeToRegisteredMembers,
   addSpeakerRoleToMember,
@@ -41,7 +41,7 @@ const getSpeakerRoleVisuals = (role: string) => {
         badgeBg: 'bg-amber-950/60',
         badgeText: 'text-amber-300',
         border: 'border-amber-500/40',
-        colorHex: '#F59E0B',
+        colorHex: '#D1B079',
       };
     case 'Role Players':
     case 'Best Role Players':
@@ -50,7 +50,7 @@ const getSpeakerRoleVisuals = (role: string) => {
         badgeBg: 'bg-emerald-950/60',
         badgeText: 'text-emerald-300',
         border: 'border-emerald-500/40',
-        colorHex: '#10B981',
+        colorHex: '#D1B079',
       };
     case 'Evaluators':
     case 'Best Evaluators':
@@ -61,7 +61,7 @@ const getSpeakerRoleVisuals = (role: string) => {
         badgeBg: 'bg-sky-950/60',
         badgeText: 'text-sky-300',
         border: 'border-sky-500/40',
-        colorHex: '#0EA5E9',
+        colorHex: '#D1B079',
       };
     case 'Quick Think Speaker':
     case 'Best Quick Think Speaker':
@@ -70,7 +70,7 @@ const getSpeakerRoleVisuals = (role: string) => {
         badgeBg: 'bg-purple-950/60',
         badgeText: 'text-purple-300',
         border: 'border-purple-500/40',
-        colorHex: '#A855F7',
+        colorHex: '#D1B079',
       };
     case 'Filter Counter':
       return {
@@ -78,7 +78,7 @@ const getSpeakerRoleVisuals = (role: string) => {
         badgeBg: 'bg-teal-950/60',
         badgeText: 'text-teal-300',
         border: 'border-teal-500/40',
-        colorHex: '#14B8A6',
+        colorHex: '#D1B079',
       };
     case 'Time Steward':
       return {
@@ -86,7 +86,7 @@ const getSpeakerRoleVisuals = (role: string) => {
         badgeBg: 'bg-orange-950/60',
         badgeText: 'text-orange-300',
         border: 'border-orange-500/40',
-        colorHex: '#F97316',
+        colorHex: '#D1B079',
       };
     default:
       return {
@@ -94,7 +94,7 @@ const getSpeakerRoleVisuals = (role: string) => {
         badgeBg: 'bg-slate-900',
         badgeText: 'text-slate-300',
         border: 'border-slate-700',
-        colorHex: '#C5A880',
+        colorHex: '#BFA373',
       };
   }
 };
@@ -108,9 +108,9 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedMemberModal, setSelectedMemberModal] = useState<RegisteredMember | null>(null);
 
-  const isAdmin = Boolean(
-    userProfile.isAdmin || userProfile.gmail?.toLowerCase() === 'vjana537@gmail.com'
-  );
+  const isAdmin = isUserAdmin(userProfile);
+  const isRoleEntry = isUserRoleEntry(userProfile);
+  const canManageRoles = isAdmin || isRoleEntry;
 
   useEffect(() => {
     const unsub = subscribeToRegisteredMembers((data) => {
@@ -193,8 +193,8 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
   }, [speakerRoleMembersMap]);
 
   const handleAddMemberToSpeakerRole = async (roleName: string, member: RegisteredMember) => {
-    if (!isAdmin) {
-      showToast('Admin privilege required.');
+    if (!canManageRoles) {
+      showToast('Permission required.');
       return;
     }
 
@@ -346,8 +346,8 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
   };
 
   const handleRemoveMemberFromSpeakerRole = async (roleName: string, member: RegisteredMember) => {
-    if (!isAdmin) {
-      showToast('Admin privilege required.');
+    if (!canManageRoles) {
+      showToast('Permission required.');
       return;
     }
 
@@ -426,14 +426,14 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
     <div className="w-full max-w-full space-y-5 animate-in fade-in duration-300 text-slate-100 font-sans">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 bg-[#0E1E38] border border-amber-500/80 text-amber-200 px-4 py-2 rounded-full font-medium shadow-2xl flex items-center gap-2 text-xs sm:text-sm animate-in slide-in-from-top-3 duration-150">
+        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 bg-[#06111F] border border-amber-500/80 text-amber-200 px-4 py-2 rounded-full font-medium shadow-2xl flex items-center gap-2 text-xs sm:text-sm animate-in slide-in-from-top-3 duration-150">
           <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="rounded-2xl bg-[#081220] p-4 sm:p-5 border border-[#1E2E48] shadow-lg">
+      <div className="rounded-2xl bg-[#06111F] p-4 sm:p-5 border border-[#BFA373]/30 shadow-lg">
         <div className="flex items-center gap-2">
           <Mic className="w-5 h-5 text-amber-400" />
           <h2 className="font-cinzel text-xl sm:text-2xl font-bold text-white tracking-wide">
@@ -441,7 +441,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
           </h2>
         </div>
         <p className="text-xs text-slate-400 mt-1">
-          {isAdmin ? 'Manage appointed members for each role.' : 'Current appointed members.'}
+          {canManageRoles ? 'Manage appointed members for each role.' : 'Current appointed members.'}
         </p>
       </div>
 
@@ -462,10 +462,10 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
             return (
               <div
                 key={roleDef.id}
-                className="rounded-2xl border border-[#1E2E48] bg-[#070F1E] shadow-md overflow-hidden"
+                className="rounded-2xl border border-[#BFA373]/30 bg-[#06111F] shadow-md overflow-hidden"
               >
                 {/* Header Strip */}
-                <div className="p-3.5 sm:p-4 border-b border-[#1E2E48] bg-[#09152A] flex items-center justify-between gap-3">
+                <div className="p-3.5 sm:p-4 border-b border-[#BFA373]/30 bg-[#06111F] flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <div
                       className={`p-2 rounded-xl border flex items-center justify-center shrink-0 ${visual.badgeBg} ${visual.border}`}
@@ -478,8 +478,8 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                     </h3>
                   </div>
 
-                  {/* Add Member Button (Admin) */}
-                  {isAdmin && (
+                  {/* Add Member Button (Admin & Role Entry) */}
+                  {canManageRoles && (
                     <button
                       type="button"
                       onClick={() => {
@@ -501,7 +501,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                       {appointedList.map((member, mIdx) => (
                         <div
                           key={member.id || member.gmail}
-                          className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48] hover:border-slate-600 transition-all flex items-center justify-between gap-2.5"
+                          className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30 hover:border-slate-600 transition-all flex items-center justify-between gap-2.5"
                         >
                           <div
                             onClick={() => setSelectedMemberModal(member)}
@@ -515,7 +515,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                                 className="w-9 h-9 rounded-full object-cover border border-amber-400/60 shrink-0"
                               />
                             ) : (
-                              <div className="w-9 h-9 rounded-full bg-[#0A192F] border border-amber-400/60 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+                              <div className="w-9 h-9 rounded-full bg-[#06111F] border border-amber-400/60 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
                                 {member.name ? member.name[0].toUpperCase() : 'M'}
                               </div>
                             )}
@@ -530,8 +530,8 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                             </div>
                           </div>
 
-                          {/* Admin Remove */}
-                          {isAdmin && (
+                          {/* Admin & Role Entry Remove */}
+                          {canManageRoles && (
                             <button
                               type="button"
                               onClick={() => handleRemoveMemberFromSpeakerRole(roleDef.id, member)}
@@ -560,11 +560,11 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
           onClick={() => setSelectedRoleToAssign(null)}
         >
           <div
-            className="w-full max-w-lg bg-[#0B1528] border border-amber-500/50 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150 text-slate-100"
+            className="w-full max-w-lg bg-[#06111F] border border-amber-500/50 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150 text-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#1E2E48] pb-3 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#BFA373]/30 pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <Mic className="w-4 h-4 text-amber-400" />
                 <h3 className="font-cinzel font-bold text-white text-base">
@@ -589,7 +589,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                 value={memberSearchQuery}
                 onChange={(e) => setMemberSearchQuery(e.target.value)}
                 placeholder="Search by name, department, phone, email..."
-                className="w-full bg-[#030712] border border-[#1E2E48] focus:border-amber-400 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none"
+                className="w-full bg-[#06111F] border border-[#BFA373]/30 focus:border-amber-400 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none"
                 autoFocus
               />
             </div>
@@ -646,8 +646,8 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                         isAlreadyAppointed
                           ? 'bg-amber-950/25 border-amber-500/50'
                           : isAssignedToOtherRole
-                          ? 'bg-[#030712]/50 border-[#1E2E48]/50 opacity-60'
-                          : 'bg-[#030712] border-[#1E2E48] hover:border-slate-600'
+                          ? 'bg-[#06111F]/50 border-[#BFA373]/30/50 opacity-60'
+                          : 'bg-[#06111F] border-[#BFA373]/30 hover:border-slate-600'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -658,7 +658,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                             className="w-8 h-8 rounded-full object-cover border border-amber-400/50 shrink-0"
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-full bg-[#0A192F] border border-amber-400/50 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-[#06111F] border border-amber-400/50 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
                             {member.name ? member.name[0].toUpperCase() : 'M'}
                           </div>
                         )}
@@ -701,7 +701,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                         <button
                           type="button"
                           disabled
-                          className="px-2.5 py-1 rounded-lg bg-[#0E1E38]/60 border border-slate-700/60 text-slate-500 text-xs font-medium shrink-0 cursor-not-allowed"
+                          className="px-2.5 py-1 rounded-lg bg-[#06111F]/60 border border-slate-700/60 text-slate-500 text-xs font-medium shrink-0 cursor-not-allowed"
                           title={`Cannot appoint: ${member.name} is already appointed to "${otherRoles.join(', ')}"`}
                         >
                           Occupied
@@ -727,11 +727,11 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
             </div>
 
             {/* Modal Footer */}
-            <div className="pt-2 border-t border-[#1E2E48] flex justify-end shrink-0">
+            <div className="pt-2 border-t border-[#BFA373]/30 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedRoleToAssign(null)}
-                className="px-4 py-1.5 rounded-xl bg-[#030712] hover:bg-[#112240] border border-[#1E2E48] text-slate-300 text-xs font-medium cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-[#06111F] hover:bg-[#06111F] border border-[#BFA373]/30 text-slate-300 text-xs font-medium cursor-pointer"
               >
                 Done
               </button>
@@ -747,10 +747,10 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
           onClick={() => setSelectedMemberModal(null)}
         >
           <div
-            className="w-full max-w-sm bg-[#0B1528] border border-amber-500/50 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xl animate-in zoom-in-95 duration-150 text-slate-200"
+            className="w-full max-w-sm bg-[#06111F] border border-amber-500/50 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xl animate-in zoom-in-95 duration-150 text-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-[#1E2E48] pb-2.5">
+            <div className="flex items-center justify-between border-b border-[#BFA373]/30 pb-2.5">
               <div className="flex items-center gap-2">
                 <Mic className="w-4 h-4 text-amber-400" />
                 <h3 className="font-cinzel font-bold text-white text-sm">Member Info</h3>
@@ -772,7 +772,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
                   className="w-12 h-12 rounded-full object-cover border border-amber-400 shrink-0"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-[#0A192F] border border-amber-400 text-amber-300 flex items-center justify-center font-bold text-base shrink-0">
+                <div className="w-12 h-12 rounded-full bg-[#06111F] border border-amber-400 text-amber-300 flex items-center justify-center font-bold text-base shrink-0">
                   {selectedMemberModal.name ? selectedMemberModal.name[0].toUpperCase() : 'M'}
                 </div>
               )}
@@ -786,7 +786,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-[#030712] border border-[#1E2E48] space-y-1.5 text-xs">
+            <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Email:</span>
                 <span className="text-amber-300 truncate max-w-[180px] font-mono">
@@ -810,7 +810,7 @@ export const SpeakerRolesTab: React.FC<SpeakerRolesTabProps> = ({ userProfile, o
             <button
               type="button"
               onClick={() => setSelectedMemberModal(null)}
-              className="w-full py-2 rounded-xl bg-[#030712] hover:bg-[#112240] border border-[#1E2E48] text-slate-200 text-xs font-semibold cursor-pointer"
+              className="w-full py-2 rounded-xl bg-[#06111F] hover:bg-[#06111F] border border-[#BFA373]/30 text-slate-200 text-xs font-semibold cursor-pointer"
             >
               Close
             </button>

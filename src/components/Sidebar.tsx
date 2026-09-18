@@ -1,5 +1,5 @@
 import React from 'react';
-import { SidebarTab, UserProfile } from '../types';
+import { SidebarTab, UserProfile, isUserAdmin, isUserRoleEntry } from '../types';
 import { SocietyLogo } from './SocietyLogo';
 import {
   Home,
@@ -45,7 +45,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
 }) => {
-  const isAdmin = userProfile.isAdmin || userProfile.gmail?.toLowerCase() === 'vjana537@gmail.com';
+  const isAdmin = isUserAdmin(userProfile);
+  const isRoleEntry = isUserRoleEntry(userProfile);
 
   const userSidebarItems: { name: SidebarTab; label?: string; icon: React.FC<{ className?: string }> }[] = [
     { name: 'Home', icon: Home },
@@ -172,26 +173,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:static top-0 left-0 z-50 h-full w-72 bg-[#050B14] text-slate-100 border-r border-[#1E2E48] flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:static top-0 left-0 z-50 h-full w-72 bg-[#06111F] text-[#E0E0E0] border-r border-[#BFA373]/30 flex flex-col transition-transform duration-300 ease-in-out ${
           isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Header */}
-        <div className="p-6 border-b border-[#1E2E48] flex items-center justify-between">
+        <div className="p-6 border-b border-[#BFA373]/30 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <SocietyLogo size="sm" className="border border-[#C5A880]/70 shadow-md shrink-0" />
+            <SocietyLogo size="sm" className="border border-[#BFA373]/70 shadow-md shrink-0" />
             <div>
-              <h2 className="font-cinzel font-bold text-white text-base tracking-wider leading-tight">
+              <h2 className="font-cinzel font-bold text-[#E0E0E0] text-base tracking-wider leading-tight">
                 DECLAMATE&apos;S
               </h2>
-              <p className="text-[10px] tracking-[0.2em] text-[#C5A880] font-medium uppercase mt-0.5">
+              <p className="text-[10px] tracking-[0.2em] text-[#BFA373] font-medium uppercase mt-0.5">
                 SOCIETY
               </p>
             </div>
           </div>
           <button
             onClick={onCloseMobile}
-            className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg"
+            className="lg:hidden text-[#E0E0E0]/60 hover:text-[#E0E0E0] p-1 rounded-lg"
           >
             <X className="w-5 h-5" />
           </button>
@@ -199,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Club Tagline Pill */}
         <div className="px-5 pt-4 pb-2">
-          <div className="py-1 px-3 bg-[#0B1528] rounded-full border border-[#1E2E48] flex items-center justify-between text-[9px] font-bold tracking-[0.22em] text-[#C5A880] uppercase">
+          <div className="py-1 px-3 bg-[#06111F] rounded-full border border-[#BFA373]/40 flex items-center justify-between text-[9px] font-bold tracking-[0.22em] text-[#BFA373] uppercase">
             <span>SPEAK</span>
             <span>•</span>
             <span>LEAD</span>
@@ -210,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation Items */}
         <nav className="flex-1 px-3.5 py-3 space-y-1.5 overflow-y-auto">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-2 font-cinzel">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#BFA475] mb-2 font-cinzel">
             Navigation
           </p>
           {sidebarItems.map((item) => {
@@ -226,16 +227,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[#C5A880] text-[#0A192F] font-bold shadow-lg shadow-[#C5A880]/15'
-                    : 'text-slate-300 hover:text-white hover:bg-[#0E1E38]'
+                    ? 'bg-[#BFA373] text-[#06111F] font-bold shadow-lg shadow-[#BFA373]/20'
+                    : 'text-[#E0E0E0] hover:text-[#BFA373] hover:bg-[#BFA373]/10'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[#0A192F]' : 'text-[#C5A880]'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#06111F]' : 'text-[#BFA373]'}`} />
                 <span className="flex-1 text-left tracking-wide font-cinzel">{item.label || item.name}</span>
-                {isActive && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
+                {isActive && <ChevronRight className="w-4 h-4 text-[#06111F]" />}
               </button>
             );
           })}
+
+          {/* Speaker Roles Bar - Rendered for Role Entry user with NEW badge as a user */}
+          {isRoleEntry && (
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  onSelectTab('Admin Speaker Roles');
+                  onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer relative border ${
+                  activeTab === 'Admin Speaker Roles'
+                    ? 'bg-[#BFA373] text-[#06111F] font-bold border-[#BFA373] shadow-lg shadow-[#BFA373]/20'
+                    : 'bg-[#06111F] text-[#BFA373] hover:text-[#E0E0E0] hover:bg-[#BFA373]/10 border-[#BFA373]/40'
+                }`}
+              >
+                <Mic
+                  className={`w-4 h-4 shrink-0 ${
+                    activeTab === 'Admin Speaker Roles' ? 'text-[#06111F]' : 'text-[#BFA373]'
+                  }`}
+                />
+                <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm truncate">
+                  Speaker Roles
+                </span>
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-[#D1B079] text-[#06111F] rounded-full shadow-sm shrink-0">
+                  NEW
+                </span>
+                {activeTab === 'Admin Speaker Roles' && (
+                  <ChevronRight className="w-4 h-4 text-[#06111F] shrink-0" />
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Speech Evaluator Page - Conditionally rendered only for appointed Evaluators / Feedbacker (and Admin) */}
           {canAccessEvaluator && (
@@ -247,23 +280,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer relative border ${
                   activeTab === 'Speech Evaluator Page'
-                    ? 'bg-amber-500 text-slate-950 font-bold border-amber-400 shadow-lg shadow-amber-500/20'
-                    : 'bg-amber-950/25 text-amber-300 hover:text-white hover:bg-amber-900/35 border-amber-500/40'
+                    ? 'bg-[#BFA373] text-[#06111F] font-bold border-[#BFA373] shadow-lg shadow-[#BFA373]/20'
+                    : 'bg-[#06111F] text-[#BFA373] hover:text-[#E0E0E0] hover:bg-[#BFA373]/10 border-[#BFA373]/40'
                 }`}
               >
                 <FileCheck
                   className={`w-4 h-4 shrink-0 ${
-                    activeTab === 'Speech Evaluator Page' ? 'text-slate-950' : 'text-amber-400'
+                    activeTab === 'Speech Evaluator Page' ? 'text-[#06111F]' : 'text-[#BFA373]'
                   }`}
                 />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm truncate">
                   Speech Evaluator Page
                 </span>
-                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white rounded-full animate-pulse shadow-sm shrink-0">
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-[#D1B079] text-[#06111F] rounded-full shadow-sm shrink-0">
                   NEW
                 </span>
                 {activeTab === 'Speech Evaluator Page' && (
-                  <ChevronRight className="w-4 h-4 text-slate-950 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[#06111F] shrink-0" />
                 )}
               </button>
             </div>
@@ -279,23 +312,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer relative border ${
                   activeTab === 'Time Steward'
-                    ? 'bg-orange-500 text-slate-950 font-bold border-orange-400 shadow-lg shadow-orange-500/20'
-                    : 'bg-orange-950/25 text-orange-300 hover:text-white hover:bg-orange-900/35 border-orange-500/40'
+                    ? 'bg-[#D1B079] text-[#06111F] font-bold border-[#D1B079] shadow-lg shadow-[#D1B079]/20'
+                    : 'bg-[#06111F] text-[#D1B079] hover:text-[#E0E0E0] hover:bg-[#D1B079]/10 border-[#D1B079]/40'
                 }`}
               >
                 <Timer
                   className={`w-4 h-4 shrink-0 ${
-                    activeTab === 'Time Steward' ? 'text-slate-950' : 'text-orange-400'
+                    activeTab === 'Time Steward' ? 'text-[#06111F]' : 'text-[#D1B079]'
                   }`}
                 />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm truncate">
                   Time Steward
                 </span>
-                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white rounded-full animate-pulse shadow-sm shrink-0">
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-[#D1B079] text-[#06111F] rounded-full shadow-sm shrink-0">
                   NEW
                 </span>
                 {activeTab === 'Time Steward' && (
-                  <ChevronRight className="w-4 h-4 text-slate-950 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[#06111F] shrink-0" />
                 )}
               </button>
             </div>
@@ -311,23 +344,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-2.5 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer relative border ${
                   activeTab === 'Filler Counter Page'
-                    ? 'bg-teal-500 text-slate-950 font-bold border-teal-400 shadow-lg shadow-teal-500/20'
-                    : 'bg-teal-950/25 text-teal-300 hover:text-white hover:bg-teal-900/35 border-teal-500/40'
+                    ? 'bg-[#CBA96D] text-[#06111F] font-bold border-[#CBA96D] shadow-lg shadow-[#CBA96D]/20'
+                    : 'bg-[#06111F] text-[#CBA96D] hover:text-[#E0E0E0] hover:bg-[#CBA96D]/10 border-[#CBA96D]/40'
                 }`}
               >
                 <Filter
                   className={`w-4 h-4 shrink-0 ${
-                    activeTab === 'Filler Counter Page' ? 'text-slate-950' : 'text-teal-400'
+                    activeTab === 'Filler Counter Page' ? 'text-[#06111F]' : 'text-[#CBA96D]'
                   }`}
                 />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm truncate">
-                  Filler Counter Page
+                  Filler Counter
                 </span>
-                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-rose-500 text-white rounded-full animate-pulse shadow-sm shrink-0">
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-[#BFA373] text-[#06111F] rounded-full shadow-sm shrink-0">
                   NEW
                 </span>
                 {activeTab === 'Filler Counter Page' && (
-                  <ChevronRight className="w-4 h-4 text-slate-950 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-[#06111F] shrink-0" />
                 )}
               </button>
             </div>
@@ -335,13 +368,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Dedicated Admin Portal Section */}
           {isAdmin && (
-            <div className="pt-3 mt-3 border-t border-[#1E2E48]/80 space-y-1.5">
+            <div className="pt-3 mt-3 border-t border-[#BFA373]/30 space-y-1.5">
               <div className="px-3 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C5A880] font-cinzel flex items-center gap-1.5">
-                  <ShieldCheck className="w-3 h-3 text-[#C5A880]" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#BFA373] font-cinzel flex items-center gap-1.5">
+                  <ShieldCheck className="w-3 h-3 text-[#BFA373]" />
                   Admin Only
                 </p>
-                <span className="px-1.5 py-0.2 text-[8px] bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40 rounded font-bold uppercase font-mono">
+                <span className="px-1.5 py-0.2 text-[8px] bg-[#BFA373]/20 text-[#BFA373] border border-[#BFA373]/40 rounded font-bold uppercase font-mono">
                   Master
                 </span>
               </div>
@@ -352,16 +385,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
                   activeTab === 'Leadership Roles' || activeTab === 'Admin Executive Committee Roles'
-                    ? 'bg-amber-500 text-[#0A192F] font-bold shadow-lg shadow-amber-500/20'
-                    : 'text-amber-300 hover:text-white hover:bg-[#0E1E38] border border-amber-500/30'
+                    ? 'bg-[#BFA373] text-[#06111F] font-bold shadow-lg shadow-[#BFA373]/20'
+                    : 'text-[#BFA373] hover:text-[#E0E0E0] hover:bg-[#BFA373]/10 border border-[#BFA373]/30'
                 }`}
               >
-                <Crown className={`w-4 h-4 ${activeTab === 'Leadership Roles' || activeTab === 'Admin Executive Committee Roles' ? 'text-[#0A192F]' : 'text-amber-400'}`} />
+                <Crown className={`w-4 h-4 ${activeTab === 'Leadership Roles' || activeTab === 'Admin Executive Committee Roles' ? 'text-[#06111F]' : 'text-[#BFA373]'}`} />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm">
                   Leadership Roles
                 </span>
                 {(activeTab === 'Leadership Roles' || activeTab === 'Admin Executive Committee Roles') && (
-                  <ChevronRight className="w-4 h-4 text-[#0A192F]" />
+                  <ChevronRight className="w-4 h-4 text-[#06111F]" />
                 )}
               </button>
               <button
@@ -371,15 +404,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
                   activeTab === 'Admin Speaker Roles'
-                    ? 'bg-amber-500 text-[#0A192F] font-bold shadow-lg shadow-amber-500/20'
-                    : 'text-amber-300 hover:text-white hover:bg-[#0E1E38] border border-amber-500/30'
+                    ? 'bg-[#BFA373] text-[#06111F] font-bold shadow-lg shadow-[#BFA373]/20'
+                    : 'text-[#BFA373] hover:text-[#E0E0E0] hover:bg-[#BFA373]/10 border border-[#BFA373]/30'
                 }`}
               >
-                <Mic className={`w-4 h-4 ${activeTab === 'Admin Speaker Roles' ? 'text-[#0A192F]' : 'text-amber-400'}`} />
+                <Mic className={`w-4 h-4 ${activeTab === 'Admin Speaker Roles' ? 'text-[#06111F]' : 'text-[#BFA373]'}`} />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm">
                   Speaker Roles
                 </span>
-                {activeTab === 'Admin Speaker Roles' && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
+                <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-[#D1B079] text-[#06111F] rounded-full shadow-sm shrink-0">
+                  NEW
+                </span>
+                {activeTab === 'Admin Speaker Roles' && <ChevronRight className="w-4 h-4 text-[#06111F] shrink-0" />}
               </button>
               <button
                 onClick={() => {
@@ -388,13 +424,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
                   activeTab === 'Members List'
-                    ? 'bg-[#C5A880] text-[#0A192F] font-bold shadow-lg shadow-[#C5A880]/20'
-                    : 'text-[#C5A880] hover:text-white hover:bg-[#0E1E38] border border-[#C5A880]/30'
+                    ? 'bg-[#BFA373] text-[#06111F] font-bold shadow-lg shadow-[#BFA373]/20'
+                    : 'text-[#BFA373] hover:text-[#E0E0E0] hover:bg-[#BFA373]/10 border border-[#BFA373]/30'
                 }`}
               >
-                <Users className={`w-4 h-4 ${activeTab === 'Members List' ? 'text-[#0A192F]' : 'text-[#C5A880]'}`} />
+                <Users className={`w-4 h-4 ${activeTab === 'Members List' ? 'text-[#06111F]' : 'text-[#BFA373]'}`} />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold">Members List</span>
-                {activeTab === 'Members List' && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
+                {activeTab === 'Members List' && <ChevronRight className="w-4 h-4 text-[#06111F]" />}
               </button>
               <button
                 onClick={() => {
@@ -403,39 +439,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
                   activeTab === 'Voting'
-                    ? 'bg-amber-500 text-[#0A192F] font-bold shadow-lg shadow-amber-500/20'
-                    : 'text-amber-300 hover:text-white hover:bg-[#0E1E38] border border-amber-500/30'
+                    ? 'bg-[#BFA373] text-[#06111F] font-bold shadow-lg shadow-[#BFA373]/20'
+                    : 'text-[#BFA373] hover:text-[#E0E0E0] hover:bg-[#BFA373]/10 border border-[#BFA373]/30'
                 }`}
               >
-                <Vote className={`w-4 h-4 ${activeTab === 'Voting' ? 'text-[#0A192F]' : 'text-amber-400'}`} />
+                <Vote className={`w-4 h-4 ${activeTab === 'Voting' ? 'text-[#06111F]' : 'text-[#BFA373]'}`} />
                 <span className="flex-1 text-left tracking-wide font-cinzel font-semibold text-xs sm:text-sm">
                   Voting &amp; Polls
                 </span>
-                {activeTab === 'Voting' && <ChevronRight className="w-4 h-4 text-[#0A192F]" />}
+                {activeTab === 'Voting' && <ChevronRight className="w-4 h-4 text-[#06111F]" />}
               </button>
             </div>
           )}
         </nav>
 
         {/* User Card at bottom */}
-        <div className="p-3.5 m-3.5 bg-[#0B1528] border border-[#1E2E48] rounded-2xl">
+        <div className="p-3.5 m-3.5 bg-[#06111F] border border-[#BFA373]/30 rounded-2xl">
           <div className="flex items-center gap-3 mb-3">
             {userProfile.photoUrl ? (
               <img
                 src={userProfile.photoUrl}
                 alt={userProfile.name}
-                className="w-10 h-10 rounded-full object-cover border-2 border-[#C5A880]"
+                className="w-10 h-10 rounded-full object-cover border-2 border-[#BFA373]"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-[#0A192F] border-2 border-[#C5A880] flex items-center justify-center text-[#C5A880]">
+              <div className="w-10 h-10 rounded-full bg-[#06111F] border-2 border-[#BFA373] flex items-center justify-center text-[#BFA373]">
                 <User className="w-5 h-5" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate font-cinzel tracking-wider">
+              <p className="text-xs font-semibold text-[#E0E0E0] truncate font-cinzel tracking-wider">
                 {userProfile.name || 'Member'}
               </p>
-              <p className="text-[11px] text-[#C5A880] truncate font-medium">
+              <p className="text-[11px] text-[#BFA373] truncate font-medium">
                 {userProfile.year ? `${userProfile.year} • ` : ''}{userProfile.department || userProfile.gmail || 'Member'}{userProfile.className ? ` (${userProfile.className})` : ''}
               </p>
             </div>
@@ -448,7 +484,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 else onShowLoginDetails();
                 onCloseMobile();
               }}
-              className="bg-[#030712] hover:bg-[#112240] text-[#C5A880] hover:text-white py-2 px-2 rounded-xl text-[11px] font-medium transition-colors flex items-center justify-center gap-1 border border-[#1E2E48] cursor-pointer"
+              className="bg-[#06111F] hover:bg-[#BFA373]/20 text-[#BFA373] hover:text-[#E0E0E0] py-2 px-2 rounded-xl text-[11px] font-medium transition-colors flex items-center justify-center gap-1 border border-[#BFA373]/30 cursor-pointer"
             >
               <User className="w-3.5 h-3.5" />
               <span>Edit Profile</span>
@@ -460,7 +496,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 else onShowLoginDetails();
                 onCloseMobile();
               }}
-              className="bg-[#030712] hover:bg-red-950/40 text-slate-400 hover:text-red-400 py-2 px-2 rounded-xl text-[11px] font-medium transition-colors flex items-center justify-center gap-1 border border-[#1E2E48] cursor-pointer"
+              className="bg-[#06111F] hover:bg-[#BFA475]/20 text-[#E0E0E0]/70 hover:text-[#E0E0E0] py-2 px-2 rounded-xl text-[11px] font-medium transition-colors flex items-center justify-center gap-1 border border-[#BFA373]/30 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Sign Out</span>

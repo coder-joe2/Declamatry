@@ -71,7 +71,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.6 },
-          colors: ['#C5A880', '#00A884', '#FFD700', '#FFFFFF'],
+          colors: ['#BFA373', '#BFA373', '#D1B079', '#FFFFFF'],
         });
       } catch {
         // Safe fallback if confetti blocked
@@ -109,13 +109,13 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
       case 'trophy':
         return <Trophy className="w-4 h-4 text-amber-400" />;
       case 'mic':
-        return <Mic className="w-4 h-4 text-[#00A884]" />;
+        return <Mic className="w-4 h-4 text-[#BFA373]" />;
       case 'file-text':
         return <FileText className="w-4 h-4 text-sky-400" />;
       case 'zap':
         return <Zap className="w-4 h-4 text-yellow-400" />;
       default:
-        return <Award className="w-4 h-4 text-[#C5A880]" />;
+        return <Award className="w-4 h-4 text-[#BFA373]" />;
     }
   };
 
@@ -134,18 +134,18 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
     <div
       className={`w-full rounded-3xl border transition-all duration-300 overflow-hidden shadow-2xl ${
         session.isActive
-          ? 'bg-gradient-to-b from-[#0B141A] to-[#060D12] border-[#00A884]/40 shadow-[#00A884]/10'
-          : 'bg-gradient-to-b from-[#0A1118] to-[#04080D] border-[#C5A880]/50 shadow-[#C5A880]/15'
+          ? 'bg-gradient-to-b from-[#06111F] to-[#06111F] border-[#BFA373]/40 shadow-[#BFA373]/10'
+          : 'bg-gradient-to-b from-[#06111F] to-[#06111F] border-[#BFA373]/50 shadow-[#BFA373]/15'
       }`}
     >
       {/* Session Top Header Banner */}
-      <div className="p-3.5 sm:p-6 border-b border-[#1F2C34] bg-gradient-to-r from-[#0B141A] via-[#111E26] to-[#0A192F]">
+      <div className="p-3.5 sm:p-6 border-b border-[#BFA373]/30 bg-gradient-to-r from-[#06111F] via-[#06111F] to-[#06111F]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
           <div className="space-y-1.5 min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {!session.isActive && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[10px] sm:text-xs font-bold border border-[#C5A880]/40 shadow-sm font-cinzel">
-                  <Trophy className="w-3.5 h-3.5 text-[#C5A880]" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[#BFA373]/20 text-[#BFA373] text-[10px] sm:text-xs font-bold border border-[#BFA373]/40 shadow-sm font-cinzel">
+                  <Trophy className="w-3.5 h-3.5 text-[#BFA373]" />
                   Voting Closed • Winners Declared
                 </span>
               )}
@@ -173,7 +173,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-400">
               <span className="truncate max-w-[160px] sm:max-w-none">Host: {session.createdBy?.name || 'Club Executive'}</span>
               <span>•</span>
-              <span className="flex items-center gap-1 text-[#00A884]">
+              <span className="flex items-center gap-1 text-[#BFA373]">
                 <Users className="w-3.5 h-3.5 shrink-0" />
                 <span>{session.totalVoters || 0} Members Voted</span>
               </span>
@@ -185,7 +185,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
             <button
               type="button"
               onClick={() => onShare(session)}
-              className="p-2 sm:p-2.5 text-slate-300 hover:text-white rounded-xl bg-[#111B21] border border-[#222E35] active:scale-95 transition-all cursor-pointer"
+              className="p-2 sm:p-2.5 text-slate-300 hover:text-white rounded-xl bg-[#06111F] border border-[#BFA373]/30 active:scale-95 transition-all cursor-pointer"
               title="Share Meeting Session"
             >
               <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -199,7 +199,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                   className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center gap-1.5 border transition-all active:scale-95 cursor-pointer ${
                     session.isActive
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
-                      : 'bg-[#00A884]/20 text-[#00A884] border-[#00A884]/50 hover:bg-[#00A884]/30'
+                      : 'bg-[#BFA373]/20 text-[#BFA373] border-[#BFA373]/50 hover:bg-[#BFA373]/30'
                   }`}
                   title={session.isActive ? 'Close voting and declare winners' : 'Reopen voting session'}
                 >
@@ -219,7 +219,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                 <button
                   type="button"
                   onClick={() => onRequestDelete(session)}
-                  className="p-2 sm:p-2.5 text-slate-400 hover:text-rose-400 rounded-xl bg-[#111B21] border border-[#222E35] active:scale-95 transition-all cursor-pointer"
+                  className="p-2 sm:p-2.5 text-slate-400 hover:text-rose-400 rounded-xl bg-[#06111F] border border-[#BFA373]/30 active:scale-95 transition-all cursor-pointer"
                   title="Delete Session"
                 >
                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -231,13 +231,13 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
 
         {/* Voting Progress Pill for Active Sessions */}
         {session.isActive && (!hasUserVoted || isChangingVote) && (
-          <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-[#081016] border border-[#1F2C34] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3">
+          <div className="mt-3 sm:mt-4 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-[#06111F] border border-[#BFA373]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3">
             <div className="flex items-center gap-2 text-xs flex-wrap">
-              <span className="w-2 h-2 rounded-full bg-[#00A884] animate-pulse shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-[#BFA373] animate-pulse shrink-0" />
               <span className="text-slate-300 font-medium">
                 Your Ballot Progress:
               </span>
-              <span className={`font-bold ${isSelectionComplete ? 'text-[#00A884]' : 'text-amber-400'}`}>
+              <span className={`font-bold ${isSelectionComplete ? 'text-[#BFA373]' : 'text-amber-400'}`}>
                 {selectedCount} of {totalCategories} Roles Selected
               </span>
             </div>
@@ -269,16 +269,16 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                 key={cat.id}
                 className={`rounded-2xl border transition-all p-4 space-y-3.5 ${
                   showResults
-                    ? 'bg-[#0B141A] border-[#C5A880]/30 shadow-md'
+                    ? 'bg-[#06111F] border-[#BFA373]/30 shadow-md'
                     : isCategoryAnswered
-                    ? 'bg-[#0B141A] border-[#00A884]/40 shadow-sm'
-                    : 'bg-[#0B141A] border-[#1F2C34]'
+                    ? 'bg-[#06111F] border-[#BFA373]/40 shadow-sm'
+                    : 'bg-[#06111F] border-[#BFA373]/30'
                 }`}
               >
                 {/* Category Header */}
-                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#182229]">
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#06111F]">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-[#111B21] border border-[#222E35] flex items-center justify-center shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-[#06111F] border border-[#BFA373]/30 flex items-center justify-center shrink-0">
                       {getCategoryIcon(cat.iconName)}
                     </div>
                     <div>
@@ -294,12 +294,12 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                   </div>
 
                   {session.isActive ? (
-                    <span className="text-[10px] font-bold text-[#00A884] bg-[#00A884]/15 px-2.5 py-0.5 rounded-full border border-[#00A884]/30">
+                    <span className="text-[10px] font-bold text-[#BFA373] bg-[#BFA373]/15 px-2.5 py-0.5 rounded-full border border-[#BFA373]/30">
                       {totalCatVotes} {totalCatVotes === 1 ? 'Vote' : 'Votes'}
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-[#C5A880] flex items-center gap-1">
-                      <Trophy className="w-3 h-3 text-[#C5A880]" />
+                    <span className="text-[10px] font-bold text-[#BFA373] flex items-center gap-1">
+                      <Trophy className="w-3 h-3 text-[#BFA373]" />
                       <span>{totalCatVotes} Votes</span>
                     </span>
                   )}
@@ -307,9 +307,9 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
 
                 {/* WINNER SPOTLIGHT CARD (When Closed) */}
                 {showResults && winners.length > 0 && totalCatVotes > 0 && (
-                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-[#C5A880]/15 to-transparent border border-[#C5A880]/50 space-y-1.5 animate-fadeIn">
+                  <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-[#BFA373]/15 to-transparent border border-[#BFA373]/50 space-y-1.5 animate-fadeIn">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#C5A880] flex items-center gap-1 font-cinzel">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#BFA373] flex items-center gap-1 font-cinzel">
                         <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                         <span>Winner • 1st Place</span>
                       </span>
@@ -327,11 +327,11 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                             className="w-11 h-11 rounded-full object-cover border-2 border-amber-400 shadow-md"
                           />
                         ) : (
-                          <div className="w-11 h-11 rounded-full bg-[#C5A880]/20 border-2 border-[#C5A880] text-[#C5A880] flex items-center justify-center font-bold text-sm shadow-md font-cinzel">
+                          <div className="w-11 h-11 rounded-full bg-[#BFA373]/20 border-2 border-[#BFA373] text-[#BFA373] flex items-center justify-center font-bold text-sm shadow-md font-cinzel">
                             {winners[0].name ? winners[0].name.charAt(0).toUpperCase() : '🥇'}
                           </div>
                         )}
-                        <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-400 text-[#111B21] flex items-center justify-center text-[10px] font-bold shadow">
+                        <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-400 text-[#06111F] flex items-center justify-center text-[10px] font-bold shadow">
                           👑
                         </span>
                       </div>
@@ -364,16 +364,16 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                         onClick={() => handleSelectCandidate(cat.id, cand.id)}
                         className={`relative p-3 rounded-xl border transition-all select-none flex items-center overflow-hidden ${
                           session.isActive && (!hasUserVoted || isChangingVote)
-                            ? 'cursor-pointer hover:border-[#00A884] active:scale-[0.99]'
+                            ? 'cursor-pointer hover:border-[#BFA373] active:scale-[0.99]'
                             : 'cursor-default'
                         } ${
                           showResults
                             ? isWinner && totalCatVotes > 0
-                              ? 'bg-[#00A884]/15 border-[#00A884] text-white'
-                              : 'bg-[#111B21] border-[#222E35] text-slate-200'
+                              ? 'bg-[#BFA373]/15 border-[#BFA373] text-white'
+                              : 'bg-[#06111F] border-[#BFA373]/30 text-slate-200'
                             : isSelected || (hasUserVoted && isUserVotedThis)
-                            ? 'bg-[#00A884]/15 border-[#00A884] text-white shadow-sm'
-                            : 'bg-[#111B21] border-[#222E35] text-slate-200'
+                            ? 'bg-[#BFA373]/15 border-[#BFA373] text-white shadow-sm'
+                            : 'bg-[#06111F] border-[#BFA373]/30 text-slate-200'
                         }`}
                       >
                         {/* Progress Bar (Live and public for all when there are votes) */}
@@ -381,9 +381,9 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                           <div
                             className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 pointer-events-none ${
                               isUserVotedThis
-                                ? 'bg-[#00A884]/20 border-r-2 border-[#00A884]'
+                                ? 'bg-[#BFA373]/20 border-r-2 border-[#BFA373]'
                                 : isWinner && showResults
-                                ? 'bg-[#C5A880]/20'
+                                ? 'bg-[#BFA373]/20'
                                 : 'bg-slate-700/15'
                             }`}
                             style={{ width: `${percentage}%` }}
@@ -396,16 +396,16 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                             {session.isActive ? (
                               hasUserVoted && !isChangingVote ? (
                                 isUserVotedThis ? (
-                                  <span className="shrink-0 w-4.5 h-4.5 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold shadow-sm">
+                                  <span className="shrink-0 w-4.5 h-4.5 rounded-full bg-[#BFA373] text-[#06111F] flex items-center justify-center text-[10px] font-bold shadow-sm">
                                     <Check className="w-3 h-3 stroke-[3]" />
                                   </span>
                                 ) : (
                                   <span className="shrink-0 w-4.5 h-4.5 rounded-full border border-slate-600" />
                                 )
                               ) : (
-                                <div className="shrink-0 text-[#00A884]">
+                                <div className="shrink-0 text-[#BFA373]">
                                   {isSelected ? (
-                                    <CheckCircle2 className="w-5 h-5 fill-[#00A884] text-[#111B21]" />
+                                    <CheckCircle2 className="w-5 h-5 fill-[#BFA373] text-[#06111F]" />
                                   ) : (
                                     <Circle className="w-5 h-5 text-slate-500" />
                                   )}
@@ -413,7 +413,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                               )
                             ) : (
                               isUserVotedThis && (
-                                <span className="shrink-0 w-4.5 h-4.5 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
+                                <span className="shrink-0 w-4.5 h-4.5 rounded-full bg-[#BFA373] text-[#06111F] flex items-center justify-center text-[10px] font-bold">
                                   <Check className="w-3 h-3 stroke-[3]" />
                                 </span>
                               )
@@ -427,16 +427,16 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                                   alt={cand.name}
                                   className={`w-10 h-10 rounded-full object-cover border-2 shadow-sm transition-all ${
                                     isSelected || (hasUserVoted && isUserVotedThis)
-                                      ? 'border-[#00A884] ring-2 ring-[#00A884]/30'
-                                      : 'border-[#2A3942]'
+                                      ? 'border-[#BFA373] ring-2 ring-[#BFA373]/30'
+                                      : 'border-[#BFA373]/30'
                                   }`}
                                 />
                               ) : (
                                 <div
                                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs border transition-colors ${
                                     isSelected || (hasUserVoted && isUserVotedThis)
-                                      ? 'bg-[#00A884]/25 text-[#00A884] border-[#00A884]'
-                                      : 'bg-[#111B21] text-[#C5A880] border-[#2A3942]'
+                                      ? 'bg-[#BFA373]/25 text-[#BFA373] border-[#BFA373]'
+                                      : 'bg-[#06111F] text-[#BFA373] border-[#BFA373]/30'
                                   }`}
                                 >
                                   {cand.name ? cand.name.charAt(0).toUpperCase() : '?'}
@@ -464,12 +464,12 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                           {/* Live Vote Count & Percentage (Publicly visible, voter identity is completely secret) */}
                           <div className="flex items-center gap-2 shrink-0 text-right">
                             {hasUserVoted && isUserVotedThis && !isChangingVote && (
-                              <span className="text-[9px] sm:text-[10px] text-[#00A884] font-semibold shrink-0 bg-[#00A884]/20 px-1.5 sm:px-2 py-0.5 rounded border border-[#00A884]/35">
+                              <span className="text-[9px] sm:text-[10px] text-[#BFA373] font-semibold shrink-0 bg-[#BFA373]/20 px-1.5 sm:px-2 py-0.5 rounded border border-[#BFA373]/35">
                                 Your Vote
                               </span>
                             )}
                             {showResults && isWinner && totalCatVotes > 0 && (
-                              <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
+                              <Crown className="w-3.5 h-3.5 text-[#BFA373] fill-[#BFA373]" />
                             )}
                             <div className="flex flex-col items-end">
                               <span className="text-xs sm:text-sm font-bold text-white font-mono flex items-center gap-1">
@@ -505,12 +505,12 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                 )}
 
                 {showResults && isBreakdownOpen && (
-                  <div className="p-2.5 bg-[#050B10] rounded-xl border border-[#1F2C34] text-[10px] space-y-1 animate-fadeIn">
+                  <div className="p-2.5 bg-[#06111F] rounded-xl border border-[#BFA373]/30 text-[10px] space-y-1 animate-fadeIn">
                     <p className="font-semibold text-slate-300">Vote Breakdown:</p>
                     {cat.candidates.map((c) => (
                       <div key={c.id} className="flex items-center justify-between text-slate-400">
                         <span className="truncate pr-2">{c.name}</span>
-                        <span className="font-bold text-[#00A884]">
+                        <span className="font-bold text-[#BFA373]">
                           {c.votes || 0} votes
                         </span>
                       </div>
@@ -528,9 +528,9 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
             <button
               type="button"
               onClick={() => setIsChangingVote(true)}
-              className="w-full py-3.5 rounded-2xl bg-[#111B21] hover:bg-[#1A2730] text-slate-200 hover:text-[#00A884] font-bold text-xs sm:text-sm border border-[#222E35] hover:border-[#00A884]/50 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.99]"
+              className="w-full py-3.5 rounded-2xl bg-[#06111F] hover:bg-[#06111F] text-slate-200 hover:text-[#BFA373] font-bold text-xs sm:text-sm border border-[#BFA373]/30 hover:border-[#BFA373]/50 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.99]"
             >
-              <Edit3 className="w-4 h-4 text-[#00A884]" />
+              <Edit3 className="w-4 h-4 text-[#BFA373]" />
               <span>Change My Vote</span>
             </button>
           </div>
@@ -543,7 +543,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
               type="button"
               onClick={handleCastMeetingVote}
               disabled={selectedCount === 0 || isSubmittingVote}
-              className="w-full py-4 rounded-2xl bg-[#00A884] hover:bg-[#009272] text-[#111B21] font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#00A884]/25 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-40 min-h-[48px]"
+              className="w-full py-4 rounded-2xl bg-[#BFA373] hover:bg-[#D1B079] text-[#06111F] font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#BFA373]/25 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-40 min-h-[48px]"
             >
               {isSubmittingVote ? (
                 <span>Submitting Your Ballot...</span>
@@ -573,7 +573,7 @@ export const MeetingSessionCard: React.FC<MeetingSessionCardProps> = ({
                   });
                   setSelectedMap(currentSelections);
                 }}
-                className="w-full py-2.5 rounded-xl bg-[#111B21] hover:bg-[#182229] text-slate-400 hover:text-slate-200 text-xs font-semibold border border-[#222E35] transition-all cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-slate-400 hover:text-slate-200 text-xs font-semibold border border-[#BFA373]/30 transition-all cursor-pointer"
               >
                 Cancel & Keep Current Vote
               </button>

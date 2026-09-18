@@ -24,7 +24,7 @@ import {
   X,
   Briefcase
 } from 'lucide-react';
-import { UserProfile, RegisteredMember, EXECUTIVE_ROLES_LIST, ExecutiveCommitteeRole } from '../../types';
+import { UserProfile, RegisteredMember, EXECUTIVE_ROLES_LIST, ExecutiveCommitteeRole, isUserAdmin } from '../../types';
 import { subscribeToRegisteredMembers, updateMemberExecutiveRole } from '../../firebase';
 import { SocietyLogo } from '../SocietyLogo';
 
@@ -41,7 +41,7 @@ const getRoleVisuals = (role: string) => {
         badgeText: 'text-amber-300',
         border: 'border-amber-500/50',
         accentBg: 'bg-amber-500/10',
-        colorHex: '#F59E0B',
+        colorHex: '#D1B079',
         rank: 'Role #1',
       };
     case 'Director of Learning':
@@ -51,7 +51,7 @@ const getRoleVisuals = (role: string) => {
         badgeText: 'text-sky-300',
         border: 'border-sky-500/50',
         accentBg: 'bg-sky-500/10',
-        colorHex: '#38BDF8',
+        colorHex: '#D1B079',
         rank: 'Role #2',
       };
     case 'Director of Membership':
@@ -61,7 +61,7 @@ const getRoleVisuals = (role: string) => {
         badgeText: 'text-emerald-300',
         border: 'border-emerald-500/50',
         accentBg: 'bg-emerald-500/10',
-        colorHex: '#34D399',
+        colorHex: '#D1B079',
         rank: 'Role #3',
       };
     case 'Secretary':
@@ -71,7 +71,7 @@ const getRoleVisuals = (role: string) => {
         badgeText: 'text-purple-300',
         border: 'border-purple-500/50',
         accentBg: 'bg-purple-500/10',
-        colorHex: '#C084FC',
+        colorHex: '#D1B079',
         rank: 'Role #4',
       };
     case 'Financial Officer':
@@ -81,7 +81,7 @@ const getRoleVisuals = (role: string) => {
         badgeText: 'text-teal-300',
         border: 'border-teal-500/50',
         accentBg: 'bg-teal-500/10',
-        colorHex: '#2DD4BF',
+        colorHex: '#D1B079',
         rank: 'Role #5',
       };
     case 'Operations Officer':
@@ -91,7 +91,7 @@ const getRoleVisuals = (role: string) => {
         badgeText: 'text-orange-300',
         border: 'border-orange-500/50',
         accentBg: 'bg-orange-500/10',
-        colorHex: '#FB923C',
+        colorHex: '#D1B079',
         rank: 'Role #6',
       };
     default:
@@ -101,7 +101,7 @@ const getRoleVisuals = (role: string) => {
         badgeText: 'text-slate-300',
         border: 'border-slate-700',
         accentBg: 'bg-slate-800',
-        colorHex: '#C5A880',
+        colorHex: '#BFA373',
         rank: 'Office Bearer',
       };
   }
@@ -116,9 +116,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedMemberModal, setSelectedMemberModal] = useState<RegisteredMember | null>(null);
 
-  const isAdmin = Boolean(
-    userProfile.isAdmin || userProfile.gmail?.toLowerCase() === 'vjana537@gmail.com'
-  );
+  const isAdmin = isUserAdmin(userProfile);
 
   useEffect(() => {
     const unsub = subscribeToRegisteredMembers((data) => {
@@ -243,7 +241,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
       )}
 
       {/* Top Banner */}
-      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] p-4 sm:p-7 border border-[#C5A880]/40 shadow-2xl space-y-4 relative overflow-hidden">
+      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#06111F] via-[#06111F] to-[#06111F] p-4 sm:p-7 border border-[#BFA373]/40 shadow-2xl space-y-4 relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -252,7 +250,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                 <span>Leadership Roles</span>
               </span>
               {isAdmin && (
-                <span className="px-2 py-0.5 rounded bg-[#C5A880]/20 text-[#C5A880] text-[10px] font-bold border border-[#C5A880]/40 uppercase font-mono">
+                <span className="px-2 py-0.5 rounded bg-[#BFA373]/20 text-[#BFA373] text-[10px] font-bold border border-[#BFA373]/40 uppercase font-mono">
                   Admin Control
                 </span>
               )}
@@ -269,8 +267,8 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
           </div>
 
           {/* Quick Counter */}
-          <div className="flex items-center gap-3 self-start md:self-auto bg-[#030712]/90 border border-[#1E2E48] p-3 rounded-2xl shadow-inner">
-            <div className="text-center px-3 border-r border-[#1E2E48]">
+          <div className="flex items-center gap-3 self-start md:self-auto bg-[#06111F]/90 border border-[#BFA373]/30 p-3 rounded-2xl shadow-inner">
+            <div className="text-center px-3 border-r border-[#BFA373]/30">
               <span className="font-cinzel text-2xl font-bold text-amber-400 block leading-tight">
                 {totalAppointedCount} / 6
               </span>
@@ -279,7 +277,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
               </span>
             </div>
             <div className="text-center px-3">
-              <span className="font-cinzel text-2xl font-bold text-[#C5A880] block leading-tight">
+              <span className="font-cinzel text-2xl font-bold text-[#BFA373] block leading-tight">
                 {members.length}
               </span>
               <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
@@ -293,7 +291,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
       {/* 6 Leadership Roles Cards Grid */}
       {isLoading ? (
         <div className="p-12 text-center text-slate-400 space-y-2">
-          <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#C5A880]" />
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#BFA373]" />
           <p className="text-xs font-cinzel">Loading Leadership Roles...</p>
         </div>
       ) : (
@@ -309,12 +307,12 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                 key={roleDef.id}
                 className={`rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col justify-between shadow-xl ${
                   isAssigned
-                    ? 'bg-[#0B1528] border-amber-500/40 hover:border-amber-400'
-                    : 'bg-[#060E1A] border-[#1E2E48] hover:border-[#C5A880]/50'
+                    ? 'bg-[#06111F] border-amber-500/40 hover:border-amber-400'
+                    : 'bg-[#06111F] border-[#BFA373]/30 hover:border-[#BFA373]/50'
                 }`}
               >
                 {/* Card Top / Header */}
-                <div className="p-4 sm:p-5 border-b border-[#1E2E48]/80 bg-gradient-to-b from-[#081220] to-transparent">
+                <div className="p-4 sm:p-5 border-b border-[#BFA373]/30/80 bg-gradient-to-b from-[#06111F] to-transparent">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div
@@ -347,7 +345,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                 {/* Card Middle: Member Photo, Name & Phone Number */}
                 <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3.5">
                   {isAssigned && currentHolder ? (
-                    <div className="p-3.5 rounded-xl bg-[#030712] border border-[#1E2E48] space-y-3">
+                    <div className="p-3.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-3">
                       <div className="flex items-center gap-3.5">
                         {currentHolder.photoUrl ? (
                           <img
@@ -356,7 +354,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                             className="w-14 h-14 rounded-full object-cover border-2 border-amber-400 shrink-0 shadow-md"
                           />
                         ) : (
-                          <div className="w-14 h-14 rounded-full bg-[#0A192F] border-2 border-amber-400 text-amber-300 flex items-center justify-center font-bold text-lg shrink-0 shadow-md">
+                          <div className="w-14 h-14 rounded-full bg-[#06111F] border-2 border-amber-400 text-amber-300 flex items-center justify-center font-bold text-lg shrink-0 shadow-md">
                             {currentHolder.name ? currentHolder.name[0].toUpperCase() : 'M'}
                           </div>
                         )}
@@ -365,7 +363,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                           <h4 className="font-cinzel font-bold text-white text-base truncate">
                             {currentHolder.name}
                           </h4>
-                          <p className="text-xs text-[#C5A880] truncate font-medium">
+                          <p className="text-xs text-[#BFA373] truncate font-medium">
                             {currentHolder.department || 'Department'} &bull; {currentHolder.year || 'Member'}
                           </p>
                           {currentHolder.className && (
@@ -397,8 +395,8 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                       onClick={() => isAdmin && setSelectedRoleToAssign(roleDef.id)}
                       className={`p-6 rounded-xl border border-dashed text-center space-y-2 transition-all ${
                         isAdmin
-                          ? 'border-[#1E2E48] hover:border-amber-500/60 bg-[#030712]/50 hover:bg-[#030712] cursor-pointer'
-                          : 'border-[#1E2E48]/50 bg-[#030712]/30'
+                          ? 'border-[#BFA373]/30 hover:border-amber-500/60 bg-[#06111F]/50 hover:bg-[#06111F] cursor-pointer'
+                          : 'border-[#BFA373]/30/50 bg-[#06111F]/30'
                       }`}
                     >
                       <UserX className="w-7 h-7 mx-auto text-slate-500" />
@@ -416,9 +414,9 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                   )}
 
                   {/* Underneath: Role Work in Simple Clear English Words */}
-                  <div className="bg-[#030712]/70 rounded-xl p-3 border border-[#1E2E48]/80 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#C5A880] font-cinzel">
-                      <Briefcase className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <div className="bg-[#06111F]/70 rounded-xl p-3 border border-[#BFA373]/30/80 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#BFA373] font-cinzel">
+                      <Briefcase className="w-3.5 h-3.5 text-[#BFA373]" />
                       <span>Role Work & Responsibility</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed font-sans">
@@ -429,14 +427,14 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
 
                 {/* Card Footer: Admin Actions (Only for Admin) */}
                 {isAdmin && (
-                  <div className="p-3.5 sm:p-4 bg-[#030712]/90 border-t border-[#1E2E48] flex items-center justify-between gap-2">
+                  <div className="p-3.5 sm:p-4 bg-[#06111F]/90 border-t border-[#BFA373]/30 flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedRoleToAssign(roleDef.id);
                         setMemberSearchQuery('');
                       }}
-                      className="flex-1 py-2 px-3 rounded-xl bg-[#0E1E38] hover:bg-[#152B4D] border border-[#1E2E48] hover:border-amber-500/50 text-xs font-semibold text-amber-300 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                      className="flex-1 py-2 px-3 rounded-xl bg-[#06111F] hover:bg-[#BFA373]/30 border border-[#BFA373]/30 hover:border-amber-500/50 text-xs font-semibold text-amber-300 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
                     >
                       <Crown className="w-3.5 h-3.5 text-amber-400" />
                       <span>{isAssigned ? 'Change Appointee' : 'Appoint Member'}</span>
@@ -447,7 +445,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                         type="button"
                         onClick={() => handleVacateRole(roleDef.id)}
                         disabled={isUpdating}
-                        className="py-2 px-3 rounded-xl bg-[#030712] hover:bg-rose-950/50 border border-[#1E2E48] hover:border-rose-500/40 text-slate-400 hover:text-rose-300 text-xs font-medium transition-all cursor-pointer active:scale-95"
+                        className="py-2 px-3 rounded-xl bg-[#06111F] hover:bg-rose-950/50 border border-[#BFA373]/30 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 text-xs font-medium transition-all cursor-pointer active:scale-95"
                         title="Remove member from this role (Make Vacant)"
                       >
                         Vacate
@@ -468,13 +466,13 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
           onClick={() => setSelectedRoleToAssign(null)}
         >
           <div
-            className="w-full max-w-lg bg-[#0B1528] border border-amber-500/60 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200"
+            className="w-full max-w-lg bg-[#06111F] border border-amber-500/60 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#1E2E48] pb-3 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#BFA373]/30 pb-3 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-[#030712] border border-amber-500/50 text-amber-400">
+                <div className="p-2 rounded-xl bg-[#06111F] border border-amber-500/50 text-amber-400">
                   <Crown className="w-5 h-5" />
                 </div>
                 <div>
@@ -490,7 +488,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
               <button
                 type="button"
                 onClick={() => setSelectedRoleToAssign(null)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-[#1E2E48]"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-[#BFA373]/30"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -504,7 +502,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                 value={memberSearchQuery}
                 onChange={(e) => setMemberSearchQuery(e.target.value)}
                 placeholder="Search member by name, department, phone, email..."
-                className="w-full bg-[#030712] border border-[#1E2E48] focus:border-amber-400 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none transition-all"
+                className="w-full bg-[#06111F] border border-[#BFA373]/30 focus:border-amber-400 rounded-xl pl-9 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none transition-all"
                 autoFocus
               />
             </div>
@@ -527,7 +525,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                       className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-all ${
                         isCurrentRoleHolder
                           ? 'bg-amber-950/40 border-amber-500/60'
-                          : 'bg-[#030712] border-[#1E2E48] hover:border-[#C5A880]'
+                          : 'bg-[#06111F] border-[#BFA373]/30 hover:border-[#BFA373]'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -535,10 +533,10 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                           <img
                             src={member.photoUrl}
                             alt={member.name}
-                            className="w-10 h-10 rounded-full object-cover border border-[#C5A880] shrink-0"
+                            className="w-10 h-10 rounded-full object-cover border border-[#BFA373] shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-[#0A192F] border border-[#C5A880] text-[#C5A880] flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-[#06111F] border border-[#BFA373] text-[#BFA373] flex items-center justify-center font-bold text-xs shrink-0">
                             {member.name ? member.name[0].toUpperCase() : 'M'}
                           </div>
                         )}
@@ -584,11 +582,11 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
             </div>
 
             {/* Modal Footer */}
-            <div className="pt-2 border-t border-[#1E2E48] flex justify-end shrink-0">
+            <div className="pt-2 border-t border-[#BFA373]/30 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedRoleToAssign(null)}
-                className="px-4 py-2 rounded-xl bg-[#030712] border border-[#1E2E48] text-slate-300 hover:text-white text-xs font-medium cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-slate-300 hover:text-white text-xs font-medium cursor-pointer"
               >
                 Close
               </button>
@@ -604,10 +602,10 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
           onClick={() => setSelectedMemberModal(null)}
         >
           <div
-            className="w-full max-w-md bg-[#0B1528] border border-amber-500/60 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 text-slate-200"
+            className="w-full max-w-md bg-[#06111F] border border-amber-500/60 rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 text-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-[#1E2E48] pb-3">
+            <div className="flex items-center justify-between border-b border-[#BFA373]/30 pb-3">
               <div className="flex items-center gap-2">
                 <Crown className="w-5 h-5 text-amber-400" />
                 <h3 className="font-cinzel font-bold text-white text-base">Executive Officer Dossier</h3>
@@ -629,7 +627,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
                   className="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shrink-0"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-full bg-[#0A192F] border-2 border-amber-400 text-amber-300 flex items-center justify-center font-bold text-xl shrink-0">
+                <div className="w-16 h-16 rounded-full bg-[#06111F] border-2 border-amber-400 text-amber-300 flex items-center justify-center font-bold text-xl shrink-0">
                   {selectedMemberModal.name ? selectedMemberModal.name[0].toUpperCase() : 'M'}
                 </div>
               )}
@@ -646,7 +644,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#030712] border border-[#1E2E48] space-y-2 text-xs">
+            <div className="p-3.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Email:</span>
                 <a
@@ -678,7 +676,7 @@ export const ExecutiveRolesTab: React.FC<ExecutiveRolesTabProps> = ({ userProfil
             <button
               type="button"
               onClick={() => setSelectedMemberModal(null)}
-              className="w-full py-2.5 rounded-xl bg-[#030712] hover:bg-[#112240] border border-[#1E2E48] text-slate-200 text-xs font-semibold cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-[#06111F] hover:bg-[#06111F] border border-[#BFA373]/30 text-slate-200 text-xs font-semibold cursor-pointer"
             >
               Close Dossier
             </button>

@@ -33,8 +33,6 @@ import {
   Folder,
   Mic,
   AlertCircle,
-  Volume2,
-  VolumeX,
   Copy,
   Check,
   FileText,
@@ -88,8 +86,6 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
   const [showReportModal, setShowReportModal] = useState<boolean>(false);
   const [reportMeetingFilter, setReportMeetingFilter] = useState<string>('all');
   const [reportViewMode, setReportViewMode] = useState<'cards' | 'script'>('cards');
-  const [isSpeakingReport, setIsSpeakingReport] = useState<boolean>(false);
-  const [activeSpokenId, setActiveSpokenId] = useState<string | null>(null);
   const [copiedScript, setCopiedScript] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -243,50 +239,6 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
     }
     return `${mins} ${mins === 1 ? 'minute' : 'minutes'} and ${secs} ${secs === 1 ? 'second' : 'seconds'}`;
   };
-
-  // Web Speech synthesis for easy speak-out of timing and reports
-  const speakText = (text: string, onEnd?: () => void) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      showToast('Speech synthesis not supported in this browser.');
-      return;
-    }
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-      utterance.onend = () => {
-        setIsSpeakingReport(false);
-        setActiveSpokenId(null);
-        if (onEnd) onEnd();
-      };
-      utterance.onerror = () => {
-        setIsSpeakingReport(false);
-        setActiveSpokenId(null);
-      };
-      window.speechSynthesis.speak(utterance);
-    } catch (err) {
-      console.error('TTS error:', err);
-      setIsSpeakingReport(false);
-      setActiveSpokenId(null);
-    }
-  };
-
-  const stopSpeaking = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsSpeakingReport(false);
-    setActiveSpokenId(null);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
 
   // Stopwatch ticking logic
   useEffect(() => {
@@ -514,8 +466,8 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300 pb-16">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-[#0E1F36] border border-[#C5A880] text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs animate-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-[#C5A880] shrink-0" />
+        <div className="fixed top-20 right-4 z-50 bg-[#06111F] border border-[#BFA373] text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs animate-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-[#BFA373] shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -541,11 +493,11 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
       {/* STEP 1: FORM (Choose Member + Meeting Number)                         */}
       {/* ===================================================================== */}
       {step === 'form' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-[#050B14] border border-[#1E2E48] shadow-2xl space-y-6">
+        <div className="p-6 sm:p-8 rounded-3xl bg-[#06111F] border border-[#BFA373]/30 shadow-2xl space-y-6">
           <div className="space-y-5">
             {/* Choose the Member Field */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#C5A880] font-cinzel uppercase tracking-wider">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
                 Choose The Member:
               </label>
 
@@ -565,7 +517,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                           ? 'No members appointed yet by Admin in Speaker Roles...'
                           : 'Click to choose an appointed member...'
                       }
-                      className="w-full pl-3 pr-10 py-3 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors cursor-pointer text-sm"
+                      className="w-full pl-3 pr-10 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors cursor-pointer text-sm"
                     />
                     <button
                       type="button"
@@ -615,10 +567,10 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
 
                 {/* Speaker Scroll-Down Dropdown - Appointed Roles with Dropdown Arrows */}
                 {showSpeakerDropdown && (
-                  <div className="absolute top-full left-0 right-0 z-30 mt-1.5 bg-[#081220] border border-[#1E2E48] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1">
+                  <div className="absolute top-full left-0 right-0 z-30 mt-1.5 bg-[#06111F] border border-[#BFA373]/30 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1">
                     {/* Dropdown Header */}
-                    <div className="p-3 bg-[#050B14] border-b border-[#1E2E48] flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-[#C5A880] text-xs font-bold uppercase tracking-wider font-cinzel">
+                    <div className="p-3 bg-[#06111F] border-b border-[#BFA373]/30 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[#BFA373] text-xs font-bold uppercase tracking-wider font-cinzel">
                         <Mic className="w-3.5 h-3.5 text-amber-400" />
                         <span>Appointed Members</span>
                       </div>
@@ -632,7 +584,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                     </div>
 
                     {/* Dropdown List Body: Grouped by Role with Dropdown Arrow */}
-                    <div className="max-h-80 overflow-y-auto divide-y divide-[#1E2E48]/60">
+                    <div className="max-h-80 overflow-y-auto divide-y divide-[#BFA373]/30/60">
                       {appointedSpeakers.length === 0 ? (
                         <div className="p-5 text-center space-y-2">
                           <p className="text-xs text-amber-300 font-semibold">
@@ -651,12 +603,12 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                           const expanded = isRoleExpanded(item.role);
 
                           return (
-                            <div key={item.role} className="bg-[#050B14]/40">
+                            <div key={item.role} className="bg-[#06111F]/40">
                               {/* Role Tag Header with Dropdown Arrow */}
                               <button
                                 type="button"
                                 onClick={() => toggleRole(item.role)}
-                                className="w-full px-3.5 py-2.5 bg-[#050B14] hover:bg-[#0A192F] flex items-center justify-between transition-colors border-b border-[#1E2E48]/60 cursor-pointer text-left"
+                                className="w-full px-3.5 py-2.5 bg-[#06111F] hover:bg-[#06111F] flex items-center justify-between transition-colors border-b border-[#BFA373]/30/60 cursor-pointer text-left"
                               >
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
@@ -675,7 +627,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
 
                               {/* Members under this role */}
                               {expanded && (
-                                <div className="divide-y divide-[#1E2E48]/30 bg-[#030712]">
+                                <div className="divide-y divide-[#BFA373]/30/30 bg-[#06111F]">
                                   {item.members.map((m) => {
                                     const existingRecord = getStoredRecordForMember(m);
                                     const isAlreadyStored = Boolean(existingRecord);
@@ -698,10 +650,10 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                                         }}
                                         className={`w-full text-left px-4 py-3 text-xs flex items-center justify-between transition-colors ${
                                           isAlreadyStored
-                                            ? 'opacity-60 cursor-not-allowed bg-[#02050B] border-l-2 border-emerald-500/50 hover:bg-[#02050B]'
+                                            ? 'opacity-60 cursor-not-allowed bg-[#06111F] border-l-2 border-emerald-500/50 hover:bg-[#06111F]'
                                             : isSelected
                                             ? 'bg-amber-950/40 text-amber-300 cursor-pointer'
-                                            : 'hover:bg-[#0E1F36] text-white cursor-pointer'
+                                            : 'hover:bg-[#06111F] text-white cursor-pointer'
                                         }`}
                                         title={
                                           isAlreadyStored
@@ -725,7 +677,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                                             )}
                                           </div>
                                           {deptDisplay ? (
-                                            <div className="text-xs text-[#C5A880] font-medium">
+                                            <div className="text-xs text-[#BFA373] font-medium">
                                               {deptDisplay}
                                             </div>
                                           ) : null}
@@ -766,7 +718,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
 
             {/* Appointed Speaker Role */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#C5A880] font-cinzel uppercase tracking-wider">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
                 Speaker&apos;s Appointed Role:
               </label>
               <input
@@ -774,13 +726,13 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 value={speakerRole}
                 onChange={(e) => setSpeakerRole(e.target.value)}
                 placeholder="e.g. Key Note Speaker, Topic Master, Evaluator..."
-                className="w-full px-3.5 py-3 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
+                className="w-full px-3.5 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
               />
             </div>
 
             {/* Meeting Number Field */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#C5A880] font-cinzel uppercase tracking-wider">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
                 Meeting Number:
               </label>
               <input
@@ -788,13 +740,13 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 value={meetingNumber}
                 onChange={(e) => setMeetingNumber(e.target.value)}
                 placeholder="e.g. 1st Meeting"
-                className="w-full px-3.5 py-3 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
+                className="w-full px-3.5 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
               />
             </div>
           </div>
 
           {/* Next Button */}
-          <div className="pt-4 border-t border-[#1E2E48] flex items-center justify-between gap-3">
+          <div className="pt-4 border-t border-[#BFA373]/30 flex items-center justify-between gap-3">
             {speakerName && getStoredRecordForMember({ name: speakerName, gmail: speakerEmail }) ? (
               <span className="text-xs text-rose-400 font-semibold">
                 * Selected speaker is all ready stored. Please choose another member.
@@ -809,7 +761,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
               className={`px-6 py-3 rounded-xl font-cinzel font-bold text-sm flex items-center gap-2 transition-all ${
                 speakerName && getStoredRecordForMember({ name: speakerName, gmail: speakerEmail })
                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  : 'bg-[#C5A880] hover:bg-[#d8bd98] text-[#0A192F] shadow-lg shadow-[#C5A880]/20 cursor-pointer hover:translate-x-0.5 active:scale-95'
+                  : 'bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] shadow-lg shadow-[#BFA373]/20 cursor-pointer hover:translate-x-0.5 active:scale-95'
               }`}
             >
               <span>Next to Timer</span>
@@ -825,7 +777,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
       {step === 'timer' && (
         <div className="space-y-6">
           {/* Active Session Info Bar with Back Button */}
-          <div className="p-4 rounded-2xl bg-[#081220] border border-[#1E2E48] flex flex-wrap items-center justify-between gap-3 shadow-lg">
+          <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 flex flex-wrap items-center justify-between gap-3 shadow-lg">
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 type="button"
@@ -837,9 +789,9 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                   }
                   setStep('form');
                 }}
-                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#1E2E48] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#BFA373]/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <ArrowLeft className="w-3.5 h-3.5 text-[#C5A880]" />
+                <ArrowLeft className="w-3.5 h-3.5 text-[#BFA373]" />
                 <span>Back</span>
               </button>
 
@@ -858,7 +810,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
           </div>
 
           {/* Large Stopwatch Display Card */}
-          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-[#050B14] to-[#02050B] border border-[#1E2E48] shadow-2xl text-center space-y-6 relative overflow-hidden">
+          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-[#06111F] to-[#06111F] border border-[#BFA373]/30 shadow-2xl text-center space-y-6 relative overflow-hidden">
             {/* Background Glow based on timing status */}
             <div
               className={`absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl pointer-events-none transition-all duration-700 ${
@@ -868,7 +820,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                   ? 'bg-amber-500/15'
                   : timingStatus === 'red'
                   ? 'bg-rose-500/20'
-                  : 'bg-[#C5A880]/10'
+                  : 'bg-[#BFA373]/10'
               }`}
             />
 
@@ -882,7 +834,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : timingStatus === 'red'
                     ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                    : 'bg-[#0E1F36] text-slate-300 border-[#1E2E48]'
+                    : 'bg-[#06111F] text-slate-300 border-[#BFA373]/30'
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" />
@@ -936,7 +888,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
               <button
                 type="button"
                 onClick={handleRestart}
-                className="px-6 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-[#1E2E48] font-cinzel font-bold text-sm flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                className="px-6 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-[#BFA373]/30 font-cinzel font-bold text-sm flex items-center gap-2 transition-all cursor-pointer active:scale-95"
               >
                 <RotateCcw className="w-4 h-4 text-slate-400" />
                 <span>Restart</span>
@@ -953,7 +905,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="e.g. Delivered fully on time / Qualified"
-                className="w-full px-3.5 py-2.5 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white text-xs placeholder:text-slate-500 transition-colors"
+                className="w-full px-3.5 py-2.5 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white text-xs placeholder:text-slate-500 transition-colors"
               />
             </div>
 
@@ -963,7 +915,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 type="button"
                 onClick={handleSubmitTiming}
                 disabled={isSubmitting}
-                className="w-full px-8 py-3.5 rounded-2xl bg-[#C5A880] hover:bg-[#d8bd98] text-[#0A192F] font-cinzel font-bold text-base flex items-center justify-center gap-2 shadow-xl shadow-[#C5A880]/25 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                className="w-full px-8 py-3.5 rounded-2xl bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] font-cinzel font-bold text-base flex items-center justify-center gap-2 shadow-xl shadow-[#BFA373]/25 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
               >
                 <Send className="w-4 h-4" />
                 <span>{isSubmitting ? 'Submitting...' : 'Submit'}</span>
@@ -978,7 +930,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
       {/* ===================================================================== */}
       {submittedSuccessRecord && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#050B14] border border-[#C5A880] rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl animate-in zoom-in-95">
+          <div className="w-full max-w-md bg-[#06111F] border border-[#BFA373] rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl animate-in zoom-in-95">
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto shadow-lg">
               <CheckCircle2 className="w-8 h-8" />
             </div>
@@ -992,7 +944,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#030712] border border-[#1E2E48] text-xs space-y-2 text-left">
+            <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 text-xs space-y-2 text-left">
               <div className="flex justify-between">
                 <span className="text-slate-400">Speaker:</span>
                 <strong className="text-white">{submittedSuccessRecord.speakerName}</strong>
@@ -1015,29 +967,6 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 <span className="text-slate-400">Time Steward:</span>
                 <strong className="text-slate-200">{submittedSuccessRecord.timeStewardName}</strong>
               </div>
-            </div>
-
-            {/* Read Aloud Sentence Box & Speak Button */}
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-left space-y-2">
-              <p className="text-[11px] text-slate-300">
-                <span className="text-amber-400 font-bold uppercase text-[10px] block">Timing Speech Readout:</span>
-                &ldquo;{submittedSuccessRecord.speakerName} {submittedSuccessRecord.speakerRole ? `(${submittedSuccessRecord.speakerRole})` : ''} spoke for {formatSecondsToSpokenWords(submittedSuccessRecord.durationSeconds)}&rdquo;
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  const sentence = `${submittedSuccessRecord.speakerName} ${submittedSuccessRecord.speakerRole ? `as ${submittedSuccessRecord.speakerRole}` : ''} spoke for ${formatSecondsToSpokenWords(submittedSuccessRecord.durationSeconds)}. ${
-                    submittedSuccessRecord.durationSeconds >= 180
-                      ? 'Qualified, keep it up!'
-                      : 'Advice: you must improve the speech timing to greater than 3 minutes.'
-                  }`;
-                  speakText(sentence);
-                }}
-                className="w-full py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Volume2 className="w-3.5 h-3.5" />
-                <span>Hear Spoken Timing</span>
-              </button>
             </div>
 
             {/* Keynote Speech Timing Compliance Box (Compulsory 3-Minute Rule) */}
@@ -1081,14 +1010,14 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
               <button
                 type="button"
                 onClick={handleResetForNextSpeaker}
-                className="flex-1 px-4 py-3 rounded-xl bg-[#C5A880] hover:bg-[#d8bd98] text-[#0A192F] font-cinzel font-bold text-xs shadow-lg transition-colors cursor-pointer"
+                className="flex-1 px-4 py-3 rounded-xl bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] font-cinzel font-bold text-xs shadow-lg transition-colors cursor-pointer"
               >
                 Time Another Speaker
               </button>
               <button
                 type="button"
                 onClick={() => setSubmittedSuccessRecord(null)}
-                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1E2E48] text-xs font-semibold transition-colors cursor-pointer"
+                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#BFA373]/30 text-xs font-semibold transition-colors cursor-pointer"
               >
                 Stay on Timer
               </button>
@@ -1102,8 +1031,8 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
       {/* ===================================================================== */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-[#050B14] border border-[#1E2E48] rounded-3xl p-6 space-y-5 shadow-2xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#1E2E48] pb-4">
+          <div className="w-full max-w-2xl bg-[#06111F] border border-[#BFA373]/30 rounded-3xl p-6 space-y-5 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#BFA373]/30 pb-4">
               <div className="flex items-center gap-2.5">
                 <History className="w-5 h-5 text-orange-400" />
                 <h3 className="font-cinzel text-lg font-bold text-white">
@@ -1141,7 +1070,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 records.map((rec) => (
                   <div
                     key={rec.id}
-                    className="p-4 rounded-2xl bg-[#030712] border border-[#1E2E48] flex items-center justify-between gap-3 text-xs"
+                    className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 flex items-center justify-between gap-3 text-xs"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1151,7 +1080,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                             {rec.speakerRole}
                           </span>
                         )}
-                        <span className="px-2 py-0.5 rounded bg-[#1E2E48] text-slate-300 font-cinzel font-bold text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-[#BFA373]/30 text-slate-300 font-cinzel font-bold text-[10px]">
                           {rec.meetingNumber}
                         </span>
                       </div>
@@ -1179,21 +1108,6 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                     </div>
 
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const sentence = `${rec.speakerName} ${rec.speakerRole ? `as ${rec.speakerRole}` : ''} spoke for ${formatSecondsToSpokenWords(rec.durationSeconds)}. ${
-                            rec.durationSeconds >= 180 ? 'Qualified.' : 'Under 3 minutes.'
-                          }`;
-                          speakText(sentence);
-                          showToast(`Speaking timing for ${rec.speakerName}...`);
-                        }}
-                        className="p-2 text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 rounded-xl transition-colors cursor-pointer border border-amber-500/30"
-                        title="Speak this timing aloud"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                      </button>
-
                       <div className="text-right">
                         <span className="font-mono text-base font-black text-emerald-400 block">
                           {rec.formattedTime}
@@ -1249,9 +1163,9 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
         });
 
         return (
-          <div className="fixed inset-0 z-50 bg-[#030712] flex flex-col w-screen h-screen overflow-hidden animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-50 bg-[#06111F] flex flex-col w-screen h-screen overflow-hidden animate-in fade-in duration-200">
             {/* Top Navigation Bar */}
-            <div className="px-4 sm:px-8 py-3.5 sm:py-4 bg-[#050B14] border-b border-[#1E2E48] flex items-center justify-between gap-4 shrink-0 shadow-lg">
+            <div className="px-4 sm:px-8 py-3.5 sm:py-4 bg-[#06111F] border-b border-[#BFA373]/30 flex items-center justify-between gap-4 shrink-0 shadow-lg">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shadow-lg shrink-0">
                   <Mic className="w-5 h-5 text-amber-400" />
@@ -1273,7 +1187,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                   <select
                     value={reportMeetingFilter}
                     onChange={(e) => setReportMeetingFilter(e.target.value)}
-                    className="px-3 py-2 rounded-xl bg-[#081220] border border-[#1E2E48] text-xs font-semibold text-amber-300 focus:outline-none cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-xs font-semibold text-amber-300 focus:outline-none cursor-pointer"
                   >
                     <option value="all">All Meetings ({records.length})</option>
                     {distinctMeetings.map((m) => (
@@ -1287,10 +1201,9 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 <button
                   type="button"
                   onClick={() => {
-                    stopSpeaking();
                     setShowReportModal(false);
                   }}
-                  className="px-3.5 sm:px-4 py-2 rounded-xl bg-[#081220] hover:bg-[#0E1E38] text-slate-300 hover:text-white border border-[#1E2E48] text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                  className="px-3.5 sm:px-4 py-2 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-slate-300 hover:text-white border border-[#BFA373]/30 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                   <span className="hidden sm:inline">Close</span>
@@ -1315,7 +1228,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                   return (
                     <div key={group.role || groupIdx} className="space-y-3.5">
                       {/* Role Top Heading */}
-                      <div className="flex items-center justify-between pb-2.5 border-b border-[#1E2E48]">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-[#BFA373]/30">
                         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
                           <span className="px-3.5 py-1 rounded-full text-xs sm:text-sm font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider font-cinzel">
                             {group.role}
@@ -1352,7 +1265,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                           return (
                             <div
                               key={rec.id || recIdx}
-                              className="p-4 sm:p-5 rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-amber-500/40 transition-colors flex items-center justify-between gap-4 shadow-xl"
+                              className="p-4 sm:p-5 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-amber-500/40 transition-colors flex items-center justify-between gap-4 shadow-xl"
                             >
                               {/* Left: Speaker Name + Department (underneath) + Meeting Info */}
                               <div className="space-y-1">
@@ -1360,7 +1273,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                                   {rec.speakerName}
                                 </h4>
                                 {deptStr ? (
-                                  <p className="text-xs sm:text-sm text-[#C5A880] font-medium">
+                                  <p className="text-xs sm:text-sm text-[#BFA373] font-medium">
                                     {deptStr}
                                   </p>
                                 ) : null}
@@ -1415,17 +1328,16 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
             </div>
 
             {/* Bottom Bar */}
-            <div className="px-4 sm:px-8 py-3.5 bg-[#050B14] border-t border-[#1E2E48] flex items-center justify-between text-xs text-slate-400 shrink-0">
+            <div className="px-4 sm:px-8 py-3.5 bg-[#06111F] border-t border-[#BFA373]/30 flex items-center justify-between text-xs text-slate-400 shrink-0">
               <span>
                 Showing {filteredRecordsForReport.length} recorded speech{filteredRecordsForReport.length !== 1 ? 'es' : ''} across {roleGroups.length} role{roleGroups.length !== 1 ? 's' : ''}
               </span>
               <button
                 type="button"
                 onClick={() => {
-                  stopSpeaking();
                   setShowReportModal(false);
                 }}
-                className="px-5 py-2 rounded-xl bg-[#081220] hover:bg-[#0E1E38] text-white border border-[#1E2E48] font-semibold cursor-pointer transition-colors"
+                className="px-5 py-2 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-white border border-[#BFA373]/30 font-semibold cursor-pointer transition-colors"
               >
                 Close Full Screen
               </button>
@@ -1439,7 +1351,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
       {/* ===================================================================== */}
       {recordToDelete && (
         <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-[#050B14] border border-red-500/30 rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl animate-in zoom-in-95">
+          <div className="w-full max-w-md bg-[#06111F] border border-red-500/30 rounded-3xl p-6 sm:p-7 space-y-5 shadow-2xl animate-in zoom-in-95">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center shrink-0">
                 <Trash2 className="w-6 h-6" />
@@ -1454,7 +1366,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#081220] border border-[#1E2E48] space-y-2 text-xs">
+            <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 space-y-2 text-xs">
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Speaker:</span>
                 <span className="font-bold text-white text-sm">{recordToDelete.speakerName}</span>
@@ -1462,7 +1374,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
               {recordToDelete.speakerDepartment ? (
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Department:</span>
-                  <span className="font-medium text-[#C5A880]">{recordToDelete.speakerDepartment}</span>
+                  <span className="font-medium text-[#BFA373]">{recordToDelete.speakerDepartment}</span>
                 </div>
               ) : null}
               <div className="flex justify-between items-center">
@@ -1473,7 +1385,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 <span className="text-slate-400">Meeting:</span>
                 <span className="font-medium text-white">{recordToDelete.meetingNumber}</span>
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-[#1E2E48]">
+              <div className="flex justify-between items-center pt-2 border-t border-[#BFA373]/30">
                 <span className="text-slate-400">Recorded Time:</span>
                 <span className="font-mono font-black text-amber-400 text-base">{recordToDelete.formattedTime}</span>
               </div>
@@ -1484,7 +1396,7 @@ export const TimeStewardTab: React.FC<TimeStewardTabProps> = ({ userProfile }) =
                 type="button"
                 disabled={isDeletingRecord}
                 onClick={() => setRecordToDelete(null)}
-                className="flex-1 px-4 py-3 rounded-xl bg-[#081220] hover:bg-[#0E1E38] text-slate-300 hover:text-white border border-[#1E2E48] font-bold text-xs cursor-pointer transition-colors"
+                className="flex-1 px-4 py-3 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-slate-300 hover:text-white border border-[#BFA373]/30 font-bold text-xs cursor-pointer transition-colors"
               >
                 Cancel
               </button>

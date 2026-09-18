@@ -22,7 +22,7 @@ export const SocietyLogo: React.FC<SocietyLogoProps> = ({
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-full overflow-hidden bg-white shadow-md border border-[#C5A880]/50 p-0.5 select-none hover:shadow-lg transition-all ${sizeClasses[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-full overflow-hidden bg-white shadow-md border border-[#BFA373]/50 p-0.5 select-none hover:shadow-lg transition-all ${sizeClasses[size]} ${className}`}
       title="The Declamate's Society - Sri Amaravathi College of Arts and Science, Karur"
     >
       <img

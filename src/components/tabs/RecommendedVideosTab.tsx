@@ -22,10 +22,10 @@ export const RecommendedVideosTab: React.FC<RecommendedVideosTabProps> = () => {
   return (
     <div className="space-y-6 animate-fadeIn text-slate-100 max-w-4xl mx-auto">
       {/* Header Banner */}
-      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] p-5 sm:p-7 border border-[#C5A880]/40 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#06111F] via-[#06111F] to-[#06111F] p-5 sm:p-7 border border-[#BFA373]/40 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold font-cinzel text-white tracking-wide flex items-center gap-2.5">
-            <Video className="w-6 h-6 sm:w-7 sm:h-7 text-[#00A884]" />
+            <Video className="w-6 h-6 sm:w-7 sm:h-7 text-[#D1B079]" />
             <span>Recommended Video</span>
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm">
@@ -37,7 +37,7 @@ export const RecommendedVideosTab: React.FC<RecommendedVideosTabProps> = () => {
           href={FEATURED_VIDEO.youtubeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#0B1528] hover:bg-[#111B21] text-slate-300 hover:text-white border border-[#1E2E48] hover:border-[#00A884]/40 text-xs font-semibold transition-all cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-slate-300 hover:text-white border border-[#BFA373]/30 hover:border-[#D1B079]/40 text-xs font-semibold transition-all cursor-pointer self-start sm:self-auto"
         >
           <span>Open on YouTube</span>
           <ExternalLink className="w-3.5 h-3.5" />
@@ -45,9 +45,9 @@ export const RecommendedVideosTab: React.FC<RecommendedVideosTabProps> = () => {
       </div>
 
       {/* Main Single Video Player Card */}
-      <div className="rounded-2xl sm:rounded-3xl bg-[#050B14] border border-[#1E2E48] shadow-2xl overflow-hidden">
+      <div className="rounded-2xl sm:rounded-3xl bg-[#06111F] border border-[#BFA373]/30 shadow-2xl overflow-hidden">
         {/* Top Info Bar */}
-        <div className="px-4 sm:px-6 py-3.5 bg-[#0B1528]/80 border-b border-[#1E2E48] flex items-center justify-between gap-3">
+        <div className="px-4 sm:px-6 py-3.5 bg-[#06111F]/80 border-b border-[#BFA373]/30 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
             <span className="text-xs font-bold text-slate-200 font-cinzel truncate">
@@ -58,9 +58,9 @@ export const RecommendedVideosTab: React.FC<RecommendedVideosTabProps> = () => {
           <button
             type="button"
             onClick={() => setIsPlaying(!isPlaying)}
-            className="text-xs font-bold text-[#00A884] hover:text-[#009272] flex items-center gap-1.5 cursor-pointer"
+            className="text-xs font-bold text-[#D1B079] hover:text-[#D1B079] flex items-center gap-1.5 cursor-pointer"
           >
-            <Play className="w-3.5 h-3.5 fill-[#00A884]" />
+            <Play className="w-3.5 h-3.5 fill-[#D1B079]" />
             <span>{isPlaying ? 'Reload Player' : 'Play Video'}</span>
           </button>
         </div>
@@ -121,7 +121,7 @@ export const RecommendedVideosTab: React.FC<RecommendedVideosTabProps> = () => {
         </div>
 
         {/* Video Title and Details Below */}
-        <div className="p-4 sm:p-6 bg-[#0B1528] space-y-2">
+        <div className="p-4 sm:p-6 bg-[#06111F] space-y-2">
           <h3 className="text-base sm:text-xl font-bold font-cinzel text-white leading-snug">
             {FEATURED_VIDEO.title}
           </h3>

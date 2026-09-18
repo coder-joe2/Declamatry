@@ -56,9 +56,9 @@ export const LearningTipsTab: React.FC = () => {
   return (
     <div className="space-y-8 animate-fadeIn text-slate-100">
       {/* Header Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] text-white p-6 sm:p-10 border border-[#C5A880]/40 shadow-2xl relative overflow-hidden">
+      <div className="rounded-3xl bg-gradient-to-br from-[#06111F] via-[#06111F] to-[#06111F] text-white p-6 sm:p-10 border border-[#BFA373]/40 shadow-2xl relative overflow-hidden">
         <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-xs font-semibold uppercase tracking-wider border border-[#C5A880]/40">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#BFA373]/20 text-[#BFA373] text-xs font-semibold uppercase tracking-wider border border-[#BFA373]/40">
             <Lightbulb className="w-3.5 h-3.5" />
             <span>Practical Speaking Advice</span>
           </div>
@@ -78,16 +78,16 @@ export const LearningTipsTab: React.FC = () => {
           return (
             <div
               key={idx}
-              className="bg-[#050B14] rounded-2xl border border-[#1E2E48] hover:border-[#C5A880] p-6 sm:p-8 shadow-xl hover:shadow-2xl transition-all space-y-4 relative overflow-hidden"
+              className="bg-[#06111F] rounded-2xl border border-[#BFA373]/30 hover:border-[#BFA373] p-6 sm:p-8 shadow-xl hover:shadow-2xl transition-all space-y-4 relative overflow-hidden"
             >
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-2xl bg-[#0B1528] border border-[#1E2E48] text-[#C5A880] shadow-md shrink-0">
+                  <div className="p-3 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] shadow-md shrink-0">
                     <Icon className="w-6 h-6" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xs font-bold font-cinzel text-[#C5A880]">
+                      <span className="text-xs font-bold font-cinzel text-[#BFA373]">
                         TIP {tip.number}
                       </span>
                       <span className="text-slate-600">&bull;</span>
@@ -103,15 +103,15 @@ export const LearningTipsTab: React.FC = () => {
               </div>
 
               {/* Main Description */}
-              <p className="text-slate-200 text-sm sm:text-base leading-relaxed font-sans bg-[#0B1528] p-4 rounded-xl border border-[#1E2E48]">
+              <p className="text-slate-200 text-sm sm:text-base leading-relaxed font-sans bg-[#06111F] p-4 rounded-xl border border-[#BFA373]/30">
                 {tip.desc}
               </p>
 
               {/* Actionable takeaway */}
               <div className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-300 font-sans pt-1">
-                <CheckCircle2 className="w-4 h-4 text-[#C5A880] shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-[#BFA373] shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-[#C5A880] font-semibold">Pro Practice:</strong> {tip.actionPoint}
+                  <strong className="text-[#BFA373] font-semibold">Pro Practice:</strong> {tip.actionPoint}
                 </span>
               </div>
             </div>

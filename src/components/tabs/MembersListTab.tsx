@@ -34,7 +34,7 @@ import {
   X,
   Mic,
 } from 'lucide-react';
-import { UserProfile, RegisteredMember, EXECUTIVE_ROLES_LIST, ExecutiveCommitteeRole, formatSpeakerRole } from '../../types';
+import { UserProfile, RegisteredMember, EXECUTIVE_ROLES_LIST, ExecutiveCommitteeRole, formatSpeakerRole, isUserAdmin } from '../../types';
 import { subscribeToRegisteredMembers, fetchAllRegisteredMembers, deleteMemberByAdmin } from '../../firebase';
 import { SocietyLogo } from '../SocietyLogo';
 
@@ -135,7 +135,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
 
-  const isAdmin = userProfile.isAdmin || userProfile.gmail?.toLowerCase() === 'vjana537@gmail.com';
+  const isAdmin = isUserAdmin(userProfile);
 
   // Load members from Firebase with real-time listener
   useEffect(() => {
@@ -360,7 +360,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
   if (!isAdmin) {
     return (
       <div className="min-h-[300px] flex items-center justify-center p-4">
-        <div className="max-w-md w-full p-5 sm:p-6 rounded-2xl bg-[#0B1528] border border-[#1E2E48] text-center space-y-3.5 shadow-xl">
+        <div className="max-w-md w-full p-5 sm:p-6 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 text-center space-y-3.5 shadow-xl">
           <div className="w-12 h-12 rounded-xl bg-red-950/40 border border-red-500/40 text-red-400 mx-auto flex items-center justify-center shadow-lg">
             <ShieldCheck className="w-6 h-6" />
           </div>
@@ -371,7 +371,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             The Members List registry is strictly confidential and reserved for Declamate&apos;s Society Administrators.
           </p>
           <div className="pt-2 text-[11px] text-slate-400 font-mono">
-            Signed in as: <span className="text-[#C5A880]">{userProfile.gmail || 'Guest'}</span>
+            Signed in as: <span className="text-[#BFA373]">{userProfile.gmail || 'Guest'}</span>
           </div>
         </div>
       </div>
@@ -381,11 +381,11 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 text-slate-100 max-w-full">
       {/* Top Header Banner - Stats & Actions */}
-      <div className="rounded-2xl bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] text-white p-3.5 sm:p-5 border border-[#C5A880]/40 shadow-xl relative overflow-hidden space-y-3.5">
+      <div className="rounded-2xl bg-gradient-to-br from-[#06111F] via-[#06111F] to-[#06111F] text-white p-3.5 sm:p-5 border border-[#BFA373]/40 shadow-xl relative overflow-hidden space-y-3.5">
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="p-3 rounded-xl bg-[#030712]/90 border border-[#1E2E48] text-center shadow-inner">
-            <span className="text-lg sm:text-2xl font-bold font-cinzel text-[#C5A880] block leading-tight">
+          <div className="p-3 rounded-xl bg-[#06111F]/90 border border-[#BFA373]/30 text-center shadow-inner">
+            <span className="text-lg sm:text-2xl font-bold font-cinzel text-[#BFA373] block leading-tight">
               {members.length}
             </span>
             <span className="text-[9px] sm:text-xs uppercase tracking-wider text-slate-300 font-semibold font-cinzel">
@@ -398,7 +398,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             className={`p-3 rounded-xl border text-center shadow-inner cursor-pointer transition-all ${
               selectedRoleFilter === 'EC_ONLY' 
                 ? 'bg-amber-950/40 border-amber-500/60' 
-                : 'bg-[#030712]/90 border-[#1E2E48] hover:border-amber-500/40'
+                : 'bg-[#06111F]/90 border-[#BFA373]/30 hover:border-amber-500/40'
             }`}
             title="Click to filter Executive Committee"
           >
@@ -411,7 +411,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             </span>
           </div>
 
-          <div className="p-3 rounded-xl bg-[#030712]/90 border border-[#1E2E48] text-center shadow-inner">
+          <div className="p-3 rounded-xl bg-[#06111F]/90 border border-[#BFA373]/30 text-center shadow-inner">
             <span className="text-lg sm:text-2xl font-bold font-cinzel text-emerald-400 block leading-tight">
               {departmentOptions.length}
             </span>
@@ -422,7 +422,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
         </div>
 
         {/* Live status badge & Actions */}
-        <div className="pt-3 border-t border-[#1E2E48]/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="pt-3 border-t border-[#BFA373]/30/80 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-300 text-[11px] sm:text-xs font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span>Firebase Synced</span>
@@ -433,7 +433,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0E1E38] hover:bg-[#152B4D] border border-[#1E2E48] hover:border-[#C5A880]/50 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#06111F] hover:bg-[#BFA373]/30 border border-[#BFA373]/30 hover:border-[#BFA373]/50 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
               title="Download CSV file"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
@@ -443,10 +443,10 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             <button
               onClick={handleManualRefresh}
               disabled={isLoading}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-[#0E1E38] hover:bg-[#152B4D] border border-[#1E2E48] hover:border-[#C5A880]/50 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-lg bg-[#06111F] hover:bg-[#BFA373]/30 border border-[#BFA373]/30 hover:border-[#BFA373]/50 text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
               title="Refresh member data"
             >
-              <RefreshCw className={`w-4 h-4 text-[#C5A880] ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 text-[#BFA373] ${isLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
@@ -470,7 +470,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
       )}
 
       {/* Search Bar & Filter Section */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-[#0B1528] border border-[#1E2E48] shadow-lg space-y-3">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-[#06111F] border border-[#BFA373]/30 shadow-lg space-y-3">
         {/* Search Bar Input */}
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -479,7 +479,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by member name, role (e.g. President, Secretary), phone, department..."
-            className="w-full bg-[#030712] border border-[#1E2E48] focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-lg pl-9.5 pr-8 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none transition-all"
+            className="w-full bg-[#06111F] border border-[#BFA373]/30 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-lg pl-9.5 pr-8 py-2.5 text-xs sm:text-sm text-white placeholder:text-slate-500 outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -500,14 +500,14 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
                 isFilterOpen || activeFilterCount > 0
-                  ? 'bg-[#C5A880]/20 border-[#C5A880] text-[#C5A880]'
-                  : 'bg-[#030712] border-[#1E2E48] text-slate-300 hover:text-white hover:border-slate-500'
+                  ? 'bg-[#BFA373]/20 border-[#BFA373] text-[#BFA373]'
+                  : 'bg-[#06111F] border-[#BFA373]/30 text-slate-300 hover:text-white hover:border-slate-500'
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
               <span>Filters</span>
               {activeFilterCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-[#C5A880] text-[#0A192F] text-[10px] font-bold">
+                <span className="px-1.5 py-0.2 rounded-full bg-[#BFA373] text-[#06111F] text-[10px] font-bold">
                   {activeFilterCount}
                 </span>
               )}
@@ -521,7 +521,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
                 selectedRoleFilter === 'EC_ONLY'
                   ? 'bg-amber-950/70 border-amber-500 text-amber-300'
-                  : 'bg-[#030712] border-[#1E2E48] text-slate-300 hover:text-amber-300 hover:border-amber-500/40'
+                  : 'bg-[#06111F] border-[#BFA373]/30 text-slate-300 hover:text-amber-300 hover:border-amber-500/40'
               }`}
             >
               <Crown className="w-3 h-3 text-amber-400" />
@@ -530,14 +530,14 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           </div>
 
           <div className="text-[11px] text-slate-400">
-            Showing <span className="text-[#C5A880] font-bold">{filteredMembers.length}</span> of{' '}
+            Showing <span className="text-[#BFA373] font-bold">{filteredMembers.length}</span> of{' '}
             <span className="text-white font-bold">{members.length}</span> members
           </div>
         </div>
 
         {/* Expandable Filter Options */}
         {isFilterOpen && (
-          <div className="pt-3 border-t border-[#1E2E48]/80 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="pt-3 border-t border-[#BFA373]/30/80 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
               {/* Executive Role Filter */}
               <div className="space-y-1">
@@ -547,7 +547,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                 <select
                   value={selectedRoleFilter}
                   onChange={(e) => setSelectedRoleFilter(e.target.value)}
-                  className="w-full bg-[#030712] border border-[#1E2E48] focus:border-[#C5A880] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer"
+                  className="w-full bg-[#06111F] border border-[#BFA373]/30 focus:border-[#BFA373] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer"
                 >
                   <option value="ALL">All Roles &amp; Members</option>
                   <option value="EC_ONLY">⭐ All Executive Committee</option>
@@ -569,7 +569,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-full bg-[#030712] border border-[#1E2E48] focus:border-[#C5A880] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer"
+                  className="w-full bg-[#06111F] border border-[#BFA373]/30 focus:border-[#BFA373] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer"
                 >
                   <option value="ALL">All Years</option>
                   <option value="1st Year">1st Year (I Year)</option>
@@ -593,7 +593,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                 <select
                   value={selectedDept}
                   onChange={(e) => setSelectedDept(e.target.value)}
-                  className="w-full bg-[#030712] border border-[#1E2E48] focus:border-[#C5A880] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer truncate"
+                  className="w-full bg-[#06111F] border border-[#BFA373]/30 focus:border-[#BFA373] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer truncate"
                 >
                   <option value="ALL">All Departments ({members.length})</option>
                   {departmentOptions.map((dept) => (
@@ -612,7 +612,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
-                  className="w-full bg-[#030712] border border-[#1E2E48] focus:border-[#C5A880] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer truncate"
+                  className="w-full bg-[#06111F] border border-[#BFA373]/30 focus:border-[#BFA373] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none transition-all cursor-pointer truncate"
                 >
                   <option value="ALL">All Classes</option>
                   {classOptions.map((cls) => (
@@ -627,7 +627,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             {/* Active Filters Reset */}
             {activeFilterCount > 0 && (
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-[#C5A880]">Active filters applied</span>
+                <span className="text-[11px] text-[#BFA373]">Active filters applied</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -648,13 +648,13 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
 
       {/* Main Members Data Display */}
       {isLoading ? (
-        <div className="p-8 sm:p-12 text-center rounded-2xl bg-[#0B1528] border border-[#1E2E48] space-y-3">
-          <RefreshCw className="w-6 h-6 text-[#C5A880] animate-spin mx-auto" />
+        <div className="p-8 sm:p-12 text-center rounded-2xl bg-[#06111F] border border-[#BFA373]/30 space-y-3">
+          <RefreshCw className="w-6 h-6 text-[#BFA373] animate-spin mx-auto" />
           <p className="font-cinzel text-sm text-slate-300">Loading registered members from database...</p>
         </div>
       ) : filteredMembers.length === 0 ? (
-        <div className="p-8 sm:p-12 text-center rounded-2xl bg-[#0B1528] border border-[#1E2E48] space-y-3">
-          <div className="w-10 h-10 rounded-xl bg-[#030712] border border-[#1E2E48] text-slate-400 flex items-center justify-center mx-auto">
+        <div className="p-8 sm:p-12 text-center rounded-2xl bg-[#06111F] border border-[#BFA373]/30 space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-slate-400 flex items-center justify-center mx-auto">
             <Users className="w-5 h-5" />
           </div>
           <h3 className="font-cinzel text-base font-bold text-white">No Members Found</h3>
@@ -669,7 +669,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           {/* PHONE & TABLET AUTO-VIEW: Clean & Minimal Cards */}
           <div className="block lg:hidden space-y-2.5 sm:space-y-3">
             {filteredMembers.map((member, index) => {
-              const isUserAdmin = member.isAdmin || member.gmail?.toLowerCase() === 'vjana537@gmail.com';
+              const isMemberAdmin = isUserAdmin(member);
               const rowId = member.id || `member-card-${index}`;
               const roleConfig = getRoleConfig(member.executiveRole);
 
@@ -679,8 +679,8 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                   onClick={() => setSelectedMemberModal(member)}
                   className={`p-3 sm:p-4 rounded-xl border transition-all shadow-md cursor-pointer group relative flex flex-col gap-2.5 text-slate-200 ${
                     member.executiveRole
-                      ? 'bg-[#0B1528] border-amber-500/40 hover:border-amber-400'
-                      : 'bg-[#0B1528] border-[#1E2E48] hover:border-[#C5A880]'
+                      ? 'bg-[#06111F] border-amber-500/40 hover:border-amber-400'
+                      : 'bg-[#06111F] border-[#BFA373]/30 hover:border-[#BFA373]'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3 min-w-0">
@@ -690,21 +690,21 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                         <img
                           src={member.photoUrl}
                           alt={member.name}
-                          className="w-11 h-11 rounded-full object-cover border border-[#C5A880] shrink-0"
+                          className="w-11 h-11 rounded-full object-cover border border-[#BFA373] shrink-0"
                         />
                       ) : (
-                        <div className="w-11 h-11 rounded-full bg-[#030712] border border-[#C5A880] flex items-center justify-center text-[#C5A880] font-bold text-sm shrink-0">
+                        <div className="w-11 h-11 rounded-full bg-[#06111F] border border-[#BFA373] flex items-center justify-center text-[#BFA373] font-bold text-sm shrink-0">
                           {member.name ? member.name[0].toUpperCase() : 'M'}
                         </div>
                       )}
 
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h4 className="font-cinzel font-bold text-white text-sm truncate group-hover:text-[#C5A880] transition-colors">
+                          <h4 className="font-cinzel font-bold text-white text-sm truncate group-hover:text-[#BFA373] transition-colors">
                             {member.name || 'Member'}
                           </h4>
-                          {isUserAdmin && (
-                            <span className="px-1.5 py-0.2 text-[8px] rounded bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40 font-bold uppercase shrink-0">
+                          {isMemberAdmin && (
+                            <span className="px-1.5 py-0.2 text-[8px] rounded bg-[#BFA373]/20 text-[#BFA373] border border-[#BFA373]/40 font-bold uppercase shrink-0">
                               ADMIN
                             </span>
                           )}
@@ -736,10 +736,10 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
 
                         {/* Department & Year Badges */}
                         <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                          <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[10px] text-[#C5A880] font-medium">
+                          <span className="px-1.5 py-0.5 rounded bg-[#06111F] border border-[#BFA373]/30 text-[10px] text-[#BFA373] font-medium">
                             {member.department || 'General'}
                           </span>
-                          <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[10px] text-slate-300 font-medium">
+                          <span className="px-1.5 py-0.5 rounded bg-[#06111F] border border-[#BFA373]/30 text-[10px] text-slate-300 font-medium">
                             {member.year || 'I Year'}
                           </span>
                         </div>
@@ -754,12 +754,12 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                           e.stopPropagation();
                           setMemberToDelete(member);
                         }}
-                        className="p-2 rounded-lg bg-[#030712] hover:bg-red-950/50 border border-[#1E2E48] hover:border-red-500/40 text-slate-400 hover:text-red-400 transition-colors"
+                        className="p-2 rounded-lg bg-[#06111F] hover:bg-red-950/50 border border-[#BFA373]/30 hover:border-red-500/40 text-slate-400 hover:text-red-400 transition-colors"
                         title="Delete Member"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                      <div className="p-1 text-slate-500 group-hover:text-[#C5A880] transition-colors">
+                      <div className="p-1 text-slate-500 group-hover:text-[#BFA373] transition-colors">
                         <ChevronRight className="w-5 h-5" />
                       </div>
                     </div>
@@ -770,12 +770,12 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           </div>
 
           {/* LAPTOP & DESKTOP AUTO-VIEW: Full Widescreen Table */}
-          <div className="hidden lg:block rounded-xl bg-[#0B1528] border border-[#1E2E48] shadow-xl overflow-hidden max-w-full">
+          <div className="hidden lg:block rounded-xl bg-[#06111F] border border-[#BFA373]/30 shadow-xl overflow-hidden max-w-full">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 {/* Table Header */}
                 <thead>
-                  <tr className="bg-[#050B14] border-b border-[#1E2E48] text-slate-400 font-cinzel text-[10px] uppercase tracking-wider">
+                  <tr className="bg-[#06111F] border-b border-[#BFA373]/30 text-slate-400 font-cinzel text-[10px] uppercase tracking-wider">
                     <th className="py-2.5 px-3 font-bold text-center w-10">#</th>
                     <th className="py-2.5 px-3 font-bold min-w-[160px]">Member</th>
                     <th className="py-2.5 px-3 font-bold min-w-[170px]">Executive Committee Role</th>
@@ -789,9 +789,9 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                 </thead>
 
                 {/* Table Body */}
-                <tbody className="divide-y divide-[#1E2E48]/60 text-slate-200">
+                <tbody className="divide-y divide-[#BFA373]/30/60 text-slate-200">
                   {filteredMembers.map((member, index) => {
-                    const isUserAdmin = member.isAdmin || member.gmail?.toLowerCase() === 'vjana537@gmail.com';
+                    const isMemberAdmin = isUserAdmin(member);
                     const rowId = member.id || `member-${index}`;
                     const isPasswordRevealed = revealedPasswords[rowId];
                     const roleConfig = getRoleConfig(member.executiveRole);
@@ -799,7 +799,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                     return (
                       <tr
                         key={rowId}
-                        className={`hover:bg-[#0E1E38]/80 transition-colors ${
+                        className={`hover:bg-[#06111F]/80 transition-colors ${
                           member.executiveRole ? 'bg-amber-950/10' : ''
                         }`}
                       >
@@ -815,10 +815,10 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                               <img
                                 src={member.photoUrl}
                                 alt={member.name}
-                                className="w-7 h-7 rounded-full object-cover border border-[#C5A880]/70 shrink-0"
+                                className="w-7 h-7 rounded-full object-cover border border-[#BFA373]/70 shrink-0"
                               />
                             ) : (
-                              <div className="w-7 h-7 rounded-full bg-[#030712] border border-[#C5A880]/40 flex items-center justify-center text-[#C5A880] font-bold text-[10px] shrink-0">
+                              <div className="w-7 h-7 rounded-full bg-[#06111F] border border-[#BFA373]/40 flex items-center justify-center text-[#BFA373] font-bold text-[10px] shrink-0">
                                 {member.name ? member.name[0].toUpperCase() : 'M'}
                               </div>
                             )}
@@ -827,8 +827,8 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                                 <p className="font-semibold text-white truncate text-xs font-cinzel">
                                   {member.name || 'Member'}
                                 </p>
-                                {isUserAdmin && (
-                                  <span className="px-1 py-0 text-[8px] rounded bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40 font-bold uppercase shrink-0">
+                                {isMemberAdmin && (
+                                  <span className="px-1 py-0 text-[8px] rounded bg-[#BFA373]/20 text-[#BFA373] border border-[#BFA373]/40 font-bold uppercase shrink-0">
                                     ADMIN
                                   </span>
                                 )}
@@ -876,7 +876,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                           <div className="flex items-center gap-1 font-mono text-xs">
                             <a
                               href={`mailto:${member.gmail}`}
-                              className="text-slate-300 hover:text-[#C5A880] truncate max-w-[140px]"
+                              className="text-slate-300 hover:text-[#BFA373] truncate max-w-[140px]"
                               title={member.gmail}
                             >
                               {member.gmail || 'N/A'}
@@ -903,7 +903,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                             <div className="flex items-center gap-1 font-mono text-xs">
                               <a
                                 href={`tel:${member.phone}`}
-                                className="text-slate-300 hover:text-[#C5A880]"
+                                className="text-slate-300 hover:text-[#BFA373]"
                               >
                                 {member.phone}
                               </a>
@@ -926,14 +926,14 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
 
                         {/* Academic Year */}
                         <td className="py-2.5 px-3">
-                          <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[11px] font-medium text-[#C5A880] whitespace-nowrap">
+                          <span className="px-1.5 py-0.5 rounded bg-[#06111F] border border-[#BFA373]/30 text-[11px] font-medium text-[#BFA373] whitespace-nowrap">
                             {member.year || 'I Year'}
                           </span>
                         </td>
 
                         {/* Department */}
                         <td className="py-2.5 px-3">
-                          <span className="px-1.5 py-0.5 rounded bg-[#030712] border border-[#1E2E48] text-[11px] font-semibold text-white whitespace-nowrap">
+                          <span className="px-1.5 py-0.5 rounded bg-[#06111F] border border-[#BFA373]/30 text-[11px] font-semibold text-white whitespace-nowrap">
                             {member.department || 'General'}
                           </span>
                         </td>
@@ -941,7 +941,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                         {/* Password */}
                         <td className="py-2.5 px-3 font-mono text-xs">
                           {member.password ? (
-                            <div className="flex items-center gap-1 bg-[#030712] px-1.5 py-0.5 rounded border border-[#1E2E48] w-fit">
+                            <div className="flex items-center gap-1 bg-[#06111F] px-1.5 py-0.5 rounded border border-[#BFA373]/30 w-fit">
                               <span className="text-slate-300">
                                 {isPasswordRevealed ? member.password : '••••••••'}
                               </span>
@@ -952,7 +952,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                                 title={isPasswordRevealed ? 'Hide Password' : 'Show Password'}
                               >
                                 {isPasswordRevealed ? (
-                                  <EyeOff className="w-3 h-3 text-[#C5A880]" />
+                                  <EyeOff className="w-3 h-3 text-[#BFA373]" />
                                 ) : (
                                   <Eye className="w-3 h-3" />
                                 )}
@@ -980,7 +980,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => setSelectedMemberModal(member)}
-                              className="p-1 rounded-lg bg-[#030712] hover:bg-[#112240] border border-[#1E2E48] text-[#C5A880] hover:text-white transition-colors"
+                              className="p-1 rounded-lg bg-[#06111F] hover:bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] hover:text-white transition-colors"
                               title="View Full Profile"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -988,7 +988,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
 
                             <button
                               onClick={() => setMemberToDelete(member)}
-                              className="p-1 rounded-lg bg-[#030712] hover:bg-red-950/50 border border-[#1E2E48] hover:border-red-500/50 text-slate-400 hover:text-red-400 transition-colors"
+                              className="p-1 rounded-lg bg-[#06111F] hover:bg-red-950/50 border border-[#BFA373]/30 hover:border-red-500/50 text-slate-400 hover:text-red-400 transition-colors"
                               title="Remove Member"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1012,16 +1012,16 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           onClick={() => setSelectedMemberModal(null)}
         >
           <div
-            className="w-full max-w-lg bg-[#0B1528] border border-[#C5A880]/50 rounded-2xl p-4 sm:p-6 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-lg bg-[#06111F] border border-[#BFA373]/50 rounded-2xl p-4 sm:p-6 space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#1E2E48] pb-3">
+            <div className="flex items-center justify-between border-b border-[#BFA373]/30 pb-3">
               <div className="flex items-center gap-2.5">
                 <SocietyLogo size="sm" />
                 <div>
                   <h3 className="font-cinzel font-bold text-white text-base sm:text-lg">Member Dossier</h3>
-                  <p className="text-[10px] text-[#C5A880] font-medium font-cinzel">Declamate&apos;s Society Registry</p>
+                  <p className="text-[10px] text-[#BFA373] font-medium font-cinzel">Declamate&apos;s Society Registry</p>
                 </div>
               </div>
               <button
@@ -1033,15 +1033,15 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             </div>
 
             {/* Profile Avatar & Primary Info */}
-            <div className="flex items-center gap-3 bg-[#030712] p-3 rounded-xl border border-[#1E2E48]">
+            <div className="flex items-center gap-3 bg-[#06111F] p-3 rounded-xl border border-[#BFA373]/30">
               {selectedMemberModal.photoUrl ? (
                 <img
                   src={selectedMemberModal.photoUrl}
                   alt={selectedMemberModal.name}
-                  className="w-12 h-12 rounded-full object-cover border border-[#C5A880]"
+                  className="w-12 h-12 rounded-full object-cover border border-[#BFA373]"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-[#0A192F] border border-[#C5A880] text-[#C5A880] font-bold text-lg flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-[#06111F] border border-[#BFA373] text-[#BFA373] font-bold text-lg flex items-center justify-center">
                   {selectedMemberModal.name ? selectedMemberModal.name[0].toUpperCase() : 'M'}
                 </div>
               )}
@@ -1051,12 +1051,12 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
                     {selectedMemberModal.name}
                   </h4>
                   {selectedMemberModal.isAdmin && (
-                    <span className="px-1.5 py-0.2 text-[8px] rounded bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40 font-bold uppercase">
+                    <span className="px-1.5 py-0.2 text-[8px] rounded bg-[#BFA373]/20 text-[#BFA373] border border-[#BFA373]/40 font-bold uppercase">
                       Admin
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[#C5A880] font-medium mt-0.5">
+                <p className="text-xs text-[#BFA373] font-medium mt-0.5">
                   {selectedMemberModal.year} &bull; {selectedMemberModal.department}
                 </p>
                 <p className="text-[11px] text-slate-400 truncate font-sans">
@@ -1066,7 +1066,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             </div>
 
             {/* Club Roles & Honors Info (View-Only) */}
-            <div className="p-3.5 rounded-xl bg-[#030712] border border-[#1E2E48] flex items-center justify-between gap-2 flex-wrap">
+            <div className="p-3.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 flex items-center justify-between gap-2 flex-wrap">
               <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
                 <Crown className="w-4 h-4 text-amber-400" />
                 <span>Club Roles &amp; Honors:</span>
@@ -1100,43 +1100,43 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
 
             {/* Detailed Key-Value Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] space-y-0.5">
+              <div className="p-2.5 rounded-lg bg-[#06111F] border border-[#BFA373]/30 space-y-0.5">
                 <span className="text-slate-400 block text-[10px]">Gmail Address</span>
                 <span className="font-mono text-white select-all block truncate">
                   {selectedMemberModal.gmail || 'N/A'}
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] space-y-0.5">
+              <div className="p-2.5 rounded-lg bg-[#06111F] border border-[#BFA373]/30 space-y-0.5">
                 <span className="text-slate-400 block text-[10px]">Phone Contact</span>
                 <span className="font-mono text-white select-all block">
                   {selectedMemberModal.phone || 'N/A'}
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] space-y-0.5">
+              <div className="p-2.5 rounded-lg bg-[#06111F] border border-[#BFA373]/30 space-y-0.5">
                 <span className="text-slate-400 block text-[10px]">Department</span>
                 <span className="font-semibold text-white block">
                   {selectedMemberModal.department || 'N/A'}
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] space-y-0.5">
+              <div className="p-2.5 rounded-lg bg-[#06111F] border border-[#BFA373]/30 space-y-0.5">
                 <span className="text-slate-400 block text-[10px]">Class / Specialization</span>
                 <span className="font-semibold text-white block">
                   {selectedMemberModal.className || 'Not specified'}
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] space-y-0.5 sm:col-span-2">
+              <div className="p-2.5 rounded-lg bg-[#06111F] border border-[#BFA373]/30 space-y-0.5 sm:col-span-2">
                 <span className="text-slate-400 block text-[10px]">Registered Password</span>
-                <span className="font-mono text-[#C5A880] select-all block text-xs">
+                <span className="font-mono text-[#BFA373] select-all block text-xs">
                   {selectedMemberModal.password || '(Google Authentication)'}
                 </span>
               </div>
 
               {selectedMemberModal.createdAt && (
-                <div className="p-2.5 rounded-lg bg-[#030712] border border-[#1E2E48] space-y-0.5 sm:col-span-2">
+                <div className="p-2.5 rounded-lg bg-[#06111F] border border-[#BFA373]/30 space-y-0.5 sm:col-span-2">
                   <span className="text-slate-400 block text-[10px]">Registration Timestamp</span>
                   <span className="font-mono text-slate-300 block text-[11px]">
                     {new Date(selectedMemberModal.createdAt).toLocaleString()}
@@ -1146,10 +1146,10 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
             </div>
 
             {/* Modal Bottom Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#1E2E48]/80">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#BFA373]/30/80">
               <button
                 onClick={() => setSelectedMemberModal(null)}
-                className="px-4 py-2 rounded-lg bg-[#030712] hover:bg-[#1E2E48] text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer border border-[#1E2E48]"
+                className="px-4 py-2 rounded-lg bg-[#06111F] hover:bg-[#BFA373]/30 text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer border border-[#BFA373]/30"
               >
                 Close
               </button>
@@ -1165,7 +1165,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
           onClick={() => setMemberToDelete(null)}
         >
           <div
-            className="w-full max-w-md bg-[#0B1528] border border-red-500/50 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200"
+            className="w-full max-w-md bg-[#06111F] border border-red-500/50 rounded-2xl p-4 sm:p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-10 rounded-xl bg-red-950/50 border border-red-500/50 text-red-400 flex items-center justify-center mx-auto">
@@ -1183,7 +1183,7 @@ export const MembersListTab: React.FC<MembersListTabProps> = ({ userProfile }) =
               <button
                 onClick={() => setMemberToDelete(null)}
                 disabled={isDeleting}
-                className="py-2 px-3 rounded-lg bg-[#030712] hover:bg-[#1E2E48] text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer border border-[#1E2E48]"
+                className="py-2 px-3 rounded-lg bg-[#06111F] hover:bg-[#BFA373]/30 text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer border border-[#BFA373]/30"
               >
                 Cancel
               </button>

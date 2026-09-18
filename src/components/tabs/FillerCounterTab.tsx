@@ -536,8 +536,8 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300 pb-20">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-[#0E1F36] border border-[#C5A880] text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs animate-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-[#C5A880] shrink-0" />
+        <div className="fixed top-20 right-4 z-50 bg-[#06111F] border border-[#BFA373] text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs animate-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-[#BFA373] shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -560,7 +560,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
       </div>
 
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-[#050B14] border border-[#1E2E48] shadow-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 shadow-xl">
         <div className="flex items-center gap-3">
           {step === 'counter' && (
             <button
@@ -574,14 +574,14 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                 }
                 setStep('form');
               }}
-              className="p-2 rounded-xl bg-[#081220] hover:bg-[#0E1E38] text-slate-300 hover:text-white border border-[#1E2E48] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer mr-1"
+              className="p-2 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-slate-300 hover:text-white border border-[#BFA373]/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer mr-1"
               title="Back to Speaker Details"
             >
-              <ArrowLeft className="w-4 h-4 text-[#C5A880]" />
+              <ArrowLeft className="w-4 h-4 text-[#BFA373]" />
               <span>Back</span>
             </button>
           )}
-          <SocietyLogo size="sm" className="border border-[#C5A880]/60 shadow-md shrink-0" />
+          <SocietyLogo size="sm" className="border border-[#BFA373]/60 shadow-md shrink-0" />
           <h2 className="font-cinzel text-base sm:text-xl font-bold text-white tracking-wider">
             FILLER COUNTER
           </h2>
@@ -592,11 +592,11 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
       {/* STEP 1: SETUP FORM (Same as Time Steward: Speaker & Meeting Number)    */}
       {/* ===================================================================== */}
       {step === 'form' && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-[#050B14] border border-[#1E2E48] shadow-2xl space-y-6">
+        <div className="p-6 sm:p-8 rounded-3xl bg-[#06111F] border border-[#BFA373]/30 shadow-2xl space-y-6">
           <div className="space-y-5">
             {/* Choose the Member Field (Same as Time Steward) */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#C5A880] font-cinzel uppercase tracking-wider">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
                 Choose The Member:
               </label>
 
@@ -616,7 +616,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                           ? 'No members appointed yet by Admin in Speaker Roles...'
                           : 'Click to choose an appointed member...'
                       }
-                      className="w-full pl-3 pr-10 py-3 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors cursor-pointer text-sm"
+                      className="w-full pl-3 pr-10 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors cursor-pointer text-sm"
                     />
                     <button
                       type="button"
@@ -667,10 +667,10 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
 
                 {/* Speaker Scroll-Down Dropdown - Appointed Roles with Dropdown Arrows */}
                 {showSpeakerDropdown && (
-                  <div className="absolute top-full left-0 right-0 z-30 mt-1.5 bg-[#081220] border border-[#1E2E48] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1">
+                  <div className="absolute top-full left-0 right-0 z-30 mt-1.5 bg-[#06111F] border border-[#BFA373]/30 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1">
                     {/* Dropdown Header */}
-                    <div className="p-3 bg-[#050B14] border-b border-[#1E2E48] flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-[#C5A880] text-xs font-bold uppercase tracking-wider font-cinzel">
+                    <div className="p-3 bg-[#06111F] border-b border-[#BFA373]/30 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[#BFA373] text-xs font-bold uppercase tracking-wider font-cinzel">
                         <Mic className="w-3.5 h-3.5 text-amber-400" />
                         <span>Appointed Members</span>
                       </div>
@@ -684,7 +684,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                     </div>
 
                     {/* Dropdown List Body: Grouped by Role with Dropdown Arrow */}
-                    <div className="max-h-80 overflow-y-auto divide-y divide-[#1E2E48]/60">
+                    <div className="max-h-80 overflow-y-auto divide-y divide-[#BFA373]/30/60">
                       {appointedSpeakers.length === 0 ? (
                         <div className="p-5 text-center space-y-2">
                           <p className="text-xs text-amber-300 font-semibold">
@@ -703,12 +703,12 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                           const expanded = isRoleExpanded(item.role);
 
                           return (
-                            <div key={item.role} className="bg-[#050B14]/40">
+                            <div key={item.role} className="bg-[#06111F]/40">
                               {/* Role Tag Header with Dropdown Arrow */}
                               <button
                                 type="button"
                                 onClick={() => toggleRole(item.role)}
-                                className="w-full px-3.5 py-2.5 bg-[#050B14] hover:bg-[#0A192F] flex items-center justify-between transition-colors border-b border-[#1E2E48]/60 cursor-pointer text-left"
+                                className="w-full px-3.5 py-2.5 bg-[#06111F] hover:bg-[#06111F] flex items-center justify-between transition-colors border-b border-[#BFA373]/30/60 cursor-pointer text-left"
                               >
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
@@ -727,7 +727,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
 
                               {/* Members under this role */}
                               {expanded && (
-                                <div className="divide-y divide-[#1E2E48]/30 bg-[#030712]">
+                                <div className="divide-y divide-[#BFA373]/30/30 bg-[#06111F]">
                                   {item.members.map((m) => {
                                     const existingRecord = getStoredRecordForMember(m);
                                     const isAlreadyStored = Boolean(existingRecord);
@@ -750,10 +750,10 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                                         }}
                                         className={`w-full text-left px-4 py-3 text-xs flex items-center justify-between transition-colors ${
                                           isAlreadyStored
-                                            ? 'opacity-60 cursor-not-allowed bg-[#02050B] border-l-2 border-emerald-500/50 hover:bg-[#02050B]'
+                                            ? 'opacity-60 cursor-not-allowed bg-[#06111F] border-l-2 border-emerald-500/50 hover:bg-[#06111F]'
                                             : isSelected
                                             ? 'bg-amber-950/40 text-amber-300 cursor-pointer'
-                                            : 'hover:bg-[#0E1F36] text-white cursor-pointer'
+                                            : 'hover:bg-[#06111F] text-white cursor-pointer'
                                         }`}
                                         title={
                                           isAlreadyStored
@@ -777,7 +777,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                                             )}
                                           </div>
                                           {deptDisplay ? (
-                                            <div className="text-xs text-[#C5A880] font-medium">
+                                            <div className="text-xs text-[#BFA373] font-medium">
                                               {deptDisplay}
                                             </div>
                                           ) : null}
@@ -818,7 +818,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
 
             {/* Meeting Number Field */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-[#C5A880] font-cinzel uppercase tracking-wider">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
                 Meeting Number:
               </label>
               <input
@@ -826,17 +826,17 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                 value={meetingNumber}
                 onChange={(e) => setMeetingNumber(e.target.value)}
                 placeholder="e.g. 1st Meeting"
-                className="w-full px-3.5 py-3 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
+                className="w-full px-3.5 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
               />
             </div>
           </div>
 
           {/* Next Button */}
-          <div className="pt-4 border-t border-[#1E2E48] flex justify-end">
+          <div className="pt-4 border-t border-[#BFA373]/30 flex justify-end">
             <button
               type="button"
               onClick={handleProceedToCounter}
-              className="px-6 py-3 rounded-xl bg-[#C5A880] hover:bg-[#d8bd98] text-[#0A192F] font-cinzel font-bold text-sm flex items-center gap-2 shadow-lg shadow-[#C5A880]/20 transition-all cursor-pointer hover:translate-x-0.5 active:scale-95"
+              className="px-6 py-3 rounded-xl bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] font-cinzel font-bold text-sm flex items-center gap-2 shadow-lg shadow-[#BFA373]/20 transition-all cursor-pointer hover:translate-x-0.5 active:scale-95"
             >
               <span>Next to Filler Counter Log</span>
               <ArrowRight className="w-4 h-4" />
@@ -873,10 +873,10 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                 return (
                   <div
                     key={item.key}
-                    className="relative p-3.5 sm:p-4 rounded-2xl bg-[#050B14] border border-[#1E2E48] hover:border-[#C5A880]/60 flex flex-col justify-between transition-all shadow-md group"
+                    className="relative p-3.5 sm:p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-[#BFA373]/60 flex flex-col justify-between transition-all shadow-md group"
                   >
                     {/* Header: Centered Word Label */}
-                    <div className="flex items-center justify-center pb-2 border-b border-[#1E2E48]/60">
+                    <div className="flex items-center justify-center pb-2 border-b border-[#BFA373]/30/60">
                       <span className="text-sm sm:text-base font-bold text-white tracking-wide text-center">
                         {item.label}
                       </span>
@@ -887,7 +887,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                       <button
                         type="button"
                         onClick={() => handleIncrement(item.key)}
-                        className="w-full py-4 sm:py-5 rounded-2xl bg-[#0B172A] hover:bg-[#112440] active:scale-95 border border-[#1E2E48] hover:border-[#C5A880] transition-all flex flex-col items-center justify-center cursor-pointer shadow-inner select-none"
+                        className="w-full py-4 sm:py-5 rounded-2xl bg-[#06111F] hover:bg-[#06111F] active:scale-95 border border-[#BFA373]/30 hover:border-[#BFA373] transition-all flex flex-col items-center justify-center cursor-pointer shadow-inner select-none"
                       >
                         <span
                           className={`text-3xl sm:text-4xl font-mono font-black ${
@@ -896,7 +896,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                         >
                           {count}
                         </span>
-                        <div className="flex items-center gap-1 text-[11px] font-bold text-[#C5A880] mt-1">
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-[#BFA373] mt-1">
                           <Plus className="w-3.5 h-3.5" />
                           <span>TAP +1</span>
                         </div>
@@ -904,12 +904,12 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                     </div>
 
                     {/* Bottom Controls: Decrement */}
-                    <div className="flex items-center justify-end pt-2 border-t border-[#1E2E48]/60 text-[10px]">
+                    <div className="flex items-center justify-end pt-2 border-t border-[#BFA373]/30/60 text-[10px]">
                       <button
                         type="button"
                         disabled={count === 0}
                         onClick={() => handleDecrement(item.key)}
-                        className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-400 hover:text-white border border-[#1E2E48] transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-400 hover:text-white border border-[#BFA373]/30 transition-colors cursor-pointer"
                         title="Subtract 1"
                       >
                         <Minus className="w-3 h-3" />
@@ -921,8 +921,8 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
             </div>
 
             {/* Other Fillers Details Input */}
-            <div className="p-4 rounded-2xl bg-[#050B14] border border-[#1E2E48] space-y-2">
-              <label className="block text-xs font-bold text-[#C5A880] font-cinzel uppercase tracking-wider">
+            <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 space-y-2">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
                 Other Fillers (Please Specify):
               </label>
               <input
@@ -930,18 +930,18 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                 value={otherDetails}
                 onChange={(e) => setOtherDetails(e.target.value)}
                 placeholder='e.g., "you know" x2, "basically" x1, "actually" x1'
-                className="w-full px-3.5 py-2.5 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white text-xs font-semibold placeholder:text-slate-500 transition-colors"
+                className="w-full px-3.5 py-2.5 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white text-xs font-semibold placeholder:text-slate-500 transition-colors"
               />
             </div>
           </div>
 
           {/* Submit Report Bar */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-[#050B14] border border-[#1E2E48] flex items-center justify-center shadow-xl">
+          <div className="p-4 sm:p-5 rounded-3xl bg-[#06111F] border border-[#BFA373]/30 flex items-center justify-center shadow-xl">
             <button
               type="button"
               onClick={handleSubmitReport}
               disabled={isSubmitting}
-              className="w-full sm:w-auto min-w-[240px] px-8 py-3.5 rounded-2xl bg-[#C5A880] hover:bg-[#d8bd98] text-[#0A192F] font-cinzel font-bold text-base flex items-center justify-center gap-2 shadow-xl shadow-[#C5A880]/25 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+              className="w-full sm:w-auto min-w-[240px] px-8 py-3.5 rounded-2xl bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] font-cinzel font-bold text-base flex items-center justify-center gap-2 shadow-xl shadow-[#BFA373]/25 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <Send className="w-4 h-4" />
               <span>{isSubmitting ? 'Submitting...' : 'Submit Filler Report'}</span>
@@ -955,7 +955,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
       {/* ===================================================================== */}
       {submittedSuccessRecord && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#050B14] border border-[#C5A880] rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-md bg-[#06111F] border border-[#BFA373] rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="w-16 h-16 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-400 flex items-center justify-center mx-auto shadow-lg">
               <CheckCircle2 className="w-8 h-8" />
             </div>
@@ -969,7 +969,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#030712] border border-[#1E2E48] text-xs space-y-2 text-left">
+            <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 text-xs space-y-2 text-left">
               <div className="flex justify-between">
                 <span className="text-slate-400">Speaker:</span>
                 <strong className="text-white">{submittedSuccessRecord.speakerName}</strong>
@@ -1005,7 +1005,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
             </div>
 
             {/* Quick breakdown preview */}
-            <div className="p-3 rounded-xl bg-[#081220] border border-[#1E2E48] grid grid-cols-3 gap-2 text-[10px] text-center font-mono">
+            <div className="p-3 rounded-xl bg-[#06111F] border border-[#BFA373]/30 grid grid-cols-3 gap-2 text-[10px] text-center font-mono">
               <div>Ah: <strong className="text-white">{submittedSuccessRecord.counts.ah}</strong></div>
               <div>Um: <strong className="text-white">{submittedSuccessRecord.counts.um}</strong></div>
               <div>Er: <strong className="text-white">{submittedSuccessRecord.counts.er}</strong></div>
@@ -1018,7 +1018,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
             </div>
 
             <div className="pt-2 text-center">
-              <span className="text-[10px] text-[#C5A880] font-cinzel font-bold tracking-widest uppercase">
+              <span className="text-[10px] text-[#BFA373] font-cinzel font-bold tracking-widest uppercase">
                 FEWER FILLERS. GREATER IMPACT.
               </span>
             </div>
@@ -1027,14 +1027,14 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
               <button
                 type="button"
                 onClick={handleResetForNextSpeaker}
-                className="flex-1 px-4 py-3 rounded-xl bg-[#C5A880] hover:bg-[#d8bd98] text-[#0A192F] font-cinzel font-bold text-xs shadow-lg transition-colors cursor-pointer"
+                className="flex-1 px-4 py-3 rounded-xl bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] font-cinzel font-bold text-xs shadow-lg transition-colors cursor-pointer"
               >
                 Count Next Speaker
               </button>
               <button
                 type="button"
                 onClick={() => setSubmittedSuccessRecord(null)}
-                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1E2E48] text-xs font-semibold transition-colors cursor-pointer"
+                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#BFA373]/30 text-xs font-semibold transition-colors cursor-pointer"
               >
                 Stay on Log
               </button>
@@ -1048,9 +1048,9 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
       {/* ===================================================================== */}
       {showReportModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-          <div className="w-full max-w-4xl bg-[#050B14] border border-[#1E2E48] rounded-3xl p-5 sm:p-8 space-y-6 shadow-2xl max-h-[92vh] flex flex-col">
+          <div className="w-full max-w-4xl bg-[#06111F] border border-[#BFA373]/30 rounded-3xl p-5 sm:p-8 space-y-6 shadow-2xl max-h-[92vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#1E2E48]">
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[#BFA373]/30">
               <div className="flex items-center gap-3">
                 <SocietyLogo size="sm" className="border border-amber-500/40" />
                 <div>
@@ -1072,7 +1072,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                   <select
                     value={reportMeetingFilter}
                     onChange={(e) => setReportMeetingFilter(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl bg-[#081220] border border-[#1E2E48] text-amber-300 text-xs font-semibold focus:outline-none focus:border-amber-400"
+                    className="px-3 py-1.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-amber-300 text-xs font-semibold focus:outline-none focus:border-amber-400"
                   >
                     <option value="all">All Meetings ({records.length})</option>
                     {meetingList.map((m) => (
@@ -1086,7 +1086,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                 <button
                   type="button"
                   onClick={() => setShowReportModal(false)}
-                  className="p-2 rounded-xl bg-[#081220] hover:bg-[#0E1F36] text-slate-400 hover:text-white border border-[#1E2E48] transition-colors cursor-pointer"
+                  className="p-2 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-slate-400 hover:text-white border border-[#BFA373]/30 transition-colors cursor-pointer"
                   title="Close Report"
                 >
                   <X className="w-5 h-5" />
@@ -1107,7 +1107,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                 reportGroupedByRole.map(([roleName, roleRecords]) => (
                   <div key={roleName} className="space-y-3">
                     {/* Role Header Banner */}
-                    <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#0A192F] border border-amber-500/30">
+                    <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#06111F] border border-amber-500/30">
                       <div className="flex items-center gap-2">
                         <Award className="w-4 h-4 text-amber-400" />
                         <span className="font-cinzel font-bold text-amber-300 text-sm tracking-wider uppercase">
@@ -1124,9 +1124,9 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                       {roleRecords.map((rec) => (
                         <div
                           key={rec.id || `${rec.speakerName}-${rec.createdAt}`}
-                          className="p-4 sm:p-5 rounded-2xl bg-[#030712] border border-[#1E2E48] hover:border-amber-500/40 transition-colors space-y-3"
+                          className="p-4 sm:p-5 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-amber-500/40 transition-colors space-y-3"
                         >
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1E2E48]/60 pb-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#BFA373]/30/60 pb-3">
                             <div>
                               <div className="flex items-center gap-2.5 flex-wrap">
                                 <h4 className="font-bold text-white text-base sm:text-lg tracking-wide">
@@ -1148,7 +1148,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                                 </span>
                               </div>
                               {rec.speakerDepartment && (
-                                <div className="text-xs text-[#C5A880] font-medium mt-0.5">
+                                <div className="text-xs text-[#BFA373] font-medium mt-0.5">
                                   {rec.speakerDepartment}
                                 </div>
                               )}
@@ -1183,21 +1183,21 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
 
                           {/* Breakdown pills */}
                           <div className="flex flex-wrap gap-2 text-xs font-mono">
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-amber-300 border border-[#1E2E48]">Ah: {rec.counts.ah}</span>
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-orange-300 border border-[#1E2E48]">Um: {rec.counts.um}</span>
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-rose-300 border border-[#1E2E48]">Er: {rec.counts.er}</span>
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-teal-300 border border-[#1E2E48]">Well: {rec.counts.well}</span>
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-sky-300 border border-[#1E2E48]">So: {rec.counts.so}</span>
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-purple-300 border border-[#1E2E48]">Like: {rec.counts.like}</span>
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-indigo-300 border border-[#1E2E48]">But: {rec.counts.but}</span>
-                            <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-emerald-300 border border-[#1E2E48]">Repeats: {rec.counts.repeats}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-amber-300 border border-[#BFA373]/30">Ah: {rec.counts.ah}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-orange-300 border border-[#BFA373]/30">Um: {rec.counts.um}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-rose-300 border border-[#BFA373]/30">Er: {rec.counts.er}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-teal-300 border border-[#BFA373]/30">Well: {rec.counts.well}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-sky-300 border border-[#BFA373]/30">So: {rec.counts.so}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-purple-300 border border-[#BFA373]/30">Like: {rec.counts.like}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-indigo-300 border border-[#BFA373]/30">But: {rec.counts.but}</span>
+                            <span className="px-2 py-1 rounded-lg bg-[#06111F] text-emerald-300 border border-[#BFA373]/30">Repeats: {rec.counts.repeats}</span>
                             {rec.counts.other > 0 && (
-                              <span className="px-2 py-1 rounded-lg bg-[#0E1F36] text-cyan-300 border border-[#1E2E48]">Other: {rec.counts.other}</span>
+                              <span className="px-2 py-1 rounded-lg bg-[#06111F] text-cyan-300 border border-[#BFA373]/30">Other: {rec.counts.other}</span>
                             )}
                           </div>
 
                           {rec.notes && (
-                            <div className="text-xs text-slate-300 bg-[#081220] p-2.5 rounded-xl border border-[#1E2E48]/60 italic">
+                            <div className="text-xs text-slate-300 bg-[#06111F] p-2.5 rounded-xl border border-[#BFA373]/30/60 italic">
                               Note: {rec.notes}
                             </div>
                           )}
@@ -1210,11 +1210,11 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
             </div>
 
             {/* Modal Footer */}
-            <div className="pt-3 border-t border-[#1E2E48] flex justify-end">
+            <div className="pt-3 border-t border-[#BFA373]/30 flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowReportModal(false)}
-                className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-[#1E2E48] text-xs font-semibold transition-colors cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-[#BFA373]/30 text-xs font-semibold transition-colors cursor-pointer"
               >
                 Close Report
               </button>
@@ -1228,7 +1228,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
       {/* ===================================================================== */}
       {recordToDelete && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-[#050B14] border border-red-500/40 rounded-3xl p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-md bg-[#06111F] border border-red-500/40 rounded-3xl p-6 space-y-4 shadow-2xl">
             <div className="flex items-center gap-3 text-red-400">
               <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30">
                 <Trash2 className="w-5 h-5 text-red-400" />
@@ -1241,7 +1241,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#030712] border border-[#1E2E48] text-xs space-y-1.5">
+            <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 text-xs space-y-1.5">
               <div className="flex justify-between">
                 <span className="text-slate-400">Speaker:</span>
                 <strong className="text-white">{recordToDelete.speakerName}</strong>
@@ -1261,7 +1261,7 @@ export const FillerCounterTab: React.FC<FillerCounterTabProps> = ({ userProfile 
                 type="button"
                 disabled={isDeletingRecord}
                 onClick={() => setRecordToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#1E2E48] text-xs font-semibold transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-[#BFA373]/30 text-xs font-semibold transition-colors cursor-pointer"
               >
                 Cancel
               </button>

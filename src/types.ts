@@ -21,6 +21,7 @@ export type SpeakerHonorRole =
   | '';
 
 export interface UserProfile {
+  id?: string;
   name: string;
   gmail: string;
   phone: string;
@@ -29,6 +30,7 @@ export interface UserProfile {
   className?: string;
   photoUrl: string;
   isAdmin?: boolean;
+  isRoleEntry?: boolean;
   password?: string;
   executiveRole?: ExecutiveCommitteeRole | string;
   speakerRole?: SpeakerHonorRole | string;
@@ -42,6 +44,34 @@ export interface RegisteredMember extends UserProfile {
   executiveRole?: ExecutiveCommitteeRole | string;
   speakerRole?: SpeakerHonorRole | string;
   speakerRoles?: string[];
+}
+
+export function isUserAdmin(profile?: Partial<UserProfile> | null): boolean {
+  if (!profile) return false;
+  const email = (profile.gmail || '').trim().toLowerCase();
+  const name = (profile.name || '').trim().toLowerCase();
+  // Strictly only the designated master Admin account qualifies as Admin
+  return (
+    email === 'admin' ||
+    email === 'admin@declamate.com' ||
+    name === 'admin' ||
+    name === 'administrator'
+  );
+}
+
+export function isUserRoleEntry(profile?: Partial<UserProfile> | null): boolean {
+  if (!profile) return false;
+  const email = (profile.gmail || '').trim().toLowerCase();
+  const name = (profile.name || '').trim().toLowerCase();
+  // Strictly only the designated Role Entry account qualifies for Speaker Roles bar
+  return (
+    email === 'role entry' ||
+    email === 'roleentry' ||
+    email === 'role entry coordinator' ||
+    email === 'roleentry@declamate.com' ||
+    name === 'role entry' ||
+    name === 'role entry coordinator'
+  );
 }
 
 export const EXECUTIVE_ROLES_LIST = [
@@ -356,7 +386,7 @@ export interface MeetingVotingSession {
 
 export interface AppMessage {
   id: string;
-  type: 'role_appointed' | 'new_poll' | 'general';
+  type: 'role_appointed' | 'new_poll' | 'general' | 'poll_created' | 'role_assigned';
   title: string;
   message: string;
   targetEmail: string; // 'public' for all members including admin, or specific email (e.g. member's gmail)
@@ -369,4 +399,5 @@ export interface AppMessage {
     photoUrl?: string;
   };
   readBy?: string[]; // Array of emails who read the message
+  deletedBy?: string[]; // Array of emails who deleted/dismissed the message
 }

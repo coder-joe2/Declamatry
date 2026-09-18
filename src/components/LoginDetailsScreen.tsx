@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, isUserAdmin } from '../types';
 import { 
   saveUserLoginToFirebase, 
   authenticateMember, 
@@ -353,7 +353,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
       className: finalClassName,
       photoUrl: regData.photoUrl,
       password: regData.password?.trim() || profile.password || '',
-      isAdmin: regData.gmail.trim().toLowerCase() === 'vjana537@gmail.com',
+      isAdmin: isUserAdmin({ name: regData.name.trim(), gmail: regData.gmail.trim().toLowerCase() }),
     };
 
     try {
@@ -411,23 +411,25 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#06111F] text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-x-hidden font-sans">
       {/* Background Decorative Glows */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[340px] sm:w-[550px] h-[340px] sm:h-[550px] bg-[#C5A880]/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-10 right-10 w-72 h-72 bg-[#0A192F]/60 rounded-full blur-[100px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[340px] sm:w-[550px] h-[340px] sm:h-[550px] bg-[#BFA373]/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-10 right-10 w-72 h-72 bg-[#06111F]/60 rounded-full blur-[100px]" />
       </div>
 
       <div className="w-full max-w-md relative z-10 my-auto">
         {/* Society Branding Header */}
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <div className="p-1 rounded-full bg-gradient-to-b from-[#C5A880] to-[#0A192F] shadow-xl">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <div className="p-1 rounded-full shadow-2xl">
               <SocietyLogo size="lg" />
             </div>
           </div>
-          <h1 className="font-cinzel text-xl sm:text-2xl font-bold tracking-[0.2em] text-[#C5A880] uppercase drop-shadow-md">
-            The Declamate&apos;s Society
+          <h1 className="font-cinzel text-xl sm:text-2xl font-bold tracking-[0.25em] text-[#C5A059] uppercase drop-shadow-md leading-relaxed">
+            THE DECLAMATE&apos;S
+            <br />
+            SOCIETY
           </h1>
         </div>
 
@@ -451,20 +453,20 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         {/* VIEW 1: SIMPLE SIGN-IN                                                    */}
         {/* ========================================================================= */}
         {authMode === 'login' && (
-          <div className="bg-[#090F1D] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
-            <div className="mb-5 text-center">
-              <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
-                Member Sign In
+          <div className="bg-[#071120] border border-slate-800/80 rounded-2xl p-7 sm:p-9 shadow-2xl backdrop-blur-md">
+            <div className="mb-6 text-center">
+              <h2 className="font-cinzel text-xl font-bold text-white uppercase tracking-wider">
+                MEMBER SIGN IN
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-400 mt-2">
                 Sign in to access your portal, events &amp; voting
               </p>
             </div>
 
-            <form onSubmit={handleSignIn} className="space-y-4">
+            <form onSubmit={handleSignIn} className="space-y-5">
               {/* 1. Username or Email Address input */}
               <div>
-                <label className="text-sm font-medium text-slate-200 block mb-1.5">
+                <label className="text-sm font-semibold text-white block mb-2">
                   Username or email address
                 </label>
                 <div className="relative">
@@ -477,15 +479,15 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       if (errorMessage) setErrorMessage('');
                     }}
                     placeholder="Enter your username or email"
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/30 rounded-xl px-3.5 py-3 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                    className="w-full bg-[#030814] border border-blue-500/80 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/60 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 text-sm outline-none shadow-sm transition-all"
                   />
                 </div>
               </div>
 
               {/* 2. Password field with Forgot password? on the right */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-sm font-medium text-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-white">
                     Password
                   </label>
                   <button
@@ -495,7 +497,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       setForgotEmail(loginIdentifier);
                       setAuthMode('forgot_password');
                     }}
-                    className="text-xs text-[#38bdf8] hover:text-[#60a5fa] hover:underline font-medium cursor-pointer transition-colors"
+                    className="text-sm text-blue-400 hover:text-blue-300 font-normal cursor-pointer transition-colors"
                   >
                     Forgot password?
                   </button>
@@ -510,18 +512,18 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       if (errorMessage) setErrorMessage('');
                     }}
                     placeholder="Enter your password"
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/30 rounded-xl px-3.5 py-3 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                    className="w-full bg-[#030814] border border-slate-800 focus:border-blue-500/80 focus:ring-1 focus:ring-blue-400/60 rounded-xl px-4 py-3 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors cursor-pointer p-1"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer p-1"
                     title={showLoginPassword ? 'Hide password' : 'Show password'}
                   >
                     {showLoginPassword ? (
-                      <EyeOff className="w-4.5 h-4.5" />
+                      <EyeOff className="w-5 h-5" />
                     ) : (
-                      <Eye className="w-4.5 h-4.5" />
+                      <Eye className="w-5 h-5" />
                     )}
                   </button>
                 </div>
@@ -532,11 +534,11 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-[#16a34a] hover:bg-[#15803d] active:bg-[#166534] disabled:bg-[#16a34a]/50 text-white py-3 px-4 rounded-xl font-semibold text-sm sm:text-base tracking-wide transition-all shadow-lg hover:shadow-emerald-900/30 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-[#16a34a] hover:bg-[#15803d] active:bg-[#166534] disabled:bg-[#16a34a]/50 text-white py-3.5 px-4 rounded-xl font-bold text-base tracking-wide transition-all shadow-lg shadow-emerald-950/40 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <Loader2 className="w-5 h-5 animate-spin text-white" />
                       <span>Signing in...</span>
                     </>
                   ) : (
@@ -546,8 +548,8 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
               </div>
 
               {/* 4. Switch to Direct Registration Link */}
-              <div className="pt-3 text-center border-t border-slate-800/80 mt-4">
-                <p className="text-xs sm:text-sm text-slate-400">
+              <div className="pt-4 text-center border-t border-slate-800/80 mt-6">
+                <p className="text-sm text-slate-300">
                   New member?{' '}
                   <button
                     type="button"
@@ -560,7 +562,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       }));
                       setAuthMode('register');
                     }}
-                    className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-4 cursor-pointer transition-colors ml-1"
+                    className="text-[#D1B079] hover:text-amber-300 font-medium underline underline-offset-4 cursor-pointer transition-colors ml-1"
                   >
                     Register / Create an account
                   </button>
@@ -574,13 +576,13 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         {/* VIEW 2: UNIFIED MEMBER REGISTRATION & PROFILE EDIT                        */}
         {/* ========================================================================= */}
         {(authMode === 'register' || authMode === 'edit_profile') && (
-          <div className="bg-[#090F1D] border border-[#C5A880]/40 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+          <div className="bg-[#06111F] border border-[#BFA373]/40 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
             <div className="flex items-center justify-between mb-5 border-b border-slate-800 pb-3">
               <div>
                 <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white uppercase tracking-wide">
                   {authMode === 'edit_profile' ? 'Edit Member Profile' : 'Member Registration'}
                 </h2>
-                <p className="text-xs text-[#C5A880]">
+                <p className="text-xs text-[#BFA373]">
                   {authMode === 'edit_profile'
                     ? 'Update your profile information'
                     : 'Complete your official member profile & badge'}
@@ -634,7 +636,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                           ? 'border-red-500 ring-4 ring-red-500/30 bg-red-950/30'
                           : regData.photoUrl
                           ? 'border-emerald-500 ring-2 ring-emerald-500/30'
-                          : 'border-[#C5A880] bg-[#030712]'
+                          : 'border-[#BFA373] bg-[#06111F]'
                       } flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-all overflow-hidden relative group`}
                     >
                       {regData.photoUrl ? (
@@ -644,7 +646,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Camera className={`w-7 h-7 ${photoError ? 'text-red-400' : 'text-[#C5A880]'}`} />
+                        <Camera className={`w-7 h-7 ${photoError ? 'text-red-400' : 'text-[#BFA373]'}`} />
                       )}
 
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -656,8 +658,8 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className={`absolute bottom-0 right-0 w-6 h-6 rounded-full ${
-                        photoError ? 'bg-red-500' : 'bg-[#C5A880] hover:bg-[#d8bb94]'
-                      } text-[#0A192F] flex items-center justify-center border-2 border-[#090F1D] shadow-md transition-colors`}
+                        photoError ? 'bg-red-500' : 'bg-[#BFA373] hover:bg-[#BFA373]'
+                      } text-[#06111F] flex items-center justify-center border-2 border-[#06111F] shadow-md transition-colors`}
                     >
                       <Plus className="w-3.5 h-3.5 stroke-[3]" />
                     </button>
@@ -671,7 +673,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   Full Name <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                     <User className="w-4 h-4" />
                   </div>
                   <input
@@ -683,7 +685,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       if (errorMessage) setErrorMessage('');
                     }}
                     placeholder="e.g. Alex Morgan"
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                    className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
                 </div>
               </div>
@@ -694,7 +696,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   Email Address <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
@@ -706,7 +708,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       if (errorMessage) setErrorMessage('');
                     }}
                     placeholder="e.g. alex@gmail.com"
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                    className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
                 </div>
               </div>
@@ -718,7 +720,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                     Password <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                       <Lock className="w-4 h-4" />
                     </div>
                     <input
@@ -730,7 +732,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                         if (errorMessage) setErrorMessage('');
                       }}
                       placeholder="Create a password for your account"
-                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                      className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 pr-11 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                     />
                     <button
                       type="button"
@@ -762,7 +764,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                           if (errorMessage) setErrorMessage('');
                         }}
                         placeholder="Keep existing"
-                        className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
+                        className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -781,7 +783,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                           if (errorMessage) setErrorMessage('');
                         }}
                         placeholder="Confirm new"
-                        className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
+                        className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3 py-2.5 text-white placeholder:text-slate-500 text-xs sm:text-sm outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -794,7 +796,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   Phone Number <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                     <Phone className="w-4 h-4" />
                   </div>
                   <input
@@ -806,7 +808,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       if (errorMessage) setErrorMessage('');
                     }}
                     placeholder="+91 98765 43210"
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                    className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                   />
                 </div>
               </div>
@@ -829,8 +831,8 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                         }}
                         className={`py-2 px-2 rounded-xl text-xs font-semibold tracking-wide border transition-all cursor-pointer text-center ${
                           isSelected
-                            ? 'bg-[#C5A880] text-[#0A192F] border-[#C5A880] shadow-md font-bold'
-                            : 'bg-[#030712] text-slate-300 border-slate-800 hover:border-[#C5A880]/50'
+                            ? 'bg-[#BFA373] text-[#06111F] border-[#BFA373] shadow-md font-bold'
+                            : 'bg-[#06111F] text-slate-300 border-slate-800 hover:border-[#BFA373]/50'
                         }`}
                       >
                         {yr}
@@ -846,7 +848,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   Department / Degree <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                     <GraduationCap className="w-4 h-4" />
                   </div>
                   <select
@@ -875,13 +877,13 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                       }
                       if (errorMessage) setErrorMessage('');
                     }}
-                    className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all cursor-pointer"
+                    className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all cursor-pointer"
                   >
-                    <option value="" className="bg-[#030712] text-slate-400">
+                    <option value="" className="bg-[#06111F] text-slate-400">
                       -- Select Department --
                     </option>
                     {DEPARTMENT_OPTIONS.map((dept) => (
-                      <option key={dept} value={dept} className="bg-[#030712] text-white">
+                      <option key={dept} value={dept} className="bg-[#06111F] text-white">
                         {dept}
                       </option>
                     ))}
@@ -890,13 +892,13 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
 
                 {/* Custom Department Input when 'Others' is selected */}
                 {deptSelect === 'Others' && (
-                  <div className="p-3.5 rounded-xl bg-[#090F1D] border border-[#C5A880]/40 space-y-2 animate-in fade-in duration-200">
-                    <div className="flex items-center gap-2 text-xs text-[#C5A880] font-medium">
+                  <div className="p-3.5 rounded-xl bg-[#06111F] border border-[#BFA373]/40 space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2 text-xs text-[#BFA373] font-medium">
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       <span>Note: Please enter your Department / Degree in CAPITAL LETTERS.</span>
                     </div>
                     <div className="relative">
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                         <GraduationCap className="w-4 h-4" />
                       </div>
                       <input
@@ -910,7 +912,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                           if (errorMessage) setErrorMessage('');
                         }}
                         placeholder="ENTER DEPARTMENT NAME (IN CAPITAL LETTERS)"
-                        className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-500 font-mono tracking-wide"
+                        className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-500 font-mono tracking-wide"
                       />
                     </div>
                   </div>
@@ -924,7 +926,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                     Class / Branch <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                       <BookOpen className="w-4 h-4" />
                     </div>
                     <select
@@ -940,13 +942,13 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                         }
                         if (errorMessage) setErrorMessage('');
                       }}
-                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all cursor-pointer"
+                      className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all cursor-pointer"
                     >
-                      <option value="" className="bg-[#030712] text-slate-400">
+                      <option value="" className="bg-[#06111F] text-slate-400">
                         -- Select Class --
                       </option>
                       {(CLASS_OPTIONS_BY_DEPARTMENT[deptSelect] || ['Others']).map((cls) => (
-                        <option key={cls} value={cls} className="bg-[#030712] text-white">
+                        <option key={cls} value={cls} className="bg-[#06111F] text-white">
                           {cls}
                         </option>
                       ))}
@@ -955,13 +957,13 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
 
                   {/* Custom Class Input when 'Others' is selected */}
                   {classSelect === 'Others' && (
-                    <div className="p-3.5 rounded-xl bg-[#090F1D] border border-[#C5A880]/40 space-y-2 animate-in fade-in duration-200">
-                      <div className="flex items-center gap-2 text-xs text-[#C5A880] font-medium">
+                    <div className="p-3.5 rounded-xl bg-[#06111F] border border-[#BFA373]/40 space-y-2 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 text-xs text-[#BFA373] font-medium">
                         <AlertCircle className="w-4 h-4 flex-shrink-0" />
                         <span>Note: Please enter your Class / Specialization in CAPITAL LETTERS.</span>
                       </div>
                       <div className="relative">
-                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C5A880]">
+                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#BFA373]">
                           <BookOpen className="w-4 h-4" />
                         </div>
                         <input
@@ -975,7 +977,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                             if (errorMessage) setErrorMessage('');
                           }}
                           placeholder="ENTER CLASS / SPECIALIZATION (IN CAPITAL LETTERS)"
-                          className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-500 font-mono tracking-wide"
+                          className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 pl-10 text-white text-sm outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-500 font-mono tracking-wide"
                         />
                       </div>
                     </div>
@@ -989,7 +991,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-[#16a34a] hover:bg-[#15803d] active:bg-[#166534] disabled:bg-[#16a34a]/50 text-white py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.15em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-[#D1B079] hover:bg-[#D1B079] active:bg-[#D1B079] disabled:bg-[#D1B079]/50 text-white py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.15em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
@@ -1007,11 +1009,11 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-[#C5A880] hover:bg-[#d8bb94] disabled:bg-[#C5A880]/50 text-[#0A192F] py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.2em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-[#BFA373] hover:bg-[#BFA373] disabled:bg-[#BFA373]/50 text-[#06111F] py-3.5 px-4 rounded-xl font-cinzel font-bold text-sm sm:text-base tracking-[0.2em] transition-all shadow-xl active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
+                        <Loader2 className="w-4 h-4 animate-spin text-[#06111F]" />
                         <span>REGISTERING...</span>
                       </>
                     ) : (
@@ -1038,7 +1040,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                           setErrorMessage('');
                           setAuthMode('login');
                         }}
-                        className="text-[#C5A880] hover:text-[#e0c39c] font-semibold underline underline-offset-2 cursor-pointer ml-1"
+                        className="text-[#BFA373] hover:text-[#BFA373] font-semibold underline underline-offset-2 cursor-pointer ml-1"
                       >
                         Sign in to your account
                       </button>
@@ -1054,9 +1056,9 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         {/* VIEW 3: FORGOT PASSWORD                                                   */}
         {/* ========================================================================= */}
         {authMode === 'forgot_password' && (
-          <div className="bg-[#090F1D] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+          <div className="bg-[#06111F] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
             <div className="flex items-center gap-2.5 mb-4 text-white">
-              <div className="w-8 h-8 rounded-lg bg-[#38bdf8]/15 border border-[#38bdf8]/30 flex items-center justify-center text-[#38bdf8]">
+              <div className="w-8 h-8 rounded-lg bg-[#BFA373]/15 border border-[#BFA373]/30 flex items-center justify-center text-[#BFA373]">
                 <KeyRound className="w-4 h-4" />
               </div>
               <h2 className="font-cinzel text-lg font-bold">Reset Your Password</h2>
@@ -1074,7 +1076,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                     setResetSuccessMessage('');
                     setAuthMode('login');
                   }}
-                  className="w-full bg-[#16a34a] hover:bg-[#15803d] text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-all cursor-pointer"
+                  className="w-full bg-[#D1B079] hover:bg-[#D1B079] text-white py-2.5 px-4 rounded-xl font-medium text-sm transition-all cursor-pointer"
                 >
                   Return to Sign In
                 </button>
@@ -1099,7 +1101,7 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                         if (errorMessage) setErrorMessage('');
                       }}
                       placeholder="e.g. yourname@gmail.com"
-                      className="w-full bg-[#030712] border border-slate-700/80 focus:border-[#38bdf8] focus:ring-2 focus:ring-[#38bdf8]/30 rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
+                      className="w-full bg-[#06111F] border border-slate-700/80 focus:border-[#BFA373] focus:ring-2 focus:ring-[#BFA373]/30 rounded-xl px-3.5 py-2.5 text-white placeholder:text-slate-500 text-sm outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -1108,11 +1110,11 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-[#38bdf8] hover:bg-[#0284c7] text-[#0A192F] font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin text-[#0A192F]" />
+                        <Loader2 className="w-4 h-4 animate-spin text-[#06111F]" />
                         <span>Sending reset email...</span>
                       </>
                     ) : (
@@ -1137,9 +1139,9 @@ export const LoginDetailsScreen: React.FC<LoginDetailsScreenProps> = ({
         )}
 
         {/* Footer info */}
-        <div className="text-center mt-6">
-          <p className="text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-[#C5A880]" />
+        <div className="text-center mt-7">
+          <p className="text-xs text-slate-500 flex items-center justify-center gap-2">
+            <Database className="w-4 h-4 text-[#C5A059]" />
             <span>Secure Club Portal &bull; Firebase Cloud Sync</span>
           </p>
         </div>

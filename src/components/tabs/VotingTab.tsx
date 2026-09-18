@@ -19,7 +19,7 @@ import {
   Zap,
   FileText
 } from 'lucide-react';
-import { UserProfile, Poll, MeetingVotingSession } from '../../types';
+import { UserProfile, Poll, MeetingVotingSession, isUserAdmin } from '../../types';
 import { CreatePollModal } from '../CreatePollModal';
 import { CreateMeetingSessionModal } from '../CreateMeetingSessionModal';
 import { MeetingSessionCard } from '../MeetingSessionCard';
@@ -52,10 +52,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
   };
 
   const userEmail = currentUser.gmail.trim().toLowerCase();
-  const isAdmin = Boolean(
-    currentUser.isAdmin ||
-    userEmail === 'vjana537@gmail.com'
-  );
+  const isAdmin = isUserAdmin(currentUser);
 
   // States for Meeting Sessions & Polls
   const [meetingSessions, setMeetingSessions] = useState<MeetingVotingSession[]>([]);
@@ -373,10 +370,10 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
   const hasAnyItems = filteredMeetings.length > 0 || filteredCustomPolls.length > 0;
 
   return (
-    <div className="w-full max-w-full min-w-0 overflow-x-hidden text-slate-100 selection:bg-[#C5A880] selection:text-[#0A192F] space-y-4 sm:space-y-6">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden text-slate-100 selection:bg-[#BFA373] selection:text-[#06111F] space-y-4 sm:space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-14 sm:top-24 left-1/2 -translate-x-1/2 z-50 bg-[#00A884] text-[#111B21] px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold shadow-2xl flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap border border-[#25D366] animate-bounce max-w-[90vw] truncate">
+        <div className="fixed top-14 sm:top-24 left-1/2 -translate-x-1/2 z-50 bg-[#D1B079] text-[#06111F] px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold shadow-2xl flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap border border-[#D1B079] animate-bounce max-w-[90vw] truncate">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span className="truncate">{toastMessage}</span>
         </div>
@@ -385,7 +382,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
       {/* In-App Delete Confirmation Modal for Meeting Session */}
       {sessionToDelete && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-[#0B141A] border border-[#2A3942] rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+          <div className="bg-[#06111F] border border-[#BFA373]/30 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -399,7 +396,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
               <button
                 type="button"
                 onClick={() => setSessionToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#111B21] border border-[#222E35] text-slate-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
               >
                 Cancel
               </button>
@@ -418,7 +415,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
       {/* In-App Delete Confirmation Modal for Custom Poll */}
       {pollToDelete && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-[#0B141A] border border-[#2A3942] rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+          <div className="bg-[#06111F] border border-[#BFA373]/30 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
             <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -432,7 +429,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
               <button
                 type="button"
                 onClick={() => setPollToDelete(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#111B21] border border-[#222E35] text-slate-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer active:scale-95 transition-all"
               >
                 Cancel
               </button>
@@ -451,11 +448,11 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
       {/* ========================================================================= */}
       {/* HEADER BANNER & ADMIN CREATION ACTIONS                                    */}
       {/* ========================================================================= */}
-      <div className="w-full min-w-0 max-w-full bg-gradient-to-br from-[#02050B] via-[#0A192F] to-[#040A17] rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-7 border border-[#C5A880]/40 shadow-2xl space-y-3 sm:space-y-4 overflow-hidden">
+      <div className="w-full min-w-0 max-w-full bg-gradient-to-br from-[#06111F] via-[#06111F] to-[#06111F] rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 md:p-7 border border-[#BFA373]/40 shadow-2xl space-y-3 sm:space-y-4 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 min-w-0">
           <div className="min-w-0 flex-1">
             <h2 className="text-base sm:text-2xl md:text-3xl font-bold font-cinzel text-white tracking-wide break-words leading-snug flex items-center gap-2.5">
-              <Vote className="w-5 h-5 sm:w-7 sm:h-7 text-[#00A884] shrink-0" />
+              <Vote className="w-5 h-5 sm:w-7 sm:h-7 text-[#D1B079] shrink-0" />
               <span>Voting Place</span>
             </h2>
           </div>
@@ -468,9 +465,9 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                 type="button"
                 id="start-meeting-voting-btn"
                 onClick={() => setIsMeetingModalOpen(true)}
-                className="w-full sm:w-auto py-2.5 sm:py-3 px-3.5 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#00A884] to-[#009272] hover:brightness-110 text-[#111B21] font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#00A884]/25 active:scale-95 transition-all cursor-pointer min-h-[42px]"
+                className="w-full sm:w-auto py-2.5 sm:py-3 px-3.5 sm:px-6 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[#D1B079] to-[#D1B079] hover:brightness-110 text-[#06111F] font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-[#D1B079]/25 active:scale-95 transition-all cursor-pointer min-h-[42px]"
               >
-                <Sparkles className="w-4 h-4 text-[#111B21] shrink-0" />
+                <Sparkles className="w-4 h-4 text-[#06111F] shrink-0" />
                 <span className="font-cinzel text-center leading-tight">+ Start Poll(4 Roles)</span>
               </button>
 
@@ -479,7 +476,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                 type="button"
                 id="add-custom-poll-btn"
                 onClick={() => setIsCustomPollModalOpen(true)}
-                className="w-full sm:w-auto py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl bg-[#111B21] hover:bg-[#182630] text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 border border-[#2A3942] active:scale-95 transition-all cursor-pointer min-h-[38px]"
+                className="w-full sm:w-auto py-2 sm:py-2.5 px-3.5 sm:px-4 rounded-xl bg-[#06111F] hover:bg-[#06111F] text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 border border-[#BFA373]/30 active:scale-95 transition-all cursor-pointer min-h-[38px]"
               >
                 <Plus className="w-3.5 h-3.5 shrink-0" />
                 <span>Custom Poll</span>
@@ -489,7 +486,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
         </div>
 
         {/* Filter Navigation Pills - Smooth horizontal swipe on mobile */}
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pt-2 border-t border-[#182229] scrollbar-none no-scrollbar -mx-1 px-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pt-2 border-t border-[#06111F] scrollbar-none no-scrollbar -mx-1 px-1">
           {[
             { id: 'all', label: 'All Sessions', count: meetingSessions.length + polls.length },
             { id: 'meetings', label: 'Meeting Voting (4 Roles)', count: meetingSessions.length },
@@ -502,13 +499,13 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
               onClick={() => setSelectedFilter(tab.id as any)}
               className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 selectedFilter === tab.id
-                  ? 'bg-[#00A884] text-[#111B21] font-bold shadow-md shadow-[#00A884]/20'
-                  : 'bg-[#0B141A] text-slate-300 hover:bg-[#111B21] border border-[#1F2C34]'
+                  ? 'bg-[#D1B079] text-[#06111F] font-bold shadow-md shadow-[#D1B079]/20'
+                  : 'bg-[#06111F] text-slate-300 hover:bg-[#06111F] border border-[#BFA373]/30'
               }`}
             >
               <span>{tab.label}</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] ${
-                selectedFilter === tab.id ? 'bg-[#111B21] text-[#00A884]' : 'bg-[#182229] text-slate-400'
+                selectedFilter === tab.id ? 'bg-[#06111F] text-[#D1B079]' : 'bg-[#06111F] text-slate-400'
               }`}>
                 {tab.count}
               </span>
@@ -521,8 +518,8 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
       {/* MAIN CONTENT FEED: 4-ROLE MEETING SESSIONS & CUSTOM POLLS                 */}
       {/* ========================================================================= */}
       {!hasAnyItems ? (
-        <div className="w-full bg-[#0B141A] rounded-3xl border border-[#1F2C34] p-10 sm:p-14 text-center space-y-4 shadow-xl">
-          <div className="w-16 h-16 rounded-2xl bg-[#111B21] border border-[#00A884]/40 text-[#00A884] flex items-center justify-center mx-auto shadow-lg">
+        <div className="w-full bg-[#06111F] rounded-3xl border border-[#BFA373]/30 p-10 sm:p-14 text-center space-y-4 shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-[#06111F] border border-[#D1B079]/40 text-[#D1B079] flex items-center justify-center mx-auto shadow-lg">
             <Vote className="w-8 h-8" />
           </div>
           <div className="max-w-md mx-auto space-y-1">
@@ -541,9 +538,9 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
               <button
                 type="button"
                 onClick={() => setIsMeetingModalOpen(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#00A884] text-[#111B21] font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform cursor-pointer shadow-lg"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#D1B079] text-[#06111F] font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform cursor-pointer shadow-lg"
               >
-                <Sparkles className="w-4 h-4 text-[#111B21]" />
+                <Sparkles className="w-4 h-4 text-[#06111F]" />
                 <span>+ Start Poll(4 players)</span>
               </button>
             </div>
@@ -555,7 +552,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
           {showMeetingSessions && filteredMeetings.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 px-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#00A884]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#D1B079]" />
                 <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider font-cinzel">
                   Club Meeting Voting Sessions (4 Roles)
                 </h3>
@@ -582,7 +579,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
           {showCustomPolls && filteredCustomPolls.length > 0 && (
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 px-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#C5A880]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#BFA373]" />
                 <h3 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider font-cinzel">
                   Individual &amp; Custom Polls
                 </h3>
@@ -600,18 +597,18 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                   return (
                     <div
                       key={poll.id}
-                      className="bg-[#0B141A] rounded-2xl border border-[#1F2C34] hover:border-[#00A884]/40 p-4 sm:p-5 shadow-xl space-y-4 flex flex-col justify-between"
+                      className="bg-[#06111F] rounded-2xl border border-[#BFA373]/30 hover:border-[#D1B079]/40 p-4 sm:p-5 shadow-xl space-y-4 flex flex-col justify-between"
                     >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2">
                           {poll.isActive ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00A884]/20 text-[#00A884] text-[11px] font-bold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#00A884] animate-pulse" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#D1B079]/20 text-[#D1B079] text-[11px] font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#D1B079] animate-pulse" />
                               Live Poll
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#C5A880]/20 text-[#C5A880] text-[11px] font-bold border border-[#C5A880]/40">
-                              <Trophy className="w-3 h-3 text-[#C5A880]" />
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#BFA373]/20 text-[#BFA373] text-[11px] font-bold border border-[#BFA373]/40">
+                              <Trophy className="w-3 h-3 text-[#BFA373]" />
                               Poll Closed • Results Declared
                             </span>
                           )}
@@ -628,7 +625,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                           {poll.question}
                         </h3>
 
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-[#182229]">
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-[#06111F]">
                           <span>Host: {poll.createdBy?.name || 'Member'}</span>
                           {poll.isActive && (
                             <span className="text-amber-400/90 flex items-center gap-1">
@@ -657,16 +654,16 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                 }}
                                 className={`relative p-3 rounded-xl border transition-all select-none flex items-center overflow-hidden ${
                                   poll.isActive && (!hasUserVoted || currentSelected.length > 0)
-                                    ? 'cursor-pointer hover:border-[#00A884]'
+                                    ? 'cursor-pointer hover:border-[#D1B079]'
                                     : 'cursor-default'
                                 } ${
                                   showResults
                                     ? isLeader && totalPollVotes > 0
-                                      ? 'bg-[#00A884]/15 border-[#00A884] text-white'
-                                      : 'bg-[#111B21] border-[#222E35] text-slate-200'
+                                      ? 'bg-[#D1B079]/15 border-[#D1B079] text-white'
+                                      : 'bg-[#06111F] border-[#BFA373]/30 text-slate-200'
                                     : isSelected || (hasUserVoted && userVotedThis)
-                                    ? 'bg-[#00A884]/15 border-[#00A884] text-white'
-                                    : 'bg-[#111B21] border-[#222E35] text-slate-200'
+                                    ? 'bg-[#D1B079]/15 border-[#D1B079] text-white'
+                                    : 'bg-[#06111F] border-[#BFA373]/30 text-slate-200'
                                 }`}
                               >
                                 {/* Live Progress Bar for All when votes exist */}
@@ -674,9 +671,9 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                   <div
                                     className={`absolute left-0 top-0 bottom-0 rounded-xl transition-all duration-500 pointer-events-none ${
                                       userVotedThis
-                                        ? 'bg-[#00A884]/20 border-r-2 border-[#00A884]'
+                                        ? 'bg-[#D1B079]/20 border-r-2 border-[#D1B079]'
                                         : isLeader && showResults
-                                        ? 'bg-[#C5A880]/20'
+                                        ? 'bg-[#BFA373]/20'
                                         : 'bg-slate-700/15'
                                     }`}
                                     style={{ width: `${percentage}%` }}
@@ -688,16 +685,16 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                     {poll.isActive ? (
                                       hasUserVoted && currentSelected.length === 0 ? (
                                         userVotedThis ? (
-                                          <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
+                                          <span className="shrink-0 w-4 h-4 rounded-full bg-[#D1B079] text-[#06111F] flex items-center justify-center text-[10px] font-bold">
                                             <Check className="w-3 h-3 stroke-[3]" />
                                           </span>
                                         ) : (
                                           <span className="shrink-0 w-4 h-4 rounded-full border border-slate-600" />
                                         )
                                       ) : (
-                                        <div className="shrink-0 text-[#00A884]">
+                                        <div className="shrink-0 text-[#D1B079]">
                                           {isSelected ? (
-                                            <CheckCircle2 className="w-4.5 h-4.5 fill-[#00A884] text-[#111B21]" />
+                                            <CheckCircle2 className="w-4.5 h-4.5 fill-[#D1B079] text-[#06111F]" />
                                           ) : (
                                             <Circle className="w-4.5 h-4.5 text-slate-500" />
                                           )}
@@ -705,7 +702,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                       )
                                     ) : (
                                       userVotedThis && (
-                                        <span className="shrink-0 w-4 h-4 rounded-full bg-[#00A884] text-[#111B21] flex items-center justify-center text-[10px] font-bold">
+                                        <span className="shrink-0 w-4 h-4 rounded-full bg-[#D1B079] text-[#06111F] flex items-center justify-center text-[10px] font-bold">
                                           <Check className="w-3 h-3 stroke-[3]" />
                                         </span>
                                       )
@@ -714,7 +711,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                       <img
                                         src={option.photoUrl}
                                         alt={option.text}
-                                        className="w-7 h-7 rounded-full object-cover border border-[#00A884] shrink-0"
+                                        className="w-7 h-7 rounded-full object-cover border border-[#D1B079] shrink-0"
                                       />
                                     ) : null}
                                     <span className="text-xs font-medium">{option.text}</span>
@@ -723,12 +720,12 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                   {/* Live Vote Count & Percentage (Public, voter identities kept secret) */}
                                   <div className="flex items-center gap-2 shrink-0 text-right">
                                     {hasUserVoted && userVotedThis && (
-                                      <span className="text-[9px] sm:text-[10px] text-[#00A884] font-semibold shrink-0 bg-[#00A884]/20 px-1.5 sm:px-2 py-0.5 rounded border border-[#00A884]/35">
+                                      <span className="text-[9px] sm:text-[10px] text-[#D1B079] font-semibold shrink-0 bg-[#D1B079]/20 px-1.5 sm:px-2 py-0.5 rounded border border-[#D1B079]/35">
                                         Your Choice
                                       </span>
                                     )}
                                     {showResults && isLeader && totalPollVotes > 0 && (
-                                      <Crown className="w-3.5 h-3.5 text-[#C5A880] fill-[#C5A880]" />
+                                      <Crown className="w-3.5 h-3.5 text-[#BFA373] fill-[#BFA373]" />
                                     )}
                                     <div className="flex flex-col items-end">
                                       <span className="text-xs sm:text-sm font-bold text-white font-mono flex items-center gap-1">
@@ -749,10 +746,10 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                       </div>
 
                       {/* Footer Actions */}
-                      <div className="pt-3 border-t border-[#182229] space-y-2.5">
+                      <div className="pt-3 border-t border-[#06111F] space-y-2.5">
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-slate-400 flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5 text-[#00A884]" />
+                            <Users className="w-3.5 h-3.5 text-[#D1B079]" />
                             <span>{totalPollVotes} Votes</span>
                           </span>
 
@@ -760,7 +757,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                             <button
                               type="button"
                               onClick={() => handleSharePoll(poll)}
-                              className="p-2 text-slate-400 hover:text-white rounded-lg border border-[#222E35] transition-colors cursor-pointer"
+                              className="p-2 text-slate-400 hover:text-white rounded-lg border border-[#BFA373]/30 transition-colors cursor-pointer"
                               title="Share"
                             >
                               <Share2 className="w-3.5 h-3.5" />
@@ -774,7 +771,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
                                     poll.isActive
                                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                      : 'bg-[#00A884]/20 text-[#00A884] border-[#00A884]/40'
+                                      : 'bg-[#D1B079]/20 text-[#D1B079] border-[#D1B079]/40'
                                   }`}
                                 >
                                   {poll.isActive ? (
@@ -793,7 +790,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                 <button
                                   type="button"
                                   onClick={() => setPollToDelete(poll)}
-                                  className="p-2 text-slate-400 hover:text-rose-400 rounded-lg border border-[#222E35] cursor-pointer"
+                                  className="p-2 text-slate-400 hover:text-rose-400 rounded-lg border border-[#BFA373]/30 cursor-pointer"
                                   title="Delete"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -810,7 +807,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                 type="button"
                                 onClick={() => handleRetractVote(poll)}
                                 disabled={votingInProgressId === poll.id}
-                                className="w-full py-2 rounded-xl bg-[#111B21] border border-[#222E35] text-slate-300 text-xs font-semibold cursor-pointer"
+                                className="w-full py-2 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-slate-300 text-xs font-semibold cursor-pointer"
                               >
                                 Change My Vote
                               </button>
@@ -819,7 +816,7 @@ export const VotingTab: React.FC<VotingTabProps> = ({ userProfile }) => {
                                 type="button"
                                 onClick={() => handleCastVote(poll)}
                                 disabled={currentSelected.length === 0 || votingInProgressId === poll.id}
-                                className="w-full py-2.5 rounded-xl bg-[#00A884] hover:bg-[#009272] text-[#111B21] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer disabled:opacity-40"
+                                className="w-full py-2.5 rounded-xl bg-[#D1B079] hover:bg-[#D1B079] text-[#06111F] text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer disabled:opacity-40"
                               >
                                 {votingInProgressId === poll.id ? (
                                   <span>Submitting...</span>

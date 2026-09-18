@@ -37,6 +37,11 @@ import {
   Loader2,
   Send,
   Award,
+  ArrowRight,
+  ArrowLeft,
+  FileText,
+  CheckSquare,
+  BarChart3,
 } from 'lucide-react';
 
 interface SpeechEvaluatorTabProps {
@@ -155,6 +160,8 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [evalToDelete, setEvalToDelete] = useState<SpeechEvaluationSheetData | null>(null);
+  const [isDeletingRecord, setIsDeletingRecord] = useState<boolean>(false);
 
   // Form State
   const [activeEvalId, setActiveEvalId] = useState<string | null>(null);
@@ -175,6 +182,37 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
   const [overallEvaluation, setOverallEvaluation] = useState<EvaluationRatingLevel | ''>('');
   const [evaluatorName, setEvaluatorName] = useState<string>(userProfile.name || 'Speech Evaluator');
   const [evaluatorDate, setEvaluatorDate] = useState<string>(getTodayDateString());
+
+  // Keep evaluatorName in sync with the logged-in user who fills the form
+  useEffect(() => {
+    if (userProfile.name && !activeEvalId) {
+      setEvaluatorName(userProfile.name);
+    }
+  }, [userProfile.name, activeEvalId]);
+
+  // Two-step navigation: Step 1 = Form (Choose Member, Role, Title, Meeting Number); Step 2 = Evaluation Sheet
+  const [step, setStep] = useState<'form' | 'sheet'>('form');
+  const [showReportModal, setShowReportModal] = useState<boolean>(false);
+  const [reportMeetingFilter, setReportMeetingFilter] = useState<string>('all');
+
+  const handleProceedToSheet = () => {
+    if (!speakerName.trim()) {
+      showToast('Please choose a member (Speaker) first.');
+      setShowSpeakerDropdown(true);
+      return;
+    }
+    if (!meetingNumber.trim()) {
+      showToast('Please enter the Meeting Number.');
+      return;
+    }
+    const existing = getStoredRecordForMember({ name: speakerName, gmail: speakerEmail });
+    if (existing && (!activeEvalId || activeEvalId !== existing.id)) {
+      showToast(`Evaluation for "${speakerName}" is already stored in ${meetingNumber}. Please choose another member.`);
+      return;
+    }
+    setStep('sheet');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const [showSpeakerDropdown, setShowSpeakerDropdown] = useState<boolean>(false);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -223,6 +261,7 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
     setOverallEvaluation('');
     setEvaluatorName(userProfile.name || 'Speech Evaluator');
     setEvaluatorDate(getTodayDateString());
+    setStep('form');
     showToast('Evaluation sheet reset.');
   };
 
@@ -245,6 +284,8 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
     setEvaluatorName(item.evaluatorName || userProfile.name || '');
     setEvaluatorDate(item.date || getTodayDateString());
     setShowHistoryModal(false);
+    setShowReportModal(false);
+    setStep('sheet');
     showToast(`Loaded evaluation for ${item.speakerName || 'speaker'}`);
   };
 
@@ -341,23 +382,23 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
         useCORS: true,
         allowTaint: true,
         logging: false,
-        backgroundColor: '#050B14',
+        backgroundColor: '#06111F',
         onclone: (clonedDoc) => {
           // Sync input values so html2canvas captures them in golden-black styling
           const clonedInputs = clonedDoc.querySelectorAll('input');
           clonedInputs.forEach((input) => {
             const htmlInp = input as HTMLInputElement;
             htmlInp.setAttribute('value', htmlInp.value);
-            htmlInp.style.color = '#FFFFFF';
-            htmlInp.style.backgroundColor = '#030712';
+            htmlInp.style.color = '#E0E0E0';
+            htmlInp.style.backgroundColor = '#06111F';
           });
           // Sync textarea text contents
           const clonedTextareas = clonedDoc.querySelectorAll('textarea');
           clonedTextareas.forEach((ta) => {
             const htmlTa = ta as HTMLTextAreaElement;
             htmlTa.textContent = htmlTa.value;
-            htmlTa.style.color = '#F1F5F9';
-            htmlTa.style.backgroundColor = '#030712';
+            htmlTa.style.color = '#E0E0E0';
+            htmlTa.style.backgroundColor = '#06111F';
           });
         },
       });
@@ -417,16 +458,48 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
     }
   };
 
-  const handleDeleteEvaluation = async (e: React.MouseEvent, id?: string) => {
+  const handleDeleteEvaluationClick = (e: React.MouseEvent, rec: SpeechEvaluationSheetData) => {
     e.stopPropagation();
-    if (!id) return;
-    const ok = window.confirm('Are you sure you want to delete this evaluation record?');
-    if (!ok) return;
-    await deleteSpeechEvaluation(id);
-    if (activeEvalId === id) {
+    setEvalToDelete(rec);
+  };
+
+  const handleExecuteDeleteEvaluation = async () => {
+    if (!evalToDelete) return;
+    setIsDeletingRecord(true);
+    const target = evalToDelete;
+
+    // Optimistically update memory state immediately
+    setEvaluationsHistory((prev) =>
+      prev.filter((item) => {
+        if (target.id && item.id && item.id === target.id) return false;
+        if (target.createdAt && item.createdAt && item.createdAt === target.createdAt && item.speakerName === target.speakerName) {
+          return false;
+        }
+        if (
+          (item.speakerName || '').trim().toLowerCase() === (target.speakerName || '').trim().toLowerCase() &&
+          (item.meetingNumber || item.speechTime || '').trim().toLowerCase() ===
+            (target.meetingNumber || target.speechTime || '').trim().toLowerCase()
+        ) {
+          return false;
+        }
+        return true;
+      })
+    );
+
+    if (activeEvalId && (activeEvalId === target.id)) {
       handleResetForm();
     }
-    showToast('Evaluation deleted.');
+
+    try {
+      await deleteSpeechEvaluation(target);
+      showToast(`Evaluation record for "${target.speakerName}" deleted.`);
+    } catch (err) {
+      console.error('Delete evaluation error:', err);
+      showToast('Failed to delete evaluation record.');
+    } finally {
+      setIsDeletingRecord(false);
+      setEvalToDelete(null);
+    }
   };
 
   const handlePrintSheet = () => {
@@ -451,6 +524,9 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
     return s.replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
+  // Helper to check if role is Key Note Speaker
+  const isKeyNoteRole = (r: string) => /^key\s*note/i.test(r.trim());
+
   // Helper to extract clean roles for a member
   const getMemberRoles = (m: RegisteredMember): string[] => {
     const raw: string[] = [];
@@ -463,57 +539,40 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
       .filter(Boolean);
   };
 
-  // Appointed members appointed by Admin into ANY speaker role
-  const appointedSpeakers = useMemo(() => {
-    return members.filter((m) => getMemberRoles(m).length > 0);
+  // Members explicitly appointed as Key Note Speaker
+  const appointedKeyNoteSpeakers = useMemo(() => {
+    return members.filter((m) => getMemberRoles(m).some(isKeyNoteRole));
   }, [members]);
 
-  // Group appointed members into their respective appointed roles
+  // Group members for the dropdown menu: prioritizing appointed Key Note Speakers
   const rolesWithMembers = useMemo(() => {
-    const roleMap = new Map<string, RegisteredMember[]>();
+    const keyNotes = members.filter((m) => getMemberRoles(m).some(isKeyNoteRole));
+    const otherMembers = members.filter((m) => !getMemberRoles(m).some(isKeyNoteRole));
 
-    const standardOrder = [
-      'Key Note Speaker',
-      'Role Player',
-      'Evaluator (Feedbacker)',
-      'Quick Think Speaker',
-      'Filler Counter',
-      'Time Steward',
-      'Toastmaster of the Day',
-      'General Evaluator',
-      'Grammarian',
-      'Table Topics Master',
-    ];
+    const groups: { role: string; members: RegisteredMember[] }[] = [];
 
-    members.forEach((m) => {
-      const userRoles = getMemberRoles(m);
-      userRoles.forEach((role) => {
-        if (!roleMap.has(role)) {
-          roleMap.set(role, []);
-        }
-        const list = roleMap.get(role)!;
-        if (!list.some((existing) => existing.id === m.id || (m.gmail && existing.gmail === m.gmail))) {
-          list.push(m);
-        }
+    if (keyNotes.length > 0) {
+      groups.push({
+        role: 'Key Note Speaker',
+        members: keyNotes,
       });
-    });
-
-    const result: { role: string; members: RegisteredMember[] }[] = [];
-
-    standardOrder.forEach((role) => {
-      if (roleMap.has(role)) {
-        result.push({ role, members: roleMap.get(role)! });
-        roleMap.delete(role);
+      if (otherMembers.length > 0) {
+        groups.push({
+          role: 'All Other Members (Evaluate as Key Note Speaker)',
+          members: otherMembers,
+        });
       }
-    });
-
-    roleMap.forEach((mems, role) => {
-      result.push({ role, members: mems });
-    });
+    } else {
+      // If admin has not yet explicitly tagged Key Note Speakers, all registered members are selectable
+      groups.push({
+        role: 'Key Note Speaker',
+        members: members,
+      });
+    }
 
     if (speakerName.trim()) {
       const q = speakerName.toLowerCase().trim();
-      return result
+      return groups
         .map((grp) => ({
           role: grp.role,
           members: grp.members.filter(
@@ -525,7 +584,7 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
         .filter((grp) => grp.members.length > 0);
     }
 
-    return result;
+    return groups;
   }, [members, speakerName]);
 
   const toggleRole = (role: string) => {
@@ -561,7 +620,7 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
     });
   };
 
-  const handleSelectMember = (m: RegisteredMember, chosenRole: string) => {
+  const handleSelectMember = (m: RegisteredMember, chosenRole: string = 'Key Note Speaker') => {
     const isAlreadyStored = Boolean(getStoredRecordForMember(m));
     if (isAlreadyStored) {
       showToast(`${m.name} is all ready stored for ${meetingNumber}. Please choose another member.`);
@@ -570,17 +629,17 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
 
     setSpeakerName(m.name);
     setSpeakerEmail(m.gmail || '');
-    setSpeakerRole(chosenRole);
+    setSpeakerRole('Key Note Speaker');
     const deptFormatted =
       [m.department, m.year ? `(${m.year})` : ''].filter(Boolean).join(' ') ||
       m.department ||
       '';
     setSpeakerDepartment(deptFormatted);
-    if (!speechTitle || speechTitle === 'Keynote Speech') {
-      setSpeechTitle(`${chosenRole} Presentation`);
+    if (!speechTitle || speechTitle === 'Keynote Speech' || speechTitle.includes('Presentation')) {
+      setSpeechTitle(`Keynote Speech`);
     }
     setShowSpeakerDropdown(false);
-    showToast(`Selected ${m.name} (${chosenRole})`);
+    showToast(`Selected Key Note Speaker: ${m.name}`);
   };
 
   const [isSubmittingToActivity, setIsSubmittingToActivity] = useState<boolean>(false);
@@ -659,85 +718,439 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
     return Object.values(ratings).filter(Boolean).length;
   }, [ratings]);
 
+  const ratingBreakdown = useMemo(() => {
+    const counts: Record<string, number> = {
+      'Excellent': 0,
+      'Above Average': 0,
+      'Satisfactory': 0,
+      'Should Improve': 0,
+      'Must Improve': 0,
+    };
+    Object.values(ratings).forEach((val) => {
+      const lvl = String(val);
+      if (lvl && counts[lvl] !== undefined) {
+        counts[lvl]++;
+      }
+    });
+    return counts;
+  }, [ratings]);
+
+  const renderSpeakerDropdownMenu = () => {
+    if (!showSpeakerDropdown) return null;
+
+    return (
+      <div className="absolute top-full left-0 right-0 z-30 mt-1.5 bg-[#06111F] border border-[#BFA373]/30 rounded-2xl shadow-2xl overflow-hidden print:hidden animate-in fade-in slide-in-from-top-1">
+        {/* Dropdown Header */}
+        <div className="p-3 bg-[#06111F] border-b border-[#BFA373]/30 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[#BFA373] text-xs font-bold uppercase tracking-wider font-cinzel">
+            <Mic className="w-3.5 h-3.5 text-amber-400" />
+            <span>Key Note Speakers ({appointedKeyNoteSpeakers.length > 0 ? appointedKeyNoteSpeakers.length : members.length})</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowSpeakerDropdown(false)}
+            className="text-slate-400 hover:text-white cursor-pointer p-0.5"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Dropdown List Body: Grouped by Role with Dropdown Arrow */}
+        <div className="max-h-80 overflow-y-auto divide-y divide-[#BFA373]/20">
+          {members.length === 0 ? (
+            <div className="p-5 text-center space-y-2">
+              <p className="text-xs text-amber-300 font-semibold">
+                No members currently registered.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Please register members or appoint speakers first.
+              </p>
+            </div>
+          ) : rolesWithMembers.length === 0 ? (
+            <div className="p-4 text-center text-xs text-slate-400">
+              No member matches &ldquo;{speakerName}&rdquo;
+            </div>
+          ) : (
+            rolesWithMembers.map((item) => {
+              const expanded = isRoleExpanded(item.role);
+
+              return (
+                <div key={item.role} className="bg-[#06111F]/60">
+                  {/* Role Tag Header with Dropdown Arrow */}
+                  <button
+                    type="button"
+                    onClick={() => toggleRole(item.role)}
+                    className="w-full px-3.5 py-2.5 bg-[#06111F] hover:bg-slate-900 flex items-center justify-between transition-colors border-b border-[#BFA373]/20 cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
+                        {item.role}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-semibold">
+                        ({item.members.length} {item.members.length === 1 ? 'member' : 'members'})
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 text-amber-400 transition-transform duration-200 ${
+                        expanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Members under this role */}
+                  {expanded && (
+                    <div className="divide-y divide-[#BFA373]/10 bg-[#06111F]">
+                      {item.members.map((m) => {
+                        const existingRecord = getStoredRecordForMember(m);
+                        const isAlreadyStored = Boolean(existingRecord);
+                        const isSelected =
+                          speakerName.toLowerCase() === (m.name || '').toLowerCase() &&
+                          speakerRole.toLowerCase() === item.role.toLowerCase();
+                        const deptDisplay =
+                          [m.department, m.year ? `(${m.year})` : ''].filter(Boolean).join(' ') ||
+                          m.department ||
+                          '';
+
+                        return (
+                          <button
+                            key={`${item.role}-${m.id || m.name}`}
+                            type="button"
+                            disabled={isAlreadyStored}
+                            onClick={() => {
+                              if (isAlreadyStored) return;
+                              handleSelectMember(m, item.role);
+                            }}
+                            className={`w-full text-left px-4 py-3 text-xs flex items-center justify-between transition-colors ${
+                              isAlreadyStored
+                                ? 'opacity-60 cursor-not-allowed bg-[#06111F] border-l-2 border-emerald-500/50 hover:bg-[#06111F]'
+                                : isSelected
+                                ? 'bg-amber-950/40 text-amber-300 cursor-pointer'
+                                : 'hover:bg-slate-900 text-white cursor-pointer'
+                            }`}
+                            title={
+                              isAlreadyStored
+                                ? `All ready stored for ${m.name} (${meetingNumber})`
+                                : `Select ${m.name}`
+                            }
+                          >
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={`font-bold text-sm ${
+                                    isAlreadyStored ? 'text-slate-400 line-through' : 'text-white'
+                                  }`}
+                                >
+                                  {m.name}
+                                </span>
+                                {isAlreadyStored && (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 tracking-wider">
+                                    All ready stored
+                                  </span>
+                                )}
+                              </div>
+                              {deptDisplay ? (
+                                <div className="text-xs text-[#BFA373] font-medium">
+                                  {deptDisplay}
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 ml-3">
+                              {isAlreadyStored ? (
+                                <div className="text-right">
+                                  <span className="text-xs font-black text-emerald-400 font-mono block">
+                                    Evaluated
+                                  </span>
+                                  <span className="text-[9px] text-slate-500 font-bold uppercase">
+                                    Stored
+                                  </span>
+                                </div>
+                              ) : isSelected ? (
+                                <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                              ) : (
+                                <span className="text-xs text-amber-400 font-cinzel font-bold">
+                                  Select
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full max-w-full space-y-6 text-slate-900 animate-in fade-in duration-300">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-[#0F284E] text-amber-300 border border-amber-500/50 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-medium animate-in slide-in-from-top-2">
+        <div className="fixed top-20 right-6 z-50 bg-[#06111F] text-amber-300 border border-amber-500/50 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-medium animate-in slide-in-from-top-2">
           <Sparkles className="w-4 h-4 text-amber-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Top Header Title Bar (Non-print) */}
-      <div className="print:hidden rounded-2xl bg-[#081220] p-4 sm:p-5 border border-[#1E2E48] shadow-xl flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
-            <FileCheck className="w-5 h-5" />
-          </span>
-          <div className="flex items-center gap-2">
-            <h2 className="font-cinzel text-lg sm:text-xl font-bold text-white tracking-wide">
-              Speech Evaluator Sheet
-            </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white shadow-sm">
-              NEW
-            </span>
-          </div>
-        </div>
-
-        {/* PDF Download Button - In the exact boxed position */}
+      {/* Speech Report Top Bar */}
+      <div className="print:hidden flex items-center justify-between flex-wrap gap-3">
         <button
           type="button"
-          onClick={handleDownloadPDF}
-          disabled={isDownloadingPdf}
-          className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-rose-600/30 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-          title="Download Speech Evaluation as PDF"
+          onClick={() => setShowReportModal(true)}
+          className="px-5 py-2.5 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-cinzel font-bold text-sm flex items-center gap-2.5 transition-all cursor-pointer shadow-lg shadow-amber-500/10 hover:scale-[1.02] active:scale-95"
         >
-          {isDownloadingPdf ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Generating PDF...</span>
-            </>
-          ) : (
-            <>
-              <FileDown className="w-4 h-4 text-white" />
-              <span>PDF</span>
-            </>
+          <Mic className="w-4 h-4 text-amber-400" />
+          <span>Speech Report</span>
+          {evaluationsHistory.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[11px] font-black">
+              {evaluationsHistory.length}
+            </span>
           )}
         </button>
       </div>
 
-      {/* RATING PROGRESS BAR (Non-print) */}
-      <div className="print:hidden rounded-xl bg-[#081220]/80 border border-[#1E2E48] px-4 py-2.5 flex items-center justify-between text-xs text-slate-300">
-        <div className="flex items-center gap-2">
-          <Info className="w-4 h-4 text-amber-400" />
-          <span>
-            Evaluation Progress:{' '}
-            <strong className="text-amber-400 font-mono">{ratedCount} / 18</strong> categories rated
-          </span>
-        </div>
-        <span className="text-[11px] text-slate-400 hidden sm:inline">
-          Click the cells in the sheet below to rate
-        </span>
-      </div>
+      {/* ===================================================================== */}
+      {/* STEP 1: FORM (Choose Member + Speech Title + Meeting Number)          */}
+      {/* ===================================================================== */}
+      {step === 'form' && (
+        <div className="p-6 sm:p-8 rounded-3xl bg-[#06111F] border border-[#BFA373]/30 shadow-2xl space-y-6 animate-in fade-in duration-300">
+          <div className="space-y-5">
+            {/* Choose the Member Field */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
+                Choose The Member:
+              </label>
 
-      {/* ========================================================================= */}
-      {/* THE PRINTABLE AUTHENTIC SPEECH EVALUATION SHEET CONTAINER                  */}
-      {/* ========================================================================= */}
-      {/* ========================================================================= */}
-      {/* THE SPEECH EVALUATION SHEET CONTAINER - GOLDEN & BLACK THEME              */}
-      {/* ========================================================================= */}
-      <div
-        ref={sheetRef}
-        id="printable-speech-evaluation-sheet"
-        className="w-full bg-[#050B14] text-slate-100 border-2 border-[#C5A880]/50 shadow-2xl rounded-2xl overflow-hidden p-4 sm:p-6 lg:p-8 font-sans transition-all"
-      >
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={speakerName}
+                      onChange={(e) => {
+                        setSpeakerName(e.target.value);
+                        setShowSpeakerDropdown(true);
+                      }}
+                      onFocus={() => setShowSpeakerDropdown(true)}
+                      placeholder={
+                        appointedKeyNoteSpeakers.length === 0 && members.length === 0
+                          ? 'No members registered yet...'
+                          : 'Click to choose Key Note Speaker...'
+                      }
+                      className="w-full pl-3 pr-10 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors cursor-pointer text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSpeakerDropdown(!showSpeakerDropdown)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                      title="Toggle Speakers List"
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          showSpeakerDropdown ? 'rotate-180 text-amber-400' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold shrink-0">
+                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Key Note Speaker</span>
+                  </span>
+                </div>
+
+                {/* Warning if currently entered speaker is already stored */}
+                {speakerName && getStoredRecordForMember({ name: speakerName, gmail: speakerEmail }) && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        <strong>{speakerName}</strong>: All ready stored for {meetingNumber}. Please choose another member.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSpeakerName('');
+                        setSpeakerEmail('');
+                        setSpeakerDepartment('');
+                        setShowSpeakerDropdown(true);
+                      }}
+                      className="text-amber-300 hover:text-white underline font-bold cursor-pointer shrink-0 ml-2"
+                    >
+                      Choose Another
+                    </button>
+                  </div>
+                )}
+
+                {/* Speaker Scroll-Down Dropdown Menu */}
+                {showSpeakerDropdown && renderSpeakerDropdownMenu()}
+              </div>
+
+              {speakerDepartment && (
+                <p className="text-[11px] text-slate-400">
+                  Department: <span className="text-[#BFA373] font-medium">{speakerDepartment}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Speech Title */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
+                Speech Title:
+              </label>
+              <input
+                type="text"
+                value={speechTitle}
+                onChange={(e) => setSpeechTitle(e.target.value)}
+                placeholder="e.g. The Power of Vulnerability"
+                className="w-full px-3.5 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
+              />
+            </div>
+
+            {/* Meeting Number Field */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
+                Meeting Number:
+              </label>
+              <input
+                type="text"
+                value={meetingNumber}
+                onChange={(e) => setMeetingNumber(e.target.value)}
+                placeholder="e.g. 1st Meeting"
+                className="w-full px-3.5 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors text-sm"
+              />
+            </div>
+
+            {/* Evaluation Date */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#BFA373] font-cinzel uppercase tracking-wider">
+                Evaluation Date:
+              </label>
+              <input
+                type="date"
+                value={evaluatorDate}
+                onChange={(e) => setEvaluatorDate(e.target.value)}
+                className="w-full px-3.5 py-3 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold transition-colors text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Next Button */}
+          <div className="pt-4 border-t border-[#BFA373]/30 flex items-center justify-between gap-3">
+            {speakerName && getStoredRecordForMember({ name: speakerName, gmail: speakerEmail }) ? (
+              <span className="text-xs text-rose-400 font-semibold">
+                * Selected speaker is all ready stored. Please choose another member.
+              </span>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              disabled={Boolean(speakerName && getStoredRecordForMember({ name: speakerName, gmail: speakerEmail }))}
+              onClick={handleProceedToSheet}
+              className={`px-6 py-3 rounded-xl font-cinzel font-bold text-sm flex items-center gap-2 transition-all ${
+                speakerName && getStoredRecordForMember({ name: speakerName, gmail: speakerEmail })
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-[#BFA373] hover:bg-[#BFA373] text-[#06111F] shadow-lg shadow-[#BFA373]/20 cursor-pointer hover:translate-x-0.5 active:scale-95'
+              }`}
+            >
+              <span>Next</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* STEP 2: EVALUATION SHEET SCREEN                                      */}
+      {/* ===================================================================== */}
+      {step === 'sheet' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Active Session Info Bar with Back Button */}
+          <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('form');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#BFA373]/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-[#BFA373]" />
+                <span>Back</span>
+              </button>
+
+              <div className="text-xs flex items-center gap-1.5 flex-wrap">
+                <span className="text-slate-400">Evaluating Speaker: </span>
+                <strong className="text-white text-sm">{speakerName}</strong>
+                {speakerRole && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40">
+                    {speakerRole}
+                  </span>
+                )}
+                <span className="text-slate-500 mx-1">&bull;</span>
+                <span className="text-amber-400 font-cinzel font-bold">{meetingNumber}</span>
+                {speechTitle && (
+                  <>
+                    <span className="text-slate-500 mx-1">&bull;</span>
+                    <span className="text-slate-300 italic">&ldquo;{speechTitle}&rdquo;</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                disabled={isDownloadingPdf}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isDownloadingPdf ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="w-3.5 h-3.5 text-white" />
+                )}
+                <span>PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Rating Progress Bar */}
+          <div className="print:hidden rounded-xl bg-[#06111F]/80 border border-[#BFA373]/30 px-4 py-2.5 flex items-center justify-between text-xs text-slate-300">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-amber-400" />
+              <span>
+                Evaluation Progress:{' '}
+                <strong className="text-amber-400 font-mono">{ratedCount} / 18</strong> categories rated
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-400 hidden sm:inline">
+              Click the cells in the sheet below to rate
+            </span>
+          </div>
+
+        {/* ========================================================================= */}
+        {/* THE PRINTABLE AUTHENTIC SPEECH EVALUATION SHEET CONTAINER                  */}
+        {/* ========================================================================= */}
+        <div
+          ref={sheetRef}
+          id="printable-speech-evaluation-sheet"
+          className="w-full bg-[#06111F] text-slate-100 border-2 border-[#BFA373]/50 shadow-2xl rounded-2xl overflow-hidden p-4 sm:p-6 lg:p-8 font-sans transition-all"
+        >
         {/* ================= SPEAKER & TIME FIELDS ================= */}
-        <div className="p-4 sm:p-5 bg-[#081220] border border-[#1E2E48] rounded-xl space-y-3 shadow-inner">
+        <div className="p-4 sm:p-5 bg-[#06111F] border border-[#BFA373]/30 rounded-xl space-y-3 shadow-inner">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs sm:text-sm">
             {/* Speaker Name Field - Standardized Appointed Roles Dropdown */}
             <div className="md:col-span-12 relative flex flex-col sm:flex-row sm:items-center gap-2.5">
-              <label className="font-bold text-[#C5A880] font-cinzel shrink-0 min-w-[110px] tracking-wide flex items-center gap-1.5">
+              <label className="font-bold text-[#BFA373] font-cinzel shrink-0 min-w-[110px] tracking-wide flex items-center gap-1.5">
                 <span>Speaker:</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-normal">
                   Role
@@ -755,11 +1168,11 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                       }}
                       onFocus={() => setShowSpeakerDropdown(true)}
                       placeholder={
-                        appointedSpeakers.length === 0
-                          ? 'No members appointed yet by Admin in Speaker Roles...'
-                          : 'Click to choose an appointed member...'
+                        appointedKeyNoteSpeakers.length === 0 && members.length === 0
+                          ? 'No members registered yet...'
+                          : 'Click to choose Key Note Speaker...'
                       }
-                      className="w-full pl-3 pr-10 py-2.5 bg-[#030712] border border-[#1E2E48] rounded-xl focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors cursor-pointer text-sm"
+                      className="w-full pl-3 pr-10 py-2.5 bg-[#06111F] border border-[#BFA373]/30 rounded-xl focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors cursor-pointer text-sm"
                     />
                     <button
                       type="button"
@@ -808,159 +1221,13 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                 )}
 
                 {/* Speaker Scroll-Down Dropdown - Appointed Roles with Dropdown Arrows */}
-                {showSpeakerDropdown && (
-                  <div className="absolute top-full left-0 right-0 z-30 mt-1.5 bg-[#081220] border border-[#1E2E48] rounded-2xl shadow-2xl overflow-hidden print:hidden animate-in fade-in slide-in-from-top-1">
-                    {/* Dropdown Header */}
-                    <div className="p-3 bg-[#050B14] border-b border-[#1E2E48] flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-[#C5A880] text-xs font-bold uppercase tracking-wider font-cinzel">
-                        <Mic className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Appointed Members ({appointedSpeakers.length})</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowSpeakerDropdown(false)}
-                        className="text-slate-400 hover:text-white cursor-pointer p-0.5"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Dropdown List Body: Grouped by Role with Dropdown Arrow */}
-                    <div className="max-h-80 overflow-y-auto divide-y divide-[#1E2E48]/60">
-                      {appointedSpeakers.length === 0 ? (
-                        <div className="p-5 text-center space-y-2">
-                          <p className="text-xs text-amber-300 font-semibold">
-                            No members currently appointed in Speaker Roles by Admin.
-                          </p>
-                          <p className="text-[11px] text-slate-400">
-                            Please appoint speakers under the Speaker Roles tab first.
-                          </p>
-                        </div>
-                      ) : rolesWithMembers.length === 0 ? (
-                        <div className="p-4 text-center text-xs text-slate-400">
-                          No appointed member matches &ldquo;{speakerName}&rdquo;
-                        </div>
-                      ) : (
-                        rolesWithMembers.map((item) => {
-                          const expanded = isRoleExpanded(item.role);
-
-                          return (
-                            <div key={item.role} className="bg-[#050B14]/40">
-                              {/* Role Tag Header with Dropdown Arrow */}
-                              <button
-                                type="button"
-                                onClick={() => toggleRole(item.role)}
-                                className="w-full px-3.5 py-2.5 bg-[#050B14] hover:bg-[#0A192F] flex items-center justify-between transition-colors border-b border-[#1E2E48]/60 cursor-pointer text-left"
-                              >
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
-                                    {item.role}
-                                  </span>
-                                  <span className="text-[11px] text-slate-400 font-semibold">
-                                    ({item.members.length} {item.members.length === 1 ? 'member' : 'members'})
-                                  </span>
-                                </div>
-                                <ChevronDown
-                                  className={`w-4 h-4 text-amber-400 transition-transform duration-200 ${
-                                    expanded ? 'rotate-180' : ''
-                                  }`}
-                                />
-                              </button>
-
-                              {/* Members under this role */}
-                              {expanded && (
-                                <div className="divide-y divide-[#1E2E48]/30 bg-[#030712]">
-                                  {item.members.map((m) => {
-                                    const existingRecord = getStoredRecordForMember(m);
-                                    const isAlreadyStored = Boolean(existingRecord);
-                                    const isSelected =
-                                      speakerName.toLowerCase() === (m.name || '').toLowerCase() &&
-                                      speakerRole.toLowerCase() === item.role.toLowerCase();
-                                    const deptDisplay =
-                                      [m.department, m.year ? `(${m.year})` : ''].filter(Boolean).join(' ') ||
-                                      m.department ||
-                                      '';
-
-                                    return (
-                                      <button
-                                        key={`${item.role}-${m.id || m.name}`}
-                                        type="button"
-                                        disabled={isAlreadyStored}
-                                        onClick={() => {
-                                          if (isAlreadyStored) return;
-                                          handleSelectMember(m, item.role);
-                                        }}
-                                        className={`w-full text-left px-4 py-3 text-xs flex items-center justify-between transition-colors ${
-                                          isAlreadyStored
-                                            ? 'opacity-60 cursor-not-allowed bg-[#02050B] border-l-2 border-emerald-500/50 hover:bg-[#02050B]'
-                                            : isSelected
-                                            ? 'bg-amber-950/40 text-amber-300 cursor-pointer'
-                                            : 'hover:bg-[#0E1F36] text-white cursor-pointer'
-                                        }`}
-                                        title={
-                                          isAlreadyStored
-                                            ? `All ready stored for ${m.name} (${meetingNumber})`
-                                            : `Select ${m.name}`
-                                        }
-                                      >
-                                        <div className="space-y-0.5">
-                                          <div className="flex items-center gap-2 flex-wrap">
-                                            <span
-                                              className={`font-bold text-sm ${
-                                                isAlreadyStored ? 'text-slate-400 line-through' : 'text-white'
-                                              }`}
-                                            >
-                                              {m.name}
-                                            </span>
-                                            {isAlreadyStored && (
-                                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 tracking-wider">
-                                                All ready stored
-                                              </span>
-                                            )}
-                                          </div>
-                                          {deptDisplay ? (
-                                            <div className="text-xs text-[#C5A880] font-medium">
-                                              {deptDisplay}
-                                            </div>
-                                          ) : null}
-                                        </div>
-
-                                        <div className="flex items-center gap-2 shrink-0 ml-3">
-                                          {isAlreadyStored ? (
-                                            <div className="text-right">
-                                              <span className="text-xs font-black text-emerald-400 font-mono block">
-                                                Evaluated
-                                              </span>
-                                              <span className="text-[9px] text-slate-500 font-bold uppercase">
-                                                Stored
-                                              </span>
-                                            </div>
-                                          ) : isSelected ? (
-                                            <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                                          ) : (
-                                            <span className="text-xs text-amber-400 font-cinzel font-bold">
-                                              Select
-                                            </span>
-                                          )}
-                                        </div>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
+                {renderSpeakerDropdownMenu()}
               </div>
             </div>
 
             {/* Speech Title Field */}
             <div className="md:col-span-8 flex flex-col sm:flex-row sm:items-center gap-2.5">
-              <label className="font-bold text-[#C5A880] font-cinzel shrink-0 min-w-[110px] tracking-wide">
+              <label className="font-bold text-[#BFA373] font-cinzel shrink-0 min-w-[110px] tracking-wide">
                 Speech Title:
               </label>
               <input
@@ -968,13 +1235,13 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                 value={speechTitle}
                 onChange={(e) => setSpeechTitle(e.target.value)}
                 placeholder="e.g. The Power of Vulnerability"
-                className="flex-1 px-3 py-2 bg-[#030712] border border-[#1E2E48] rounded-lg focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors"
+                className="flex-1 px-3 py-2 bg-[#06111F] border border-[#BFA373]/30 rounded-lg focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors"
               />
             </div>
 
             {/* Meeting Number Field */}
             <div className="md:col-span-4 flex flex-col sm:flex-row sm:items-center gap-2.5">
-              <label className="font-bold text-[#C5A880] font-cinzel shrink-0 tracking-wide">
+              <label className="font-bold text-[#BFA373] font-cinzel shrink-0 tracking-wide">
                 Meeting Number:
               </label>
               <input
@@ -982,7 +1249,7 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                 value={meetingNumber}
                 onChange={(e) => setMeetingNumber(e.target.value)}
                 placeholder="e.g. 1st Meeting"
-                className="flex-1 px-3 py-2 bg-[#030712] border border-[#1E2E48] rounded-lg focus:border-[#C5A880] focus:ring-1 focus:ring-[#C5A880] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors"
+                className="flex-1 px-3 py-2 bg-[#06111F] border border-[#BFA373]/30 rounded-lg focus:border-[#BFA373] focus:ring-1 focus:ring-[#BFA373] focus:outline-none text-white font-semibold placeholder:text-slate-500 transition-colors"
               />
             </div>
           </div>
@@ -990,7 +1257,7 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
 
         {/* ================= SUBHEADER MESSAGE ================= */}
         <div className="my-5 text-center space-y-1.5">
-          <h3 className="font-cinzel text-sm sm:text-base font-bold text-[#C5A880] uppercase tracking-wider">
+          <h3 className="font-cinzel text-sm sm:text-base font-bold text-[#BFA373] uppercase tracking-wider">
             YOUR EVALUATION OF THE PREPARED SPEAKER
           </h3>
           <p className="text-xs text-slate-400 max-w-2xl mx-auto leading-relaxed italic">
@@ -1000,40 +1267,40 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
         </div>
 
         {/* ================= SECTION 1 HEADING ================= */}
-        <div className="bg-[#0B1528] border border-[#C5A880]/30 text-[#C5A880] py-2.5 px-4 rounded-t-xl font-bold text-xs sm:text-sm tracking-wide font-cinzel">
+        <div className="bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] py-2.5 px-4 rounded-t-xl font-bold text-xs sm:text-sm tracking-wide font-cinzel">
           1. In my honest opinion, this is how I rated your speech in each of the following
           categories:
         </div>
 
         {/* ================= 18 CATEGORIES RATING TABLE (STRAIGHT 1 TO 18) ================= */}
-        <div className="border-x border-b border-[#1E2E48] rounded-b-xl overflow-hidden bg-[#081220]">
+        <div className="border-x border-b border-[#BFA373]/30 rounded-b-xl overflow-hidden bg-[#06111F]">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
-                <tr className="bg-[#0B1728] border-b border-[#1E2E48] text-[#C5A880]">
+                <tr className="bg-[#06111F] border-b border-[#BFA373]/30 text-[#BFA373]">
                   <th className="p-3 font-cinzel font-bold tracking-wider">
                     Category (1 to 18)
                   </th>
                   {RATING_LEVELS.map((lvl) => (
                     <th
                       key={lvl}
-                      className="p-2 text-center font-bold text-[10px] sm:text-xs w-16 sm:w-28 border-l border-[#1E2E48] leading-tight"
+                      className="p-2 text-center font-bold text-[10px] sm:text-xs w-16 sm:w-28 border-l border-[#BFA373]/30 leading-tight"
                     >
                       {lvl}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1E2E48]">
+              <tbody className="divide-y divide-[#BFA373]/30">
                 {ALL_CATEGORIES.map((cat) => {
                   const current = ratings[cat.id];
                   return (
                     <tr
                       key={cat.id}
-                      className="hover:bg-[#0E1F36]/60 transition-colors group"
+                      className="hover:bg-[#06111F]/60 transition-colors group"
                     >
                       <td className="p-3">
-                        <div className="font-semibold text-white text-xs sm:text-sm leading-snug group-hover:text-[#C5A880] transition-colors">
+                        <div className="font-semibold text-white text-xs sm:text-sm leading-snug group-hover:text-[#BFA373] transition-colors">
                           {cat.title}
                         </div>
                         <div className="text-[11px] text-slate-400 leading-snug italic mt-0.5">
@@ -1046,20 +1313,20 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                           <td
                             key={lvl}
                             onClick={() => handleRatingClick(cat.id, lvl)}
-                            className={`p-2 text-center border-l border-[#1E2E48] cursor-pointer select-none transition-all ${
-                              isChecked ? 'bg-[#C5A880]/15' : 'hover:bg-slate-800/40'
+                            className={`p-2 text-center border-l border-[#BFA373]/30 cursor-pointer select-none transition-all ${
+                              isChecked ? 'bg-[#BFA373]/15' : 'hover:bg-slate-800/40'
                             }`}
                             title={`${cat.title}: ${lvl}`}
                           >
                             <div
                               className={`w-6 h-6 sm:w-7 sm:h-7 mx-auto rounded-md flex items-center justify-center transition-all ${
                                 isChecked
-                                  ? 'border-2 border-[#C5A880] bg-[#C5A880]/20 text-[#C5A880] shadow-sm shadow-[#C5A880]/30 font-bold'
-                                  : 'border border-slate-700 bg-[#030712] text-transparent hover:border-[#C5A880]/60'
+                                  ? 'border-2 border-[#BFA373] bg-[#BFA373]/20 text-[#BFA373] shadow-sm shadow-[#BFA373]/30 font-bold'
+                                  : 'border border-slate-700 bg-[#06111F] text-transparent hover:border-[#BFA373]/60'
                               }`}
                             >
                               {isChecked && (
-                                <span className="text-sm sm:text-base font-black leading-none text-[#C5A880]">
+                                <span className="text-sm sm:text-base font-black leading-none text-[#BFA373]">
                                   &#10003;
                                 </span>
                               )}
@@ -1078,8 +1345,8 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
         {/* ================= SECTIONS 2, 3, 4 (COMMEND, RECOMMEND, COMMEND) ================= */}
         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {/* Section 2 */}
-          <div className="border border-[#1E2E48] bg-[#081220] rounded-xl p-3.5 flex flex-col min-h-[150px] shadow-sm">
-            <h4 className="font-bold text-xs sm:text-sm text-[#C5A880] border-b border-[#1E2E48] pb-2 uppercase font-cinzel">
+          <div className="border border-[#BFA373]/30 bg-[#06111F] rounded-xl p-3.5 flex flex-col min-h-[150px] shadow-sm">
+            <h4 className="font-bold text-xs sm:text-sm text-[#BFA373] border-b border-[#BFA373]/30 pb-2 uppercase font-cinzel">
               2. COMMEND{' '}
               <span className="font-normal lowercase font-sans text-[11px] text-slate-400">
                 (What was done well)
@@ -1090,13 +1357,13 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
               value={commend1}
               onChange={(e) => setCommend1(e.target.value)}
               placeholder="Highlight strengths, confidence, stage presence, opening punch, vocal variety..."
-              className="w-full flex-1 p-2.5 text-xs sm:text-sm text-slate-100 bg-[#030712] border border-[#1E2E48] rounded-lg resize-y focus:outline-none focus:border-[#C5A880] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
+              className="w-full flex-1 p-2.5 text-xs sm:text-sm text-slate-100 bg-[#06111F] border border-[#BFA373]/30 rounded-lg resize-y focus:outline-none focus:border-[#BFA373] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
             />
           </div>
 
           {/* Section 3 */}
-          <div className="border border-[#1E2E48] bg-[#081220] rounded-xl p-3.5 flex flex-col min-h-[150px] shadow-sm">
-            <h4 className="font-bold text-xs sm:text-sm text-[#C5A880] border-b border-[#1E2E48] pb-2 uppercase font-cinzel">
+          <div className="border border-[#BFA373]/30 bg-[#06111F] rounded-xl p-3.5 flex flex-col min-h-[150px] shadow-sm">
+            <h4 className="font-bold text-xs sm:text-sm text-[#BFA373] border-b border-[#BFA373]/30 pb-2 uppercase font-cinzel">
               3. RECOMMEND{' '}
               <span className="font-normal lowercase font-sans text-[11px] text-slate-400">
                 (Suggestions for improvement)
@@ -1107,13 +1374,13 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
               value={recommend}
               onChange={(e) => setRecommend(e.target.value)}
               placeholder="Provide constructive points for speech flow, pauses, eye contact, body language..."
-              className="w-full flex-1 p-2.5 text-xs sm:text-sm text-slate-100 bg-[#030712] border border-[#1E2E48] rounded-lg resize-y focus:outline-none focus:border-[#C5A880] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
+              className="w-full flex-1 p-2.5 text-xs sm:text-sm text-slate-100 bg-[#06111F] border border-[#BFA373]/30 rounded-lg resize-y focus:outline-none focus:border-[#BFA373] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
             />
           </div>
 
           {/* Section 4 */}
-          <div className="border border-[#1E2E48] bg-[#081220] rounded-xl p-3.5 flex flex-col min-h-[150px] shadow-sm">
-            <h4 className="font-bold text-xs sm:text-sm text-[#C5A880] border-b border-[#1E2E48] pb-2 uppercase font-cinzel">
+          <div className="border border-[#BFA373]/30 bg-[#06111F] rounded-xl p-3.5 flex flex-col min-h-[150px] shadow-sm">
+            <h4 className="font-bold text-xs sm:text-sm text-[#BFA373] border-b border-[#BFA373]/30 pb-2 uppercase font-cinzel">
               4. COMMEND{' '}
               <span className="font-normal lowercase font-sans text-[11px] text-slate-400">
                 (What to keep doing/continue)
@@ -1124,14 +1391,14 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
               value={commend2}
               onChange={(e) => setCommend2(e.target.value)}
               placeholder="Key memorable moments, humor, relatable stories to continue in next speeches..."
-              className="w-full flex-1 p-2.5 text-xs sm:text-sm text-slate-100 bg-[#030712] border border-[#1E2E48] rounded-lg resize-y focus:outline-none focus:border-[#C5A880] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
+              className="w-full flex-1 p-2.5 text-xs sm:text-sm text-slate-100 bg-[#06111F] border border-[#BFA373]/30 rounded-lg resize-y focus:outline-none focus:border-[#BFA373] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
             />
           </div>
         </div>
 
         {/* ================= SECTION 5 (ACTION PLAN) ================= */}
-        <div className="mt-3.5 border border-[#1E2E48] bg-[#081220] rounded-xl p-3.5 shadow-sm">
-          <h4 className="font-bold text-xs sm:text-sm text-[#C5A880] border-b border-[#1E2E48] pb-2 uppercase font-cinzel">
+        <div className="mt-3.5 border border-[#BFA373]/30 bg-[#06111F] rounded-xl p-3.5 shadow-sm">
+          <h4 className="font-bold text-xs sm:text-sm text-[#BFA373] border-b border-[#BFA373]/30 pb-2 uppercase font-cinzel">
             5. ACTION PLAN{' '}
             <span className="font-normal lowercase font-sans text-[11px] text-slate-400">
               (One key action the speaker can take for the next speech)
@@ -1142,15 +1409,15 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
             value={actionPlan}
             onChange={(e) => setActionPlan(e.target.value)}
             placeholder="Single most actionable focus area for the upcoming speech..."
-            className="w-full p-2.5 text-xs sm:text-sm text-slate-100 bg-[#030712] border border-[#1E2E48] rounded-lg resize-y focus:outline-none focus:border-[#C5A880] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
+            className="w-full p-2.5 text-xs sm:text-sm text-slate-100 bg-[#06111F] border border-[#BFA373]/30 rounded-lg resize-y focus:outline-none focus:border-[#BFA373] placeholder:text-slate-500 font-sans mt-2.5 leading-relaxed"
           />
         </div>
 
         {/* ================= OVERALL EVALUATION & SIGN-OFF ================= */}
-        <div className="mt-5 pt-4 border-t border-[#1E2E48] flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs sm:text-sm">
+        <div className="mt-5 pt-4 border-t border-[#BFA373]/30 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs sm:text-sm">
           {/* Overall Rating Selection */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-[#C5A880] uppercase font-cinzel">
+            <span className="font-bold text-[#BFA373] uppercase font-cinzel">
               OVERALL EVALUATION:
             </span>
             <div className="flex items-center flex-wrap gap-1.5">
@@ -1163,8 +1430,8 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                     onClick={() => setOverallEvaluation(isSelected ? '' : lvl)}
                     className={`px-3 py-1 rounded-full border text-xs font-semibold transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-[#C5A880] bg-[#C5A880] text-slate-950 font-bold shadow-md shadow-[#C5A880]/20'
-                        : 'border-[#1E2E48] text-slate-300 hover:border-[#C5A880] bg-[#081220]'
+                        ? 'border-[#BFA373] bg-[#BFA373] text-slate-950 font-bold shadow-md shadow-[#BFA373]/20'
+                        : 'border-[#BFA373]/30 text-slate-300 hover:border-[#BFA373] bg-[#06111F]'
                     }`}
                   >
                     {lvl}
@@ -1175,88 +1442,373 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
           </div>
 
           {/* Evaluator & Date Sign-off */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-[#C5A880] font-cinzel">Evaluator:</span>
-              <input
-                type="text"
-                value={evaluatorName}
-                onChange={(e) => setEvaluatorName(e.target.value)}
-                placeholder="Evaluator's name"
-                className="w-40 px-2.5 py-1.5 bg-[#030712] border border-[#1E2E48] rounded-lg focus:border-[#C5A880] focus:outline-none font-semibold text-white text-xs"
-              />
+              <span className="font-bold text-[#BFA373] font-cinzel">Evaluator:</span>
+              <span className="px-3 py-1.5 bg-[#06111F] border border-[#BFA373]/30 rounded-lg font-semibold text-white text-xs">
+                {evaluatorName || userProfile.name || 'Speech Evaluator'}
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-[#C5A880] font-cinzel">Date:</span>
+              <span className="font-bold text-[#BFA373] font-cinzel">Date:</span>
               <input
                 type="date"
                 value={evaluatorDate}
                 onChange={(e) => setEvaluatorDate(e.target.value)}
-                className="px-2.5 py-1.5 bg-[#030712] border border-[#1E2E48] rounded-lg focus:border-[#C5A880] focus:outline-none font-semibold text-white text-xs"
+                className="px-2.5 py-1.5 bg-[#06111F] border border-[#BFA373]/30 rounded-lg focus:border-[#BFA373] focus:outline-none font-semibold text-white text-xs"
               />
             </div>
           </div>
         </div>
 
         {/* ================= FOOTER QUOTE BANNER ================= */}
-        <div className="mt-5 bg-[#081220] border border-[#C5A880]/30 text-[#C5A880] py-3 px-4 text-center rounded-xl">
+        <div className="mt-5 bg-[#06111F] border border-[#BFA373]/30 text-[#BFA373] py-3 px-4 text-center rounded-xl">
           <p className="font-serif italic text-sm sm:text-base tracking-wide font-medium">
             &ldquo;Great speeches are not born, they are crafted.&rdquo;
           </p>
         </div>
       </div>
 
-      {/* ================= ACTIONS BAR (NON-PRINT) ================= */}
-      <div className="print:hidden rounded-2xl bg-[#081220] p-4 sm:p-5 border border-[#1E2E48] shadow-xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#1E2E48] text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Reset Sheet</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowHistoryModal(true)}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#1E2E48] text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-          >
-            <History className="w-4 h-4 text-amber-400" />
-            <span>Saved History ({evaluationsHistory.length})</span>
-          </button>
-        </div>
+          {/* ================= ACTIONS BAR (NON-PRINT) FOR STEP 2 ================= */}
+          <div className="print:hidden rounded-2xl bg-[#06111F] p-4 sm:p-5 border border-[#BFA373]/30 shadow-xl flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('form');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white border border-[#BFA373]/30 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#BFA373]/30 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Reset Sheet</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-[#BFA373]/30 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <History className="w-4 h-4 text-amber-400" />
+                <span>Saved History ({evaluationsHistory.length})</span>
+              </button>
+            </div>
 
-        {/* Send to Speaker Activity Button */}
-        <button
-          type="button"
-          onClick={handleSendSuggestionsToSpeakerActivity}
-          disabled={isSubmittingToActivity}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-[#C5A880] to-amber-600 hover:brightness-110 text-[#050B14] font-bold text-xs sm:text-sm flex items-center gap-2.5 shadow-xl shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 font-cinzel tracking-wider"
-          title="Save and deliver this evaluation to the chosen Key Note Speaker's Activity tab"
-        >
-          {isSubmittingToActivity ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Delivering to Speaker Activity...</span>
-            </>
-          ) : (
-            <>
-              <Send className="w-4 h-4 text-[#050B14]" />
-              <span>Send Suggestions to Speaker Activity</span>
-            </>
-          )}
-        </button>
-      </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                disabled={isDownloadingPdf}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-rose-600/30 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isDownloadingPdf ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileDown className="w-4 h-4 text-white" />
+                )}
+                <span>Download PDF</span>
+              </button>
+
+              {/* Send to Speaker Activity Button */}
+              <button
+                type="button"
+                onClick={handleSendSuggestionsToSpeakerActivity}
+                disabled={isSubmittingToActivity}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-[#BFA373] to-amber-600 hover:brightness-110 text-[#06111F] font-bold text-xs sm:text-sm flex items-center gap-2.5 shadow-xl shadow-amber-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 font-cinzel tracking-wider"
+                title="Save and deliver this evaluation to the chosen Key Note Speaker's Activity tab"
+              >
+                {isSubmittingToActivity ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Delivering to Speaker Activity...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 text-[#06111F]" />
+                    <span>Send Suggestions to Speaker Activity</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SPEECH REPORT MODAL (Full Screen, Role Grouping, Name & Department)  */}
+      {/* ===================================================================== */}
+      {showReportModal && (() => {
+        // Distinct meeting numbers
+        const distinctMeetings = Array.from(
+          new Set(evaluationsHistory.map((e) => e.meetingNumber || e.speechTime).filter(Boolean))
+        );
+        const filteredEvalsForReport =
+          reportMeetingFilter === 'all'
+            ? evaluationsHistory
+            : evaluationsHistory.filter(
+                (e) => (e.meetingNumber || e.speechTime) === reportMeetingFilter
+              );
+
+        // Group evaluations by role
+        const roleGroups: { role: string; records: SpeechEvaluationSheetData[] }[] = [];
+        const seenRoles = new Set<string>();
+
+        filteredEvalsForReport.forEach((rec) => {
+          const rName = (rec.speakerRole || 'Key Note Speaker').trim();
+          const key = rName.toLowerCase();
+          if (!seenRoles.has(key)) {
+            seenRoles.add(key);
+            roleGroups.push({
+              role: rName,
+              records: filteredEvalsForReport.filter(
+                (r) => (r.speakerRole || 'Key Note Speaker').trim().toLowerCase() === key
+              ),
+            });
+          }
+        });
+
+        return (
+          <div className="fixed inset-0 z-50 bg-[#06111F] flex flex-col w-screen h-screen overflow-hidden animate-in fade-in duration-200">
+            {/* Top Navigation Bar */}
+            <div className="px-4 sm:px-8 py-3.5 sm:py-4 bg-[#06111F] border-b border-[#BFA373]/30 flex items-center justify-between gap-4 shrink-0 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center shadow-lg shrink-0">
+                  <Mic className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-cinzel text-lg sm:text-2xl font-bold text-white flex items-center gap-2.5">
+                    <span>Speech Report</span>
+                    {filteredEvalsForReport.length > 0 && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-sans font-black">
+                        {filteredEvalsForReport.length}
+                      </span>
+                    )}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                {distinctMeetings.length > 1 && (
+                  <select
+                    value={reportMeetingFilter}
+                    onChange={(e) => setReportMeetingFilter(e.target.value)}
+                    className="px-3 py-2 rounded-xl bg-[#06111F] border border-[#BFA373]/30 text-xs font-semibold text-amber-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">All Meetings ({evaluationsHistory.length})</option>
+                    {distinctMeetings.map((m) => (
+                      <option key={m} value={m}>
+                        {m} ({evaluationsHistory.filter((r) => (r.meetingNumber || r.speechTime) === m).length})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowReportModal(false)}
+                  className="px-3.5 sm:px-4 py-2 rounded-xl bg-[#06111F] hover:bg-slate-900 text-slate-300 hover:text-white border border-[#BFA373]/30 text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">Close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Full-Screen Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 max-w-5xl mx-auto w-full">
+              {roleGroups.length === 0 ? (
+                <div className="py-24 text-center space-y-3">
+                  <FileText className="w-12 h-12 text-slate-600 mx-auto" />
+                  <p className="text-base text-slate-300 font-semibold font-cinzel">
+                    No speech evaluations recorded yet.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Choose a member in Step 1, evaluate them in Step 2, and submit to record their report here!
+                  </p>
+                </div>
+              ) : (
+                roleGroups.map((group, groupIdx) => {
+                  return (
+                    <div key={group.role || groupIdx} className="space-y-3.5">
+                      {/* Role Top Heading */}
+                      <div className="flex items-center justify-between pb-2.5 border-b border-[#BFA373]/30">
+                        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+                          <span className="px-3.5 py-1 rounded-full text-xs sm:text-sm font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider font-cinzel">
+                            {group.role}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400 font-semibold">
+                          {group.records.length} {group.records.length === 1 ? 'Speaker' : 'Speakers'}
+                        </span>
+                      </div>
+
+                      {/* Speakers in this Role */}
+                      <div className="grid grid-cols-1 gap-4">
+                        {group.records.map((rec, recIdx) => {
+                          const matched = members.find(
+                            (m) =>
+                              (m.name || '').toLowerCase() === (rec.speakerName || '').toLowerCase() ||
+                              (rec.speakerEmail && m.gmail === rec.speakerEmail)
+                          );
+                          const deptStr =
+                            rec.speakerDepartment ||
+                            [matched?.department, matched?.year ? `(${matched.year})` : ''].filter(Boolean).join(' ') ||
+                            matched?.department ||
+                            '';
+
+                          const ratedCountForRec = Object.keys(rec.ratings || {}).length;
+
+                          return (
+                            <div
+                              key={rec.id || recIdx}
+                              className="p-4 sm:p-6 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 hover:border-amber-500/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl"
+                            >
+                              {/* Left: Speaker Details & Ratings */}
+                              <div className="space-y-2 flex-1 min-w-0">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <h4 className="font-bold text-white text-base sm:text-lg">
+                                    {rec.speakerName}
+                                  </h4>
+                                  {rec.overallEvaluation && (
+                                    <span
+                                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                        rec.overallEvaluation === 'Excellent'
+                                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                          : rec.overallEvaluation === 'Above Average'
+                                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                          : rec.overallEvaluation === 'Satisfactory'
+                                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                      }`}
+                                    >
+                                      {rec.overallEvaluation}
+                                    </span>
+                                  )}
+                                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[10px] font-mono border border-slate-700">
+                                    {ratedCountForRec}/18 Scored
+                                  </span>
+                                </div>
+
+                                {deptStr ? (
+                                  <p className="text-xs text-[#BFA373] font-medium">
+                                    {deptStr}
+                                  </p>
+                                ) : null}
+
+                                <div className="flex items-center gap-2 pt-0.5 text-xs text-slate-400 flex-wrap">
+                                  <span className="font-cinzel font-semibold text-amber-300/80">
+                                    {rec.meetingNumber || rec.speechTime}
+                                  </span>
+                                  {rec.speechTitle && (
+                                    <>
+                                      <span>&bull;</span>
+                                      <span className="text-slate-300 italic">
+                                        &ldquo;{rec.speechTitle}&rdquo;
+                                      </span>
+                                    </>
+                                  )}
+                                  <span>&bull;</span>
+                                  <span className="text-[11px] text-slate-500">{rec.date}</span>
+                                  <span>&bull;</span>
+                                  <span className="text-[11px] text-slate-500">
+                                    Evaluator: {rec.evaluatorName || 'Speech Evaluator'}
+                                  </span>
+                                </div>
+
+                                {/* Commendation & Recommendation previews */}
+                                {(rec.commend1 || rec.recommend) && (
+                                  <div className="pt-2 text-xs text-slate-300 space-y-1">
+                                    {rec.commend1 && (
+                                      <p className="line-clamp-1">
+                                        <strong className="text-emerald-400">Commend:</strong>{' '}
+                                        {rec.commend1}
+                                      </p>
+                                    )}
+                                    {rec.recommend && (
+                                      <p className="line-clamp-1">
+                                        <strong className="text-amber-400">Recommend:</strong>{' '}
+                                        {rec.recommend}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Right: Actions (Open Sheet, Download PDF, Delete) */}
+                              <div className="flex items-center gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-[#BFA373]/20">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectPastEvaluation(rec)}
+                                  className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                  title="Open in Evaluation Sheet"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span>Open Sheet</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleSelectPastEvaluation(rec);
+                                    setTimeout(() => handleDownloadPDF(), 300);
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 rounded-xl border border-[#BFA373]/30 transition-colors cursor-pointer"
+                                  title="Download PDF"
+                                >
+                                  <FileDown className="w-4 h-4 text-rose-400" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteEvaluationClick(e, rec)}
+                                  className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-950/30 rounded-xl transition-colors cursor-pointer"
+                                  title="Delete evaluation record"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Bottom Bar */}
+            <div className="px-4 sm:px-8 py-3.5 bg-[#06111F] border-t border-[#BFA373]/30 flex items-center justify-between text-xs text-slate-400 shrink-0">
+              <span>
+                Showing {filteredEvalsForReport.length} evaluation{filteredEvalsForReport.length !== 1 ? 's' : ''} across {roleGroups.length} role{roleGroups.length !== 1 ? 's' : ''}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="text-amber-400 hover:underline cursor-pointer"
+              >
+                Back to Evaluation
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* SAVED EVALUATIONS HISTORY MODAL                                           */}
       {/* ========================================================================= */}
       {showHistoryModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 print:hidden animate-in fade-in">
-          <div className="bg-[#081220] border border-[#1E2E48] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="bg-[#06111F] border border-[#BFA373]/30 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-4 border-b border-[#1E2E48] flex items-center justify-between bg-[#050B14]">
+            <div className="p-4 border-b border-[#BFA373]/30 flex items-center justify-between bg-[#06111F]">
               <div className="flex items-center gap-2">
                 <History className="w-4 h-4 text-amber-400" />
                 <h3 className="font-cinzel font-bold text-white text-base">
@@ -1287,7 +1839,7 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                     className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
                       activeEvalId === item.id
                         ? 'bg-amber-950/40 border-amber-500/60'
-                        : 'bg-[#030712] border-[#1E2E48] hover:border-slate-600'
+                        : 'bg-[#06111F] border-[#BFA373]/30 hover:border-slate-600'
                     }`}
                   >
                     <div className="min-w-0 flex-1 space-y-0.5">
@@ -1312,7 +1864,7 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={(e) => handleDeleteEvaluation(e, item.id)}
+                        onClick={(e) => handleDeleteEvaluationClick(e, item)}
                         className="p-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-900 border border-rose-500/40 text-rose-300 hover:text-white transition-colors"
                         title="Delete Record"
                       >
@@ -1325,13 +1877,97 @@ export const SpeechEvaluatorTab: React.FC<SpeechEvaluatorTabProps> = ({ userProf
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 border-t border-[#1E2E48] flex justify-end bg-[#050B14]">
+            <div className="p-3 border-t border-[#BFA373]/30 flex justify-end bg-[#06111F]">
               <button
                 type="button"
                 onClick={() => setShowHistoryModal(false)}
                 className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* IN-APP CONFIRMATION MODAL (Reliable inside iframe / sandboxed browsers)   */}
+      {/* ========================================================================= */}
+      {evalToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#06111F] border border-[#BFA373]/40 rounded-3xl p-6 w-full max-w-md space-y-5 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-cinzel font-bold text-white text-base">
+                  Delete Speech Evaluation?
+                </h3>
+                <p className="text-xs text-slate-400">
+                  This evaluation record will be permanently deleted from reports.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#06111F] border border-[#BFA373]/30 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Speaker:</span>
+                <span className="font-bold text-white text-sm">{evalToDelete.speakerName}</span>
+              </div>
+              {evalToDelete.speakerDepartment ? (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Department:</span>
+                  <span className="font-medium text-[#BFA373]">{evalToDelete.speakerDepartment}</span>
+                </div>
+              ) : null}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Role:</span>
+                <span className="font-medium text-amber-300">{evalToDelete.speakerRole || 'Speaker'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Meeting:</span>
+                <span className="font-medium text-white">{evalToDelete.meetingNumber || evalToDelete.speechTime || '1st Meeting'}</span>
+              </div>
+              {evalToDelete.speechTitle ? (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Speech Title:</span>
+                  <span className="font-medium text-slate-200 truncate max-w-[200px]">{evalToDelete.speechTitle}</span>
+                </div>
+              ) : null}
+              {evalToDelete.overallEvaluation ? (
+                <div className="flex justify-between items-center pt-2 border-t border-[#BFA373]/30">
+                  <span className="text-slate-400">Overall Rating:</span>
+                  <span className="font-black text-amber-400 text-xs px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40">
+                    {evalToDelete.overallEvaluation}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                disabled={isDeletingRecord}
+                onClick={() => setEvalToDelete(null)}
+                className="flex-1 px-4 py-3 rounded-xl bg-[#06111F] hover:bg-slate-800 text-slate-300 hover:text-white border border-[#BFA373]/30 font-bold text-xs cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingRecord}
+                onClick={handleExecuteDeleteEvaluation}
+                className="flex-1 px-4 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs cursor-pointer transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isDeletingRecord ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Evaluation</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
